@@ -130,11 +130,16 @@
         <div class="absolute bottom-20 right-20 w-48 h-48 bg-white rounded-full blur-3xl opacity-50"></div>
 
         <h1 class="text-white font-black text-5xl sm:text-6xl md:text-8xl mb-1 md:mb-2 text-outline tracking-tighter transform -rotate-2 text-center leading-none">ONLY BALL</h1>
-        <div class="bg-yellow-400 text-black px-4 md:px-6 py-1 md:py-2 rounded-full font-black text-sm sm:text-lg md:text-2xl mb-4 md:mb-6 shadow-[0_3px_0_#d48806] md:shadow-[0_5px_0_#d48806] transform rotate-3">
+        <div class="bg-yellow-400 text-black px-4 md:px-6 py-1 md:py-2 rounded-full font-black text-sm sm:text-lg md:text-2xl mb-2 md:mb-3 shadow-[0_3px_0_#d48806] md:shadow-[0_5px_0_#d48806] transform rotate-3">
             ULTIMATE EDITION
         </div>
         
-        <div class="glass-panel p-4 md:p-8 w-[95%] max-w-[800px] flex flex-col sm:flex-row gap-3 md:gap-5 items-center justify-center">
+        <!-- FIRMA CREATORE -->
+        <p class="text-white font-black text-xs sm:text-sm md:text-base mb-4 md:mb-6 tracking-widest drop-shadow-md z-10">
+            CREATED BY <span class="text-yellow-300 text-outline">ONLY_G4BB0</span>
+        </p>
+        
+        <div class="glass-panel p-4 md:p-8 w-[95%] max-w-[800px] flex flex-col sm:flex-row gap-3 md:gap-5 items-center justify-center z-10">
             <div class="flex-1 w-full flex flex-col gap-1 md:gap-2">
                 <button id="btn-difficulty" class="btn-secondary w-full py-2 sm:py-3 md:py-4 text-base sm:text-lg md:text-xl">MODALITÀ: NORMALE</button>
                 <p id="diff-desc" class="text-center text-[10px] sm:text-xs md:text-sm font-bold text-gray-700 leading-tight">Salvataggi abilitati ogni 70m.</p>
@@ -508,7 +513,10 @@
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = color1; ctx.fillRect(0, 0, 256, 256);
             ctx.fillStyle = color2; ctx.fillRect(0, 0, 128, 128); ctx.fillRect(128, 128, 128, 128);
-            const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            const tex = new THREE.CanvasTexture(canvas); 
+            tex.wrapS = THREE.RepeatWrapping; 
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); // <-- FILTRO ANISOTROPICO AGGIUNTO
             return tex;
         }
 
@@ -533,7 +541,9 @@
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
             const ctx = canvas.getContext('2d'); const colors = ['#ff0000', '#ffffff', '#0000ff', '#ffffff', '#ffff00', '#ffffff'];
             for(let i=0; i<colors.length; i++) { ctx.fillStyle = colors[i]; ctx.fillRect(i * (512/colors.length), 0, 512/colors.length, 256); }
-            return new THREE.CanvasTexture(canvas);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); // <-- FILTRO ANISOTROPICO AGGIUNTO
+            return tex;
         }
 
         const sphereGeo = new THREE.SphereGeometry(radius, 32, 32);
