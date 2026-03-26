@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Only Up: Perfect Physics & Mobile Ready</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #87CEEB; 
+            font-family: 'Nunito', sans-serif;
+            user-select: none;
+            touch-action: none; /* Previene lo zoom su mobile */
+        }
+        canvas { display: block; }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 4px solid white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-radius: 2rem;
+        }
+        
+        .btn-primary {
+            background: #ff4757;
+            color: white;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: 4px solid #ff6b81;
+            box-shadow: 0 8px 0 #ff0000, 0 15px 20px rgba(0,0,0,0.2);
+            transition: all 0.1s ease;
+            border-radius: 1.5rem;
+        }
+        .btn-primary:active { transform: translateY(8px); box-shadow: 0 0px 0 #ff0000; }
+
+        .btn-secondary {
+            background: #1e90ff;
+            color: white;
+            font-weight: 800;
+            border: 4px solid #70a1ff;
+            box-shadow: 0 6px 0 #0060c0;
+            border-radius: 1.5rem;
+        }
+        
+        .btn-hard {
+            background: #ff9f43;
+            color: white;
+            font-weight: 800;
+            border: 4px solid #feca57;
+            box-shadow: 0 6px 0 #ff7f50;
+            border-radius: 1.5rem;
+        }
+
+        .text-outline {
+            text-shadow: 
+                -2px -2px 0 #000,  
+                 2px -2px 0 #000,
+                -2px  2px 0 #000,
+                 2px  2px 0 #000,
+                 0px  4px 0 #000;
+        }
+    </style>
+</head>
+<body>
+    <!-- CONTROLLI MOBILE (Nascosti su PC) -->
+    <div id="mobile-controls" class="absolute inset-0 z-20 hidden pointer-events-none">
+        <!-- Area Touch per scorrere la visuale (Tutto lo schermo) -->
+        <div id="camera-zone" class="absolute inset-0 pointer-events-auto"></div>
+        
+        <!-- Joystick -->
+        <div id="joystick-zone" class="absolute bottom-8 left-8 w-32 h-32 bg-white/20 backdrop-blur-sm rounded-full border-2 border-white/50 pointer-events-auto flex items-center justify-center">
+            <div id="joystick-knob" class="w-12 h-12 bg-white rounded-full shadow-lg absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"></div>
+        </div>
+        
+        <!-- Pulsante Salto -->
+        <button id="jump-btn" class="absolute bottom-10 right-10 w-24 h-24 bg-red-500/80 backdrop-blur-sm rounded-full border-4 border-white flex items-center justify-center pointer-events-auto active:bg-red-600 active:scale-95 shadow-xl">
+            <span class="text-white font-black text-xl">SALTA</span>
+        </button>
+        
+        <!-- Pulsante Pausa / Respawn (Alto a destra) -->
+        <div class="absolute top-6 right-6 flex gap-4 pointer-events-auto">
+            <button id="btn-respawn-mob" class="bg-blue-500 text-white w-12 h-12 rounded-full font-bold text-xl border-2 border-white shadow-lg">H</button>
+            <button id="btn-pause-mob" class="bg-gray-800 text-white w-12 h-12 rounded-full font-bold border-2 border-white shadow-lg">||</button>
+        </div>
+    </div>
+
+    <!-- HUD IN GIOCO -->
+    <div id="ui-layer" class="absolute inset-0 z-10 flex flex-col justify-between p-6 hidden pointer-events-none">
+        <div class="flex justify-between items-start">
+            <div class="text-white font-black text-4xl text-outline">
+                ALTEZZA <br><span id="score" class="text-[#ffeaa7] text-7xl">0</span><span class="text-3xl text-white">m</span>
+                <div id="checkpoint-hud" class="text-lg text-green-300 mt-2 hidden">Ultimo Checkpoint: <span id="cp-score">0</span>m</div>
+            </div>
+            <div id="desktop-hints" class="text-white text-right text-lg font-bold bg-white/20 p-4 border-2 border-white rounded-2xl backdrop-blur-md text-outline hidden md:block">
+                🎮 W A S D - Muovi<br>
+                🖱️ MOUSE - Visuale<br>
+                ⚙️ ROTELLINA - Zoom<br>
+                🚀 SPAZIO - Salta<br>
+                🔄 H - Torna al Checkpoint<br>
+                ⏸️ ESC - Pausa
+            </div>
+        </div>
+        <div class="absolute top-1/2 left-1/2 w-3 h-3 bg-white border-2 border-black rounded-full transform -translate-x-1/2 -translate-y-1/2 pointer-events-none hidden md:block"></div>
+    </div>
+
+    <!-- MENU PRINCIPALE -->
+    <div id="main-menu" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-gradient-to-b from-[#74b9ff] to-[#81ecec]">
+        <div class="absolute top-10 left-10 w-32 h-32 bg-yellow-300 rounded-full blur-xl opacity-80 animate-pulse"></div>
+        <div class="absolute bottom-20 right-20 w-48 h-48 bg-white rounded-full blur-3xl opacity-50"></div>
+
+        <h1 class="text-white font-black text-6xl md:text-8xl mb-4 text-outline tracking-tighter transform -rotate-2 text-center leading-none">ONLY UP</h1>
+        <div class="bg-yellow-400 text-black px-6 py-2 rounded-full font-black text-xl md:text-2xl mb-10 shadow-[0_5px_0_#d48806] transform rotate-3">
+            MOBILE & PHYSICS ED.
+        </div>
+        
+        <div class="glass-panel p-6 md:p-8 w-[90%] md:w-96 flex flex-col gap-5 items-center">
+            <button id="btn-difficulty" class="btn-secondary w-full py-4 text-xl">MODALITÀ: NORMALE</button>
+            <p id="diff-desc" class="text-center text-sm font-bold text-gray-700 mb-2">Checkpoint e salvataggi abilitati ogni 70m.</p>
+            
+            <button id="btn-play" class="btn-primary w-full py-5 text-2xl mt-2">GIOCA ORA</button>
+            <button id="btn-settings" class="btn-secondary w-full py-3 text-lg opacity-80">Impostazioni</button>
+        </div>
+    </div>
+
+    <!-- MENU IMPOSTAZIONI -->
+    <div id="settings-menu" class="absolute inset-0 z-40 hidden flex flex-col items-center justify-center bg-black/50 backdrop-blur-md">
+        <div class="glass-panel p-10 w-[90%] md:w-[400px] flex flex-col gap-6">
+            <h2 class="text-black text-4xl font-black mb-4 text-center">OPZIONI</h2>
+            <div class="flex flex-col gap-2">
+                <label class="text-gray-700 font-bold text-lg">Volume Audio</label>
+                <input type="range" id="vol-slider" min="0" max="100" value="50" class="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+            <div class="flex justify-between items-center mt-4 bg-gray-100 p-4 rounded-xl border-2 border-gray-200">
+                <span class="text-gray-700 font-bold text-lg">Ombre (Grafica)</span>
+                <input type="checkbox" id="shadow-toggle" checked class="w-8 h-8 rounded text-blue-500">
+            </div>
+            <button id="btn-close-settings" class="btn-secondary mt-6 py-4 w-full">SALVA E CHIUDI</button>
+        </div>
+    </div>
+
+    <!-- MENU PAUSA -->
+    <div id="pause-menu" class="absolute inset-0 z-20 hidden flex flex-col items-center justify-center bg-white/40 backdrop-blur-lg">
+        <h1 class="text-white font-black text-7xl mb-10 text-outline">PAUSA</h1>
+        <div class="flex flex-col gap-6 w-80">
+            <button id="btn-resume" class="btn-primary py-5 text-2xl">RIPRENDI</button>
+            <button id="btn-restart" class="btn-secondary py-4 text-xl">Riavvia Partita</button>
+        </div>
+    </div>
+
+    <!-- GAME OVER -->
+    <div id="gameover" class="absolute inset-0 z-50 hidden flex flex-col items-center justify-center bg-red-500/90 backdrop-blur-md">
+        <h1 class="text-white font-black text-6xl md:text-8xl mb-2 text-outline animate-bounce">GAME OVER!</h1>
+        <p class="text-white text-2xl md:text-3xl mb-12 font-bold text-outline text-center px-4">Altezza massima: <span id="final-score" class="text-yellow-300">0</span> metri</p>
+        <button onclick="location.reload()" class="btn-primary px-10 md:px-12 py-5 md:py-6 text-2xl md:text-3xl">RIPROVA DA ZERO!</button>
+    </div>
+
+    <script>
+        // ==========================================
+        // RILEVAMENTO MOBILE E TOUCH
+        // ==========================================
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        // Dati Joystick
+        let joystickData = { x: 0, y: 0, active: false };
+        let joyCenter = { x: 0, y: 0 };
+        const joyZone = document.getElementById('joystick-zone');
+        const joyKnob = document.getElementById('joystick-knob');
+
+        if(isMobile) {
+            document.getElementById('mobile-controls').classList.remove('hidden');
+            
+            // Inizializzazione Touch Joystick
+            joyZone.addEventListener('touchstart', (e) => {
+                let rect = joyZone.getBoundingClientRect();
+                joyCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+                updateJoystick(e.touches[0]);
+            });
+            joyZone.addEventListener('touchmove', (e) => { e.preventDefault(); updateJoystick(e.touches[0]); }, {passive: false});
+            joyZone.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                joystickData = { x: 0, y: 0, active: false };
+                joyKnob.style.transform = `translate(-50%, -50%)`;
+            });
+
+            function updateJoystick(touch) {
+                let dx = touch.clientX - joyCenter.x;
+                let dy = touch.clientY - joyCenter.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                let maxDist = 40; // Raggio del joystick
+                if(dist > maxDist) { dx = (dx/dist)*maxDist; dy = (dy/dist)*maxDist; }
+                
+                joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+                joystickData.x = dx / maxDist; // -1 a 1
+                joystickData.y = dy / maxDist; // -1 a 1
+                joystickData.active = true;
+            }
+
+            // Pulsante Salto Mobile
+            const jumpBtn = document.getElementById('jump-btn');
+            jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys.space = true; }, {passive: false});
+            jumpBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.space = false; });
+
+            // Pulsanti H e Pausa Mobile
+            document.getElementById('btn-respawn-mob').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if(difficulty === 'normal') triggerRespawn();
+            });
+            document.getElementById('btn-pause-mob').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                gameState = 'paused';
+                document.getElementById('pause-menu').classList.remove('hidden');
+            });
+        }
+
+        // ==========================================
+        // SISTEMA AUDIO
+        // ==========================================
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.5;
+        masterGain.connect(audioCtx.destination);
+
+        const AudioEngine = {
+            playJump: () => {
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+                osc.connect(gain); gain.connect(masterGain);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+            },
+            playCheckpoint: () => {
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.2);
+                osc.connect(gain); gain.connect(masterGain);
+                gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+            },
+            playDeath: () => {
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
+                osc.connect(gain); gain.connect(masterGain);
+                gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            }
+        };
+
+        // ==========================================
+        // STATO E UI
+        // ==========================================
+        let gameState = 'menu';
+        let difficulty = 'normal'; 
+        
+        let checkpoints = [];
+        let lastCheckpoint = { x: 0, y: 5, z: 0 };
+        let nextTargetCheckpoint = 70; // Aggiornato a 70m per i biomi!
+
+        const btnDiff = document.getElementById('btn-difficulty');
+        const diffDesc = document.getElementById('diff-desc');
+
+        btnDiff.addEventListener('click', () => {
+            if(difficulty === 'normal') {
+                difficulty = 'hard';
+                btnDiff.innerText = 'MODALITÀ: DIFFICILE';
+                btnDiff.className = 'btn-hard w-full py-4 text-xl';
+                diffDesc.innerText = 'NESSUN SALVATAGGIO. Se cadi o muori, hai perso.';
+                diffDesc.classList.replace('text-gray-700', 'text-red-700');
+            } else {
+                difficulty = 'normal';
+                btnDiff.innerText = 'MODALITÀ: NORMALE';
+                btnDiff.className = 'btn-secondary w-full py-4 text-xl';
+                diffDesc.innerText = 'Checkpoint e salvataggi abilitati ogni 70m.';
+                diffDesc.classList.replace('text-red-700', 'text-gray-700');
+            }
+        });
+
+        document.getElementById('btn-play').addEventListener('click', () => {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('ui-layer').classList.remove('hidden');
+            if(difficulty === 'normal') document.getElementById('checkpoint-hud').classList.remove('hidden');
+            
+            if(!isMobile) document.body.requestPointerLock();
+            else gameState = 'playing'; // Su mobile inizia subito
+
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+        });
+
+        document.getElementById('btn-settings').addEventListener('click', () => { document.getElementById('settings-menu').classList.remove('hidden'); });
+        document.getElementById('btn-close-settings').addEventListener('click', () => { document.getElementById('settings-menu').classList.add('hidden'); });
+        document.getElementById('vol-slider').addEventListener('input', (e) => { masterGain.gain.value = e.target.value / 100; });
+        document.getElementById('btn-resume').addEventListener('click', () => {
+            if(!isMobile) document.body.requestPointerLock();
+            else { gameState = 'playing'; document.getElementById('pause-menu').classList.add('hidden'); }
+        });
+        document.getElementById('btn-restart').addEventListener('click', () => location.reload());
+
+        if(!isMobile) {
+            document.addEventListener('pointerlockchange', () => {
+                if (document.pointerLockElement === document.body) {
+                    if(gameState === 'paused' || gameState === 'menu') gameState = 'playing';
+                    document.getElementById('pause-menu').classList.add('hidden');
+                } else if(gameState === 'playing') {
+                    gameState = 'paused';
+                    document.getElementById('pause-menu').classList.remove('hidden');
+                }
+            });
+        }
+
+        // ==========================================
+        // 1. MOTORE FISICO
+        // ==========================================
+        const world = new CANNON.World();
+        world.gravity.set(0, -35, 0); 
+        world.broadphase = new CANNON.NaiveBroadphase();
+        world.solver.iterations = 10;
+
+        const physicsMaterial = new CANNON.Material("standard");
+        const contactMaterial = new CANNON.ContactMaterial(
+            physicsMaterial, physicsMaterial, 
+            { friction: 3.0, restitution: 0.1 }
+        );
+        world.addContactMaterial(contactMaterial);
+
+        // ==========================================
+        // 2. GRAFICA E TEXTURE
+        // ==========================================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x8ae2f5); 
+        scene.fog = new THREE.FogExp2(0x8ae2f5, 0.003); 
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+        
+        const dirLight = new THREE.DirectionalLight(0xfffaee, 1.2);
+        dirLight.position.set(50, 100, 30);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        function createBrightChecker(color1, color2) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = color1; ctx.fillRect(0, 0, 512, 512);
+            ctx.fillStyle = color2; ctx.fillRect(0, 0, 256, 256); ctx.fillRect(256, 256, 256, 256);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        const textures = [
+            createBrightChecker('#2ed573', '#7bed9f'), // 0: BIOMA BASE (Verde)
+            createBrightChecker('#ffa502', '#eccc68'), // 1: BIOMA DESERTO (Arancio)
+            createBrightChecker('#1e90ff', '#70a1ff'), // 2: BIOMA GHIACCIO (Blu)
+            createBrightChecker('#ff4757', '#ff6b81'), // 3: BIOMA VULCANO (Rosso)
+            createBrightChecker('#9b59b6', '#8e44ad'), // 4: BIOMA NEON (Viola)
+            createBrightChecker('#1e272e', '#485460')  // 5: Ostacoli Assassini (Grigio Scuro/Rosso)
+        ];
+
+        // Creazione Bandiera posta ai LATI della piattaforma
+        function createFlag(x, y, z, w, d) {
+            const poleGeo = new THREE.CylinderGeometry(0.15, 0.15, 4);
+            const poleMat = new THREE.MeshStandardMaterial({color: 0xcccccc});
+            const pole = new THREE.Mesh(poleGeo, poleMat);
+            // Sposta la bandiera in un angolo sicuro
+            pole.position.set(x + w/2 - 1.5, y + 2, z - d/2 + 1.5);
+            pole.castShadow = true;
+
+            const flagGeo = new THREE.PlaneGeometry(1.5, 1);
+            const flagMat = new THREE.MeshStandardMaterial({color: 0x2ed573, side: THREE.DoubleSide});
+            const flag = new THREE.Mesh(flagGeo, flagMat);
+            flag.position.set(x + w/2 - 2.25, y + 3.5, z - d/2 + 1.5);
+            flag.castShadow = true;
+
+            scene.add(pole);
+            scene.add(flag);
+        }
+
+        // ==========================================
+        // 3. IL GIOCATORE E LA PALLA
+        // ==========================================
+        const radius = 0.8;
+        const sphereShape = new CANNON.Sphere(radius);
+        const sphereBody = new CANNON.Body({ mass: 5, material: physicsMaterial, shape: sphereShape, angularDamping: 0.9, linearDamping: 0.1 });
+        sphereBody.position.set(0, 5, 0);
+        world.addBody(sphereBody);
+
+        function createBeachBallTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            const colors = ['#ff0000', '#ffffff', '#0000ff', '#ffffff', '#ffff00', '#ffffff'];
+            for(let i=0; i<colors.length; i++) {
+                ctx.fillStyle = colors[i];
+                ctx.fillRect(i * (512/colors.length), 0, 512/colors.length, 256);
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const sphereGeo = new THREE.SphereGeometry(radius, 32, 32);
+        const sphereMat = new THREE.MeshStandardMaterial({ map: createBeachBallTexture(), roughness: 0.4, metalness: 0.1 });
+        const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+        sphereMesh.castShadow = true;
+        scene.add(sphereMesh);
+
+        // ==========================================
+        // 4. GENERAZIONE LIVELLO E OSTACOLI ASSASSINI
+        // ==========================================
+        const platforms = [];
+        const movingObstacles = [];
+
+        function createPlatform(x, y, z, w, h, d, texIndex) {
+            const shape = new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2));
+            const body = new CANNON.Body({ mass: 0, material: physicsMaterial });
+            body.addShape(shape);
+            body.position.set(x, y, z);
+            world.addBody(body);
+
+            const geo = new THREE.BoxGeometry(w, h, d);
+            let matTex = textures[texIndex % textures.length].clone();
+            matTex.repeat.set(Math.max(1, w/3), Math.max(1, d/3));
+            matTex.needsUpdate = true;
+
+            const mat = new THREE.MeshStandardMaterial({ map: matTex, roughness: 0.6 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(body.position);
+            mesh.receiveShadow = true;
+            mesh.castShadow = true;
+            
+            scene.add(mesh);
+            platforms.push({ mesh: mesh, body: body });
+        }
+
+        createPlatform(0, 0, 0, 25, 2, 25, 0);
+
+        let genCurrentX = 0, genCurrentY = 0, genCurrentZ = 0, platformIndex = 0, highestPlatformY = 0;
+
+        function generateMorePlatforms(count) {
+            for(let i = 1; i <= count; i++) {
+                platformIndex++;
+                let angle = platformIndex * 0.9;
+                
+                // CALCOLO BIOMA (Ogni 70m)
+                let currentBiome = Math.floor(genCurrentY / 70);
+                let texIndex = Math.min(currentBiome, 4); // Limita al bioma Neon massimo
+                
+                let distMultiplier = 1 + (currentBiome * 0.15); // Sempre più distanti
+                let sizeMultiplier = Math.max(0.4, 1 - (currentBiome * 0.1)); // Sempre più piccole
+                
+                let distance = (6 + Math.random() * 5) * distMultiplier; 
+                genCurrentX += Math.cos(angle) * distance;
+                genCurrentZ += Math.sin(angle) * distance;
+                genCurrentY += 2.5 + Math.random() * 3; 
+                
+                let w = (5 + Math.random() * 4) * sizeMultiplier;
+                let d = (5 + Math.random() * 4) * sizeMultiplier;
+                
+                // CHECKPOINT OGNI 70M
+                if(genCurrentY >= nextTargetCheckpoint) {
+                    w = 16; d = 16; 
+                    createPlatform(genCurrentX, genCurrentY, genCurrentZ, w, 1.5, d, texIndex);
+                    
+                    checkpoints.push({
+                        y: nextTargetCheckpoint,
+                        pos: { x: genCurrentX, y: genCurrentY, z: genCurrentZ }, // Coordinate CENTRALI Piattaforma
+                        reached: false
+                    });
+                    
+                    createFlag(genCurrentX, genCurrentY, genCurrentZ, w, d); // Genera bandiera in un angolo
+                    nextTargetCheckpoint += 70;
+                } else {
+                    createPlatform(genCurrentX, genCurrentY, genCurrentZ, w, 1, d, texIndex);
+
+                    // OSTACOLI IN MOVIMENTO (Appaiono dal Bioma 1 in poi, >70m)
+                    if(currentBiome >= 1 && Math.random() > 0.6) {
+                        let obsW = w * 0.8; let obsH = 1.5; let obsD = d * 0.8;
+                        
+                        let shape = new CANNON.Box(new CANNON.Vec3(obsW/2, obsH/2, obsD/2));
+                        let body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC }); // KINEMATIC! (Si muove senza gravità)
+                        body.addShape(shape);
+                        body.position.set(genCurrentX, genCurrentY + 1.2, genCurrentZ);
+                        body.isDeathObstacle = true; // TAG MORTALE
+                        world.addBody(body);
+
+                        let mat = new THREE.MeshStandardMaterial({ map: textures[5], color: 0xff0000, emissive: 0x550000 });
+                        let mesh = new THREE.Mesh(new THREE.BoxGeometry(obsW, obsH, obsD), mat);
+                        scene.add(mesh);
+
+                        let obsType = Math.floor(Math.random() * 3); // 0: sliderX, 1: sliderZ, 2: spinner
+                        movingObstacles.push({
+                            body, mesh, type: obsType,
+                            baseX: genCurrentX, baseZ: genCurrentZ,
+                            timeOffset: Math.random() * 100
+                        });
+                    }
+                }
+                highestPlatformY = genCurrentY;
+            }
+        }
+        generateMorePlatforms(50);
+
+        // ==========================================
+        // 5. CONTROLLI RESPONSIVI ED EVENTI MOUSE/TOUCH
+        // ==========================================
+        const keys = { w: false, a: false, s: false, d: false, space: false };
+        let camYaw = Math.PI, camPitch = 0.3, camDistance = 12;
+        let lastTouch = {x: 0, y: 0};
+
+        // Telecamera MOUSE (PC)
+        document.addEventListener('mousemove', (e) => {
+            if(gameState !== 'playing' || isMobile) return;
+            camYaw -= e.movementX * 0.003;
+            camPitch -= e.movementY * 0.003;
+            camPitch = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, camPitch));
+        });
+
+        // Telecamera TOUCH (Mobile)
+        document.getElementById('camera-zone').addEventListener('touchstart', (e) => {
+            lastTouch.x = e.touches[0].clientX; lastTouch.y = e.touches[0].clientY;
+        });
+        document.getElementById('camera-zone').addEventListener('touchmove', (e) => {
+            if(gameState !== 'playing') return;
+            let dx = e.touches[0].clientX - lastTouch.x;
+            let dy = e.touches[0].clientY - lastTouch.y;
+            camYaw -= dx * 0.008; // Sensibilità Touch
+            camPitch -= dy * 0.008;
+            camPitch = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, camPitch));
+            lastTouch.x = e.touches[0].clientX; lastTouch.y = e.touches[0].clientY;
+        }, {passive: false});
+
+        document.addEventListener('wheel', (e) => {
+            if(gameState !== 'playing') return;
+            camDistance += e.deltaY * 0.02;
+            camDistance = Math.max(5, Math.min(30, camDistance));
+        });
+
+        // Tastiera
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if(keys.hasOwnProperty(key)) keys[key] = true;
+            if(e.code === 'Space') keys.space = true;
+            if(e.code === 'KeyH' && gameState === 'playing' && difficulty === 'normal') triggerRespawn();
+        });
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if(keys.hasOwnProperty(key)) keys[key] = false;
+            if(e.code === 'Space') keys.space = false;
+        });
+
+        // Rilevamento collisioni mortali o terreno per il salto
+        let canJump = false;
+        let hitDeathZone = false;
+
+        world.addEventListener("postStep", () => {
+            canJump = false;
+            for(let i = 0; i < world.contacts.length; i++) {
+                let c = world.contacts[i];
+                if(c.bi.id === sphereBody.id || c.bj.id === sphereBody.id) {
+                    let otherBody = c.bi.id === sphereBody.id ? c.bj : c.bi;
+                    
+                    // Controlla se tocca l'ostacolo mortale
+                    if(otherBody.isDeathObstacle) { hitDeathZone = true; }
+
+                    let normal = c.ni;
+                    if(c.bi.id === sphereBody.id) normal.negate(normal);
+                    if(normal.y > 0.5) canJump = true;
+                }
+            }
+        });
+
+        const torqueAmount = 80;   
+        const forceAmount = 150;   
+        const maxVelocity = 25;    
+
+        function updatePhysics() {
+            world.step(1/60);
+
+            // GESTIONE OSTACOLI IN MOVIMENTO (KINEMATICI)
+            let time = performance.now() * 0.002;
+            for(let obs of movingObstacles) {
+                if(obs.type === 0) {
+                    let targetX = obs.baseX + Math.sin(time + obs.timeOffset) * 3.5;
+                    obs.body.velocity.x = (targetX - obs.body.position.x) * 10;
+                } else if(obs.type === 1) {
+                    let targetZ = obs.baseZ + Math.cos(time + obs.timeOffset) * 3.5;
+                    obs.body.velocity.z = (targetZ - obs.body.position.z) * 10;
+                } else if(obs.type === 2) {
+                    obs.body.angularVelocity.set(0, 3, 0); // Rotazione sull'asse Y
+                }
+                obs.mesh.position.copy(obs.body.position);
+                obs.mesh.quaternion.copy(obs.body.quaternion);
+            }
+
+            if(gameState === 'playing') {
+                const forwardX = -Math.sin(camYaw);
+                const forwardZ = -Math.cos(camYaw);
+                const rightX = Math.cos(camYaw);
+                const rightZ = -Math.sin(camYaw);
+
+                let moveX = 0, moveZ = 0;
+                
+                // Input Tastiera
+                if(keys.w) { moveX += forwardX; moveZ += forwardZ; }
+                if(keys.s) { moveX -= forwardX; moveZ -= forwardZ; }
+                if(keys.a) { moveX -= rightX;   moveZ -= rightZ; }
+                if(keys.d) { moveX += rightX;   moveZ += rightZ; }
+
+                // Input Joystick (Sovrascrive tastiera se attivo)
+                let inputStrength = 1;
+                if(joystickData.active) {
+                    let inputX = joystickData.x;
+                    let inputY = -joystickData.y; // Invertito perché la Y va verso il basso su schermo
+                    moveX = forwardX * inputY + rightX * inputX;
+                    moveZ = forwardZ * inputY + rightZ * inputX;
+                    inputStrength = Math.min(1, Math.sqrt(inputX**2 + inputY**2));
+                }
+
+                if(moveX !== 0 || moveZ !== 0) {
+                    const length = Math.sqrt(moveX*moveX + moveZ*moveZ);
+                    moveX /= length; moveZ /= length;
+                    
+                    sphereBody.torque.x += moveZ * torqueAmount * inputStrength;
+                    sphereBody.torque.z += -moveX * torqueAmount * inputStrength;
+                    sphereBody.applyForce(new CANNON.Vec3(moveX * forceAmount * inputStrength, 0, moveZ * forceAmount * inputStrength), sphereBody.position);
+                }
+
+                if(keys.space && canJump) {
+                    sphereBody.velocity.y = 22;
+                    AudioEngine.playJump();
+                    canJump = false;
+                    keys.space = false;
+                }
+            }
+
+            const velocity = sphereBody.velocity;
+            const speed = Math.sqrt(velocity.x**2 + velocity.z**2);
+            if(speed > maxVelocity) {
+                const ratio = maxVelocity / speed;
+                sphereBody.velocity.x *= ratio;
+                sphereBody.velocity.z *= ratio;
+            }
+
+            sphereMesh.position.copy(sphereBody.position);
+            sphereMesh.quaternion.copy(sphereBody.quaternion);
+        }
+
+        function updateCamera() {
+            const targetX = sphereMesh.position.x + camDistance * Math.sin(camYaw) * Math.cos(camPitch);
+            const targetY = sphereMesh.position.y + camDistance * Math.sin(camPitch);
+            const targetZ = sphereMesh.position.z + camDistance * Math.cos(camYaw) * Math.cos(camPitch);
+            
+            camera.position.x += (targetX - camera.position.x) * 0.3; 
+            camera.position.y += (targetY - camera.position.y) * 0.3;
+            camera.position.z += (targetZ - camera.position.z) * 0.3;
+            
+            camera.lookAt(sphereMesh.position);
+            
+            // Colore nebbia e sfondo varia con l'altezza (Biomi visivi)
+            let currBiome = Math.min(Math.floor(sphereMesh.position.y / 70), 4);
+            const skyColors = [0x8ae2f5, 0xffd384, 0x82ccdd, 0xeb4d4b, 0x2c2c54]; // Azzurro, Giallo, Blu, Rosso, Scuro
+            let targetColor = new THREE.Color(skyColors[currBiome]);
+            scene.background.lerp(targetColor, 0.05);
+            scene.fog.color.lerp(targetColor, 0.05);
+
+            dirLight.position.set(sphereMesh.position.x + 40, sphereMesh.position.y + 60, sphereMesh.position.z + 40);
+            dirLight.target = sphereMesh;
+        }
+
+        // ==========================================
+        // LOGICA RESPAWN E GAME OVER
+        // ==========================================
+        function triggerRespawn() {
+            AudioEngine.playDeath();
+            if(difficulty === 'normal') {
+                // SPAWN AL CENTRO DEL CHECKPOINT
+                sphereBody.position.set(lastCheckpoint.x, lastCheckpoint.y + 4, lastCheckpoint.z);
+                sphereBody.velocity.set(0,0,0);
+                sphereBody.angularVelocity.set(0,0,0);
+                sphereBody.torque.set(0,0,0);
+                camYaw = Math.PI; 
+            } else {
+                gameState = 'gameover';
+                document.exitPointerLock();
+                document.getElementById('ui-layer').classList.add('hidden');
+                document.getElementById('mobile-controls').classList.add('hidden');
+                document.getElementById('gameover').classList.remove('hidden');
+                document.getElementById('final-score').innerText = highestScore;
+            }
+        }
+
+        let highestScore = 0;
+        const scoreEl = document.getElementById('score');
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePhysics();
+            updateCamera();
+
+            if(gameState === 'playing') {
+                // Rileva Morte da Ostacoli Dinamici
+                if(hitDeathZone) {
+                    hitDeathZone = false;
+                    triggerRespawn();
+                }
+
+                let currentHeight = Math.floor(sphereMesh.position.y);
+                if(currentHeight > highestScore) {
+                    highestScore = currentHeight;
+                    scoreEl.innerText = highestScore;
+                }
+
+                if(sphereMesh.position.y > highestPlatformY - 100) { generateMorePlatforms(20); }
+
+                // Checkpoint Normal
+                if(difficulty === 'normal') {
+                    for(let cp of checkpoints) {
+                        if(!cp.reached && sphereMesh.position.y >= cp.y - 1) { 
+                            cp.reached = true;
+                            lastCheckpoint = cp.pos; // Ora è il vero centro!
+                            AudioEngine.playCheckpoint();
+                            document.getElementById('cp-score').innerText = cp.y;
+                        }
+                    }
+                }
+
+                // Limite di caduta
+                let fallLimit = highestScore > 20 ? highestScore - 30 : -20;
+                if(sphereMesh.position.y < fallLimit) { triggerRespawn(); }
+            }
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
