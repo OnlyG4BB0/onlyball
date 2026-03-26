@@ -754,7 +754,13 @@
             if(difficulty === 'normal') {
                 sphereBody.position.set(lastCheckpoint.x, lastCheckpoint.y + 4, lastCheckpoint.z);
                 sphereBody.velocity.set(0,0,0); sphereBody.angularVelocity.set(0,0,0); sphereBody.torque.set(0,0,0);
+                sphereBody.force.set(0,0,0); // Svuota le forze residue
                 camYaw = Math.PI; 
+                
+                // FIX BUG RESPAWN: Riporta il punteggio massimo all'altezza del checkpoint
+                // per evitare che la soglia di caduta ti uccida all'infinito
+                highestScore = Math.floor(lastCheckpoint.y);
+                document.getElementById('score').innerText = highestScore;
             } else {
                 gameState = 'gameover';
                 document.getElementById('ui-layer').classList.add('hidden');
