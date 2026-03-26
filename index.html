@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
     <title>Only Ball: Ultimate Edition</title>
+    <!-- Icona Favicon generata in SVG a forma di pallone da spiaggia -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23f1c40f'/><path d='M50 5 a45 45 0 0 1 45 45 h-45 z' fill='%23e74c3c'/><path d='M50 95 a45 45 0 0 1 -45 -45 h45 z' fill='%233498db'/><circle cx='50' cy='50' r='15' fill='%23ffffff'/></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -44,7 +45,7 @@
             0% { transform: translateY(100vh); }
             100% { transform: translateY(-250%); }
         }
-        .animate-credits { animation: scrollCredits 65s linear forwards; } /* Scorrimento rallentato a 65s */
+        .animate-credits { animation: scrollCredits 65s linear forwards; } 
 
         /* Effetto Fade-in per i blocchi di testo dei titoli di coda */
         .credit-block {
@@ -284,6 +285,24 @@
         /* ==========================================================================
            SEZIONE 4: CONTROLLI TOUCH MOBILE E JOYSTICK
            ========================================================================== */
+        const btnForceLandscape = document.getElementById('btn-force-landscape');
+
+        function forceFullscreen() {
+            let doc = document.documentElement;
+            let reqFS = doc.requestFullscreen || doc.webkitRequestFullscreen || doc.mozRequestFullScreen || doc.msRequestFullscreen;
+            try { if (reqFS) reqFS.call(doc); } catch(e) { console.warn("Fullscreen API fallita:", e); }
+            try {
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(e => console.warn("Lock orientamento non supportato:", e));
+                }
+            } catch(e) { console.warn("Orientation API fallita:", e); }
+        }
+
+        btnForceLandscape.addEventListener('click', forceFullscreen);
+        btnForceLandscape.addEventListener('touchend', (e) => { 
+            e.preventDefault(); forceFullscreen(); 
+        }, {passive: false});
+
         let joystickData = { x: 0, y: 0, active: false };
         let joyCenter = { x: 0, y: 0 };
         let joyTouchId = null, camTouchId = null, lastTouchCam = {x: 0, y: 0};
@@ -479,7 +498,6 @@
         /* ==========================================================================
            SEZIONE 6: GESTIONE SKINS E MENU
            ========================================================================== */
-        
         function createBeachBallTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
             const ctx = canvas.getContext('2d'); const colors = ['#ff0000', '#ffffff', '#0000ff', '#ffffff', '#ffff00', '#ffffff'];
@@ -547,9 +565,11 @@
             let s = skinList[index];
             if(typeof sphereMesh !== 'undefined') {
                 sphereMesh.material.map = s.generator();
-                // In modalità RTX manteniamo la ruvidità della skin per un effetto più realistico
-                sphereMesh.material.roughness = s.roughness;
-                sphereMesh.material.metalness = s.metalness;
+                let finalMetal = isRTX ? Math.min(0.8, s.metalness + 0.3) : s.metalness;
+                let finalRough = isRTX ? Math.max(0.1, s.roughness - 0.2) : s.roughness;
+                
+                sphereMesh.material.roughness = finalRough;
+                sphereMesh.material.metalness = finalMetal;
                 sphereMesh.material.color.setHex(s.color);
                 sphereMesh.material.needsUpdate = true;
             }
@@ -571,7 +591,6 @@
             }
         });
 
-        // Gestione Menu Skin
         document.getElementById('btn-open-skins').addEventListener('click', () => {
             gameState = 'skins';
             document.getElementById('main-menu').classList.add('hidden');
@@ -587,7 +606,6 @@
             MusicEngine.playMood('menu');
         });
 
-        // Avvio e Impostazioni
         function startGame() {
             document.getElementById('main-menu').classList.add('hidden');
             document.getElementById('ui-layer').classList.remove('hidden');
@@ -731,7 +749,6 @@
         textures.push(createAdvancedTexture('#1e272e', '#485460')); 
         textures.push(createAdvancedTexture('#000000', '#222222')); 
 
-        // Inizializzazione Pallina e CubeCamera per RTX
         const radius = 0.8; const sphereShape = new CANNON.Sphere(radius);
         const sphereBody = new CANNON.Body({ mass: 5, material: physicsMaterial, shape: sphereShape, angularDamping: 0.9, linearDamping: 0.1 }); world.addBody(sphereBody);
 
@@ -841,8 +858,10 @@
         function generateMorePlatforms(count) {
             for(let i = 1; i <= count; i++) {
                 platformIndex++; let angle = platformIndex * 0.9;
-                let currentBiome = Math.floor(genCurrentY / 70); if (currentBiome > 14) currentBiome = 14; 
+                
+                let currentBiome = Math.max(0, Math.min(14, Math.floor(genCurrentY / 70))); 
                 let texIndex = currentBiome;
+                
                 let distMultiplier = 1 + (currentBiome * 0.05); let sizeMultiplier = Math.max(0.4, 1 - (currentBiome * 0.04)); 
                 let distance = (6 + Math.random() * 5) * distMultiplier; 
                 
@@ -922,7 +941,6 @@
         const keys = { w: false, a: false, s: false, d: false, space: false };
         
         document.addEventListener('keydown', (e) => {
-            // CONSOLE EASTER EGG (Tasto Backslash \ )
             if (e.key === '\\' && !isMobile) {
                 e.preventDefault();
                 const consoleEl = document.getElementById('dev-console');
@@ -1083,6 +1101,16 @@
 
         function updatePhysics() {
             world.step(1/60);
+            
+            // FIX DI EMERGENZA: Previene crash se Cannon.js genera collisioni con coordinate corrotte (NaN)
+            if (isNaN(sphereBody.position.x) || isNaN(sphereBody.position.y) || isNaN(sphereBody.position.z)) {
+                sphereBody.position.set(lastCheckpoint.x, lastCheckpoint.y + 4, lastCheckpoint.z);
+                sphereBody.velocity.set(0,0,0);
+                sphereBody.angularVelocity.set(0,0,0);
+                sphereBody.torque.set(0,0,0);
+                sphereBody.force.set(0,0,0);
+            }
+            
             let gpData = processGamepad();
             let time = performance.now() * 0.002;
             
@@ -1150,19 +1178,33 @@
            ========================================================================== */
         function updateCamera() {
             let lookTarget = sphereMesh.position.clone();
+            if (isNaN(lookTarget.x) || isNaN(lookTarget.y) || isNaN(lookTarget.z)) {
+                lookTarget.set(lastCheckpoint.x, lastCheckpoint.y, lastCheckpoint.z);
+            }
             if (gameState === 'skins') lookTarget.y -= 1.0; 
 
-            const targetX = sphereMesh.position.x + camDistance * Math.sin(camYaw) * Math.cos(camPitch);
-            const targetY = sphereMesh.position.y + camDistance * Math.sin(camPitch);
-            const targetZ = sphereMesh.position.z + camDistance * Math.cos(camYaw) * Math.cos(camPitch);
+            // FIX: Assicuriamo coordinate sempre valide alla telecamera anche se c'è un frame di latenza della fisica
+            let safeX = isNaN(sphereMesh.position.x) ? lastCheckpoint.x : sphereMesh.position.x;
+            let safeY = isNaN(sphereMesh.position.y) ? lastCheckpoint.y : sphereMesh.position.y;
+            let safeZ = isNaN(sphereMesh.position.z) ? lastCheckpoint.z : sphereMesh.position.z;
+
+            const targetX = safeX + camDistance * Math.sin(camYaw) * Math.cos(camPitch);
+            const targetY = safeY + camDistance * Math.sin(camPitch);
+            const targetZ = safeZ + camDistance * Math.cos(camYaw) * Math.cos(camPitch);
             
             camera.position.x += (targetX - camera.position.x) * 0.3; 
             camera.position.y += (targetY - camera.position.y) * 0.3;
             camera.position.z += (targetZ - camera.position.z) * 0.3;
             camera.lookAt(lookTarget);
             
-            let currBiome = Math.floor(sphereMesh.position.y / 70);
-            if(currBiome > 14) currBiome = 14; 
+            // Calcolo Bioma protetto da valori incalcolabili
+            let rawBiome = safeY / 70;
+            let currBiome = 0;
+            if (!isNaN(rawBiome) && isFinite(rawBiome)) {
+                currBiome = Math.floor(rawBiome);
+            }
+            currBiome = Math.max(0, Math.min(14, currBiome));
+            
             let targetColor = new THREE.Color(biomeDefs[currBiome].sky);
             scene.background.lerp(targetColor, 0.05); scene.fog.color.lerp(targetColor, 0.05);
             
@@ -1175,10 +1217,14 @@
                 else if(currBiome === 3 || currBiome === 10) { positions[i+1] += 0.4; positions[i] += velocities[i]; } 
                 else { positions[i+1] += velocities[i+1]*2; } 
 
-                if(positions[i+1] < sphereMesh.position.y - 40) positions[i+1] = sphereMesh.position.y + 40;
-                if(positions[i+1] > sphereMesh.position.y + 40) positions[i+1] = sphereMesh.position.y - 40;
-                if(positions[i] < sphereMesh.position.x - 75) positions[i] = sphereMesh.position.x + 75;
-                if(positions[i] > sphereMesh.position.x + 75) positions[i] = sphereMesh.position.x - 75;
+                if(positions[i+1] < safeY - 40) positions[i+1] = safeY + 40;
+                if(positions[i+1] > safeY + 40) positions[i+1] = safeY - 40;
+                if(positions[i] < safeX - 75) positions[i] = safeX + 75;
+                if(positions[i] > safeX + 75) positions[i] = safeX - 75;
+                
+                // FIX: Riposizionamento particelle sull'asse Z (Profondità)
+                if(positions[i+2] < safeZ - 75) positions[i+2] = safeZ + 75;
+                if(positions[i+2] > safeZ + 75) positions[i+2] = safeZ - 75;
             }
             particleMesh.geometry.attributes.position.needsUpdate = true;
             particleMesh.material.color.lerp(new THREE.Color(biomeDefs[currBiome].c1), 0.05);
@@ -1187,7 +1233,7 @@
                 currentVisualBiome = currBiome; MusicEngine.playMood(currBiome);
             }
 
-            dirLight.position.set(sphereMesh.position.x + 40, sphereMesh.position.y + 60, sphereMesh.position.z + 40);
+            dirLight.position.set(safeX + 40, safeY + 60, safeZ + 40);
             dirLight.target = sphereMesh;
         }
 
@@ -1197,13 +1243,11 @@
             document.getElementById('ui-layer').classList.add('hidden'); document.getElementById('mobile-controls').classList.add('hidden');
             const creditsScreen = document.getElementById('credits-screen'); creditsScreen.classList.remove('hidden');
             
-            // Riavvia l'animazione dal basso
             const creditsText = document.getElementById('credits-text');
             creditsText.classList.remove('animate-credits');
-            void creditsText.offsetWidth; // Forza il refresh del browser
+            void creditsText.offsetWidth; 
             creditsText.classList.add('animate-credits');
 
-            // Rileva quando i vari blocchi entrano nello schermo per sfumarli "piano piano"
             const blocks = document.querySelectorAll('.credit-block');
             blocks.forEach(b => b.classList.remove('visible'));
             
@@ -1213,7 +1257,7 @@
                         entry.target.classList.add('visible');
                     }
                 });
-            }, { threshold: 0.3 }); // Appare quando entra almeno per il 30% nello schermo
+            }, { threshold: 0.3 }); 
 
             blocks.forEach(block => observer.observe(block));
 
@@ -1256,7 +1300,7 @@
 
                 if(hitDeathZone) { hitDeathZone = false; triggerRespawn(); }
 
-                let currentHeight = Math.floor(sphereMesh.position.y);
+                let currentHeight = Math.floor(isNaN(sphereMesh.position.y) ? lastCheckpoint.y : sphereMesh.position.y);
                 if(currentHeight > highestScore) { 
                     highestScore = currentHeight; document.getElementById('score').innerText = highestScore; 
                     if(highestScore >= 1000) triggerEnding();
