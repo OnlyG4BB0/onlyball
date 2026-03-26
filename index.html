@@ -4,12 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
     <title>Only Ball: Ultimate Edition</title>
-    <!-- Icona Favicon generata in SVG a forma di pallone da spiaggia -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23f1c40f'/><path d='M50 5 a45 45 0 0 1 45 45 h-45 z' fill='%23e74c3c'/><path d='M50 95 a45 45 0 0 1 -45 -45 h45 z' fill='%233498db'/><circle cx='50' cy='50' r='15' fill='%23ffffff'/></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;800;900&display=swap" rel="stylesheet">
+    
+    <!-- ==========================================================================
+         SEZIONE STILI (CSS)
+         ========================================================================== -->
     <style>
         body { 
             margin: 0; 
@@ -17,11 +20,10 @@
             background-color: #87CEEB; 
             font-family: 'Nunito', sans-serif;
             user-select: none;
-            touch-action: none; /* Previene lo zoom su mobile */
+            touch-action: none; 
         }
         canvas { display: block; }
         
-        /* Schermata di blocco per orientamento Portrait */
         #rotate-device { display: none; }
         @media screen and (orientation: portrait) {
             #rotate-device { display: flex !important; }
@@ -68,18 +70,24 @@
             border-radius: 1.5rem;
         }
 
+        button:focus, select:focus, input[type="range"]:focus, input[type="checkbox"]:focus {
+            outline: 4px solid #f1c40f !important;
+            box-shadow: 0 0 20px #f1c40f !important;
+            transform: scale(1.05);
+            transition: all 0.1s ease;
+        }
+
         .text-outline {
-            text-shadow: 
-                -2px -2px 0 #000,  
-                 2px -2px 0 #000,
-                -2px  2px 0 #000,
-                 2px  2px 0 #000,
-                 0px  4px 0 #000;
+            text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0px 4px 0 #000;
         }
     </style>
 </head>
 <body>
-    <!-- SCHERMATA BLOCCO PORTRAIT E FULLSCREEN -->
+
+    <!-- ==========================================================================
+         SEZIONE OVERLAYS E MENU HTML
+         ========================================================================== -->
+
     <div id="rotate-device" class="fixed inset-0 z-[100] bg-black flex-col items-center justify-center text-white p-8 text-center">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-32 h-32 mb-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -90,7 +98,6 @@
         <button id="btn-force-landscape" class="btn-primary px-8 py-4 text-xl">FORZA SCHERMO INTERO</button>
     </div>
 
-    <!-- CONTROLLI MOBILE (Nascosti su PC) -->
     <div id="mobile-controls" class="absolute inset-0 z-20 hidden pointer-events-none">
         <div id="camera-zone" class="absolute inset-0 pointer-events-auto"></div>
         <div id="joystick-zone" class="absolute bottom-6 left-12 w-32 h-32 bg-white/20 backdrop-blur-sm rounded-full border-2 border-white/50 pointer-events-auto flex items-center justify-center">
@@ -105,7 +112,6 @@
         </div>
     </div>
 
-    <!-- HUD IN GIOCO -->
     <div id="ui-layer" class="absolute inset-0 z-10 flex flex-col justify-between p-6 hidden pointer-events-none">
         <div class="flex justify-between items-start">
             <div class="text-white font-black text-2xl md:text-4xl text-outline">
@@ -113,18 +119,16 @@
                 <div id="checkpoint-hud" class="text-sm md:text-lg text-green-300 mt-1 hidden">Ultimo Checkpoint: <span id="cp-score">0</span>m</div>
             </div>
             <div id="desktop-hints" class="text-white text-right text-lg font-bold bg-white/20 p-4 border-2 border-white rounded-2xl backdrop-blur-md text-outline hidden md:block">
-                🎮 W A S D - Muovi<br>
-                🖱️ MOUSE - Visuale<br>
-                ⚙️ ROTELLINA - Zoom<br>
-                🚀 SPAZIO - Salta<br>
-                🔄 H - Checkpoint<br>
-                ⏸️ ESC - Pausa
+                🎮 W A S D / L-Stick - Muovi<br>
+                🖱️ Mouse / R-Stick - Visuale<br>
+                🚀 SPAZIO / A - Salta<br>
+                🔄 H / Y - Checkpoint<br>
+                ⏸️ ESC / Start - Pausa
             </div>
         </div>
         <div class="absolute top-1/2 left-1/2 w-3 h-3 bg-white border-2 border-black rounded-full transform -translate-x-1/2 -translate-y-1/2 pointer-events-none hidden md:block"></div>
     </div>
 
-    <!-- MENU PRINCIPALE -->
     <div id="main-menu" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-gradient-to-b from-[#74b9ff] to-[#81ecec]">
         <div class="absolute top-10 left-10 w-32 h-32 bg-yellow-300 rounded-full blur-xl opacity-80 animate-pulse"></div>
         <div class="absolute bottom-20 right-20 w-48 h-48 bg-white rounded-full blur-3xl opacity-50"></div>
@@ -134,7 +138,6 @@
             ULTIMATE EDITION
         </div>
         
-        <!-- FIRMA CREATORE -->
         <p class="text-white font-black text-xs sm:text-sm md:text-base mb-4 md:mb-6 tracking-widest drop-shadow-md z-10">
             CREATED BY <span class="text-yellow-300 text-outline">ONLY_G4BB0</span>
         </p>
@@ -146,19 +149,25 @@
             </div>
             <div class="flex-1 w-full flex flex-col gap-2 md:gap-3">
                 <button id="btn-play" class="btn-primary w-full py-3 sm:py-4 md:py-5 text-lg sm:text-xl md:text-2xl">GIOCA ORA</button>
-                <button id="btn-settings-main" class="btn-secondary w-full py-2 text-xs sm:text-sm opacity-90">Impostazioni Grafica/Audio</button>
+                <button id="btn-settings-main" class="btn-secondary w-full py-2 text-xs sm:text-sm opacity-90">Impostazioni Gioco</button>
             </div>
         </div>
+        
+        <p class="mt-4 text-white font-bold text-sm bg-black/40 px-4 py-2 rounded-full hidden" id="gamepad-status">🎮 Controller Rilevato!</p>
     </div>
 
-    <!-- MENU IMPOSTAZIONI -->
     <div id="settings-menu" class="absolute inset-0 z-40 hidden flex flex-col items-center justify-center bg-black/70 backdrop-blur-md p-2">
         <div class="glass-panel p-4 sm:p-6 md:p-10 w-full max-w-[500px] flex flex-col gap-3 md:gap-5 max-h-screen overflow-y-auto">
             <h2 class="text-black text-2xl sm:text-3xl md:text-4xl font-black mb-1 md:mb-2 text-center">IMPOSTAZIONI</h2>
             
             <div class="flex flex-col gap-1 md:gap-2">
-                <label class="text-gray-700 font-bold text-sm md:text-lg">Volume Audio</label>
+                <label class="text-gray-700 font-bold text-sm md:text-lg">Volume Effetti</label>
                 <input type="range" id="vol-slider" min="0" max="100" value="50" class="w-full h-3 md:h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+            
+            <div class="flex flex-col gap-1 md:gap-2">
+                <label class="text-gray-700 font-bold text-sm md:text-lg">Volume Musica</label>
+                <input type="range" id="music-slider" min="0" max="100" value="30" class="w-full h-3 md:h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer">
             </div>
             
             <div class="flex flex-col gap-1 md:gap-2 mt-1">
@@ -179,7 +188,6 @@
         </div>
     </div>
 
-    <!-- MENU PAUSA -->
     <div id="pause-menu" class="absolute inset-0 z-20 hidden flex flex-col items-center justify-center bg-white/40 backdrop-blur-lg p-4">
         <h1 class="text-white font-black text-4xl sm:text-5xl md:text-7xl mb-4 md:mb-6 text-outline">PAUSA</h1>
         <div class="flex flex-col sm:flex-row gap-3 md:gap-4 w-full max-w-[600px] justify-center">
@@ -194,60 +202,49 @@
         </div>
     </div>
 
-    <!-- GAME OVER -->
     <div id="gameover" class="absolute inset-0 z-50 hidden flex flex-col items-center justify-center bg-red-500/90 backdrop-blur-md p-4">
         <h1 class="text-white font-black text-5xl sm:text-6xl md:text-8xl mb-1 md:mb-2 text-outline animate-bounce text-center">GAME OVER!</h1>
         <p class="text-white text-lg sm:text-xl md:text-3xl mb-4 md:mb-8 font-bold text-outline text-center px-4">Altezza massima: <span id="final-score" class="text-yellow-300">0</span> metri</p>
-        <button onclick="location.reload()" class="btn-primary px-6 sm:px-8 md:px-12 py-3 sm:py-4 md:py-6 text-lg sm:text-xl md:text-3xl">RIPROVA DA ZERO!</button>
+        <button id="btn-gameover-restart" onclick="location.reload()" class="btn-primary px-6 sm:px-8 md:px-12 py-3 sm:py-4 md:py-6 text-lg sm:text-xl md:text-3xl">RIPROVA DA ZERO!</button>
     </div>
 
     <script>
-        // ==========================================
-        // VARIABILI GLOBALI E STATO
-        // ==========================================
+        /* ==========================================================================
+           SEZIONE 1: VARIABILI GLOBALI E STATO DEL GIOCO
+           ========================================================================== */
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
-        let camYaw = Math.PI;
-        let camPitch = 0.3;
-        let camDistance = 12; 
-        
-        let gameState = 'menu'; // menu, playing, paused, settings, gameover
-        let previousState = 'menu'; // Per sapere dove tornare dalle impostazioni
-        let difficulty = 'normal'; 
-        
-        let checkpoints = [];
-        let lastCheckpoint = { x: 0, y: 5, z: 0 };
-        let nextTargetCheckpoint = 70; 
-        let highestScore = 0;
-        let genCurrentX = 0, genCurrentY = 0, genCurrentZ = 0, platformIndex = 0, highestPlatformY = 0;
+        let camYaw = Math.PI, camPitch = 0.3, camDistance = 12; 
+        let gameState = 'menu', lastGameState = 'menu', previousState = 'menu', difficulty = 'normal'; 
+        let checkpoints = [], lastCheckpoint = { x: 0, y: 5, z: 0 }, nextTargetCheckpoint = 70; 
+        let highestScore = 0, genCurrentX = 0, genCurrentY = 0, genCurrentZ = 0, platformIndex = 0, highestPlatformY = 0;
+        let currentVisualBiome = 0;
+        const platforms = []; const movingObstacles = [];
+        let lastGpButtons = [], focusIndex = 0;
+        const menuGroups = {
+            'menu': ['btn-play', 'btn-difficulty', 'btn-settings-main'],
+            'paused': ['btn-resume', 'btn-restart', 'btn-settings-pause', 'btn-home'],
+            'settings': ['vol-slider', 'music-slider', 'res-select', 'shadow-toggle', 'btn-close-settings'],
+            'gameover': ['btn-gameover-restart']
+        };
 
-        const platforms = [];
-        const movingObstacles = [];
-
-        // ==========================================
-        // FULLSCREEN E ORIENTAMENTO FORZATO (MOBILE)
-        // ==========================================
+        /* ==========================================================================
+           SEZIONE 2: GESTIONE SCHERMO INTERO E ORIENTAMENTO
+           ========================================================================== */
         document.getElementById('btn-force-landscape').addEventListener('click', async () => {
             try {
                 let doc = document.documentElement;
                 if (doc.requestFullscreen) await doc.requestFullscreen();
                 else if (doc.webkitRequestFullscreen) await doc.webkitRequestFullscreen();
-                
-                if (screen.orientation && screen.orientation.lock) {
-                    await screen.orientation.lock('landscape');
-                }
-            } catch (err) {
-                console.warn("Autolock fallito, ruotare manualmente", err);
-            }
+                if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+            } catch (err) { console.warn("Autolock fallito", err); }
         });
 
-        // ==========================================
-        // RILEVAMENTO TOUCH JOYSTICK
-        // ==========================================
+        /* ==========================================================================
+           SEZIONE 3: CONTROLLI TOUCH MOBILE E JOYSTICK
+           ========================================================================== */
         let joystickData = { x: 0, y: 0, active: false };
         let joyCenter = { x: 0, y: 0 };
-        let joyTouchId = null, camTouchId = null;
-        let lastTouchCam = {x: 0, y: 0};
+        let joyTouchId = null, camTouchId = null, lastTouchCam = {x: 0, y: 0};
 
         if(isMobile) {
             document.getElementById('mobile-controls').classList.remove('hidden');
@@ -256,10 +253,8 @@
 
             joyZone.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                let touch = e.changedTouches[0];
-                joyTouchId = touch.identifier;
-                let rect = joyZone.getBoundingClientRect();
-                joyCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+                let touch = e.changedTouches[0]; joyTouchId = touch.identifier;
+                let rect = joyZone.getBoundingClientRect(); joyCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
                 updateJoystick(touch);
             }, {passive: false});
 
@@ -295,13 +290,12 @@
             }, {passive: false});
 
             camZone.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                if(gameState !== 'playing') return;
+                e.preventDefault(); if(gameState !== 'playing') return;
                 for(let i=0; i<e.changedTouches.length; i++) {
                     if(e.changedTouches[i].identifier === camTouchId) {
                         let touch = e.changedTouches[i];
                         camYaw -= (touch.clientX - lastTouchCam.x) * 0.008;
-                        camPitch -= (touch.clientY - lastTouchCam.y) * 0.008;
+                        camPitch += (touch.clientY - lastTouchCam.y) * 0.008;
                         camPitch = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, camPitch));
                         lastTouchCam.x = touch.clientX; lastTouchCam.y = touch.clientY;
                     }
@@ -316,20 +310,19 @@
                 e.preventDefault(); keys.space = true; 
                 jumpBtn.style.transform = "translateY(5px)"; jumpBtn.style.boxShadow = "0 0px 0 #990000";
             }, {passive: false});
+            
             jumpBtn.addEventListener('touchend', (e) => { 
                 e.preventDefault(); keys.space = false;
                 jumpBtn.style.transform = "translateY(0px)"; jumpBtn.style.boxShadow = "0 5px 0 #990000";
             });
 
             document.getElementById('btn-respawn-mob').addEventListener('touchstart', (e) => { e.preventDefault(); if(difficulty === 'normal') triggerRespawn(); });
-            document.getElementById('btn-pause-mob').addEventListener('touchstart', (e) => {
-                e.preventDefault(); openPauseMenu();
-            });
+            document.getElementById('btn-pause-mob').addEventListener('touchstart', (e) => { e.preventDefault(); openPauseMenu(); });
         }
 
-        // ==========================================
-        // SISTEMA AUDIO
-        // ==========================================
+        /* ==========================================================================
+           SEZIONE 4: MOTORE AUDIO (EFFETTI E MUSICA PROCEDURALE)
+           ========================================================================== */
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const masterGain = audioCtx.createGain();
         masterGain.gain.value = 0.5;
@@ -337,40 +330,174 @@
 
         const AudioEngine = {
             playJump: () => {
-                if(audioCtx.state === 'suspended') audioCtx.resume();
+                if(audioCtx.state === 'suspended') return;
                 const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
                 osc.type = 'sine'; osc.frequency.setValueAtTime(300, audioCtx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
                 osc.connect(gain); gain.connect(masterGain);
-                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.2);
             },
             playCheckpoint: () => {
-                if(audioCtx.state === 'suspended') audioCtx.resume();
+                if(audioCtx.state === 'suspended') return;
                 const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
                 osc.type = 'triangle'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
                 osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.2);
                 osc.connect(gain); gain.connect(masterGain);
-                gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.4, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.4);
             },
             playDeath: () => {
-                if(audioCtx.state === 'suspended') audioCtx.resume();
+                if(audioCtx.state === 'suspended') return;
                 const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
                 osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
                 osc.connect(gain); gain.connect(masterGain);
-                gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.5, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.3);
             }
         };
 
-        // ==========================================
-        // GESTIONE MENU E IMPOSTAZIONI
-        // ==========================================
+        const MusicEngine = {
+            ctx: audioCtx,
+            musicGain: audioCtx.createGain(),
+            delayNode: audioCtx.createDelay(),
+            feedbackNode: audioCtx.createGain(),
+            filterNode: audioCtx.createBiquadFilter(),
+            activeNodes: [],
+            currentInterval: null,
+            currentMood: null,
+            volume: 0.3,
+
+            init: function() {
+                this.musicGain.gain.value = this.volume;
+                this.delayNode.delayTime.value = 0.45; 
+                this.feedbackNode.gain.value = 0.4;  
+                this.filterNode.type = 'lowpass';
+                this.filterNode.frequency.value = 2500; 
+
+                this.musicGain.connect(this.delayNode);
+                this.delayNode.connect(this.feedbackNode);
+                this.feedbackNode.connect(this.filterNode);
+                this.filterNode.connect(this.delayNode);
+
+                this.musicGain.connect(this.ctx.destination);
+                this.delayNode.connect(this.ctx.destination);
+            },
+
+            setVolume: function(vol) {
+                this.volume = vol;
+                if(this.ctx.state !== 'suspended') this.musicGain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.1);
+            },
+
+            playMood: function(moodKey) {
+                if (this.currentMood === moodKey || this.ctx.state === 'suspended') return;
+                this.stopAll();
+                this.currentMood = moodKey;
+                if (moodKey === null) return;
+
+                const scales = {
+                    'menu': [261.63, 293.66, 329.63, 392.00, 440.00], 
+                    0: [349.23, 392.00, 440.00, 523.25, 587.33],      
+                    1: [146.83, 174.61, 196.00, 220.00, 261.63],      
+                    2: [523.25, 587.33, 659.25, 783.99, 880.00],      
+                    3: [98.00, 103.83, 130.81, 146.83, 164.81],       
+                    4: [220.00, 261.63, 293.66, 329.63, 392.00]       
+                };
+                
+                const scale = scales[moodKey] || scales['menu'];
+                
+                let droneFreq = scale[0] / 2; 
+                if (moodKey === 2) droneFreq = scale[0] / 4; 
+                let droneType = moodKey === 3 || moodKey === 4 ? 'sawtooth' : 'sine';
+                
+                this.playDrone(droneFreq, droneType, 0.15, 600); 
+                this.playDrone(droneFreq + 0.5, 'triangle', 0.1, 800); 
+
+                let chimeType = moodKey === 4 || moodKey === 3 ? 'square' : 'sine'; 
+                
+                this.currentInterval = setInterval(() => {
+                    if(Math.random() > 0.25 && this.ctx.state !== 'suspended') {
+                        let freq = scale[Math.floor(Math.random() * scale.length)];
+                        const octaveJumps = [0.5, 1, 1, 2, 4]; 
+                        freq *= octaveJumps[Math.floor(Math.random() * octaveJumps.length)];
+                        this.playChime(freq, chimeType);
+                    }
+                }, 300); 
+            },
+
+            playDrone: function(freq, type, vol, filterFreq) {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const filter = this.ctx.createBiquadFilter();
+
+                osc.type = type; osc.frequency.value = freq;
+                filter.type = 'lowpass'; filter.frequency.value = filterFreq;
+
+                gain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 2); 
+
+                const lfo = this.ctx.createOscillator();
+                lfo.frequency.value = 0.5 + Math.random() * 1.5; 
+                const lfoGain = this.ctx.createGain();
+                lfoGain.gain.value = vol * 0.3; 
+                lfo.connect(lfoGain); lfoGain.connect(gain.gain);
+                lfo.start();
+
+                osc.connect(filter); filter.connect(gain); gain.connect(this.musicGain);
+                osc.start();
+                this.activeNodes.push({osc, gain, lfo});
+            },
+
+            playChime: function(freq, type) {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const filter = this.ctx.createBiquadFilter();
+                
+                filter.type = 'lowpass';
+                filter.frequency.value = 3000;
+                osc.type = type; osc.frequency.value = freq;
+
+                const now = this.ctx.currentTime;
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(0.2, now + 0.03); 
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8); 
+
+                osc.connect(filter); filter.connect(gain); gain.connect(this.musicGain);
+                osc.start(now);
+                osc.stop(now + 1.0); 
+            },
+
+            stopAll: function() {
+                if(this.currentInterval) clearInterval(this.currentInterval);
+                const now = this.ctx.currentTime;
+                this.activeNodes.forEach(n => {
+                    n.gain.gain.cancelScheduledValues(now);
+                    n.gain.gain.setValueAtTime(n.gain.gain.value, now);
+                    n.gain.gain.linearRampToValueAtTime(0.001, now + 1.5); 
+                    setTimeout(() => { try { n.osc.stop(); n.lfo.stop(); n.osc.disconnect(); n.gain.disconnect(); } catch(e){} }, 1600);
+                });
+                this.activeNodes = [];
+            }
+        };
+        MusicEngine.init();
+
+        let audioStarted = false;
+        function initAudio() {
+            if(!audioStarted) {
+                audioCtx.resume().then(() => {
+                    audioStarted = true;
+                    if(gameState === 'menu') MusicEngine.playMood('menu');
+                });
+            }
+        }
+        document.addEventListener('click', initAudio, {once: true});
+        document.addEventListener('touchstart', initAudio, {once: true});
+        document.addEventListener('keydown', initAudio, {once: true});
+
+        /* ==========================================================================
+           SEZIONE 5: LOGICA MENU E IMPOSTAZIONI
+           ========================================================================== */
         const btnDiff = document.getElementById('btn-difficulty');
         const diffDesc = document.getElementById('diff-desc');
 
@@ -378,13 +505,11 @@
             if(difficulty === 'normal') {
                 difficulty = 'hard'; btnDiff.innerText = 'MODALITÀ: DIFFICILE';
                 btnDiff.className = 'btn-hard w-full py-2 sm:py-3 md:py-4 text-base sm:text-lg md:text-xl';
-                diffDesc.innerText = 'Niente salvataggi. Se cadi o muori, hai perso.';
-                diffDesc.classList.replace('text-gray-700', 'text-red-700');
+                diffDesc.innerText = 'Niente salvataggi. Se cadi o muori, hai perso.'; diffDesc.classList.replace('text-gray-700', 'text-red-700');
             } else {
                 difficulty = 'normal'; btnDiff.innerText = 'MODALITÀ: NORMALE';
                 btnDiff.className = 'btn-secondary w-full py-2 sm:py-3 md:py-4 text-base sm:text-lg md:text-xl';
-                diffDesc.innerText = 'Salvataggi abilitati ogni 70m.';
-                diffDesc.classList.replace('text-red-700', 'text-gray-700');
+                diffDesc.innerText = 'Salvataggi abilitati ogni 70m.'; diffDesc.classList.replace('text-red-700', 'text-gray-700');
             }
         });
 
@@ -396,20 +521,18 @@
             
             if(!isMobile) document.body.requestPointerLock();
             else gameState = 'playing';
-            if(audioCtx.state === 'suspended') audioCtx.resume();
+            
+            initAudio();
+            MusicEngine.playMood(currentVisualBiome); 
         }
-
         document.getElementById('btn-play').addEventListener('click', startGame);
 
-        // IMPOSTAZIONI Condivise
         function openSettings(from) {
-            previousState = from;
-            gameState = 'settings';
+            previousState = from; gameState = 'settings';
             if(from === 'menu') document.getElementById('main-menu').classList.add('hidden');
             if(from === 'paused') document.getElementById('pause-menu').classList.add('hidden');
             document.getElementById('settings-menu').classList.remove('hidden');
         }
-
         document.getElementById('btn-settings-main').addEventListener('click', () => openSettings('menu'));
         document.getElementById('btn-settings-pause').addEventListener('click', () => openSettings('paused'));
         
@@ -419,21 +542,16 @@
             if(previousState === 'menu') document.getElementById('main-menu').classList.remove('hidden');
             if(previousState === 'paused') document.getElementById('pause-menu').classList.remove('hidden');
             
-            // Applica Risoluzione Grafica
             const resScale = parseFloat(document.getElementById('res-select').value);
             renderer.setPixelRatio(window.devicePixelRatio * resScale);
-            
-            // Applica Ombre
             const useShadows = document.getElementById('shadow-toggle').checked;
             renderer.shadowMap.enabled = useShadows;
-            scene.traverse((child) => {
-                if (child.isMesh) { child.castShadow = useShadows; child.receiveShadow = useShadows; }
-            });
+            scene.traverse((child) => { if (child.isMesh) { child.castShadow = useShadows; child.receiveShadow = useShadows; } });
         });
 
         document.getElementById('vol-slider').addEventListener('input', (e) => { masterGain.gain.value = e.target.value / 100; });
+        document.getElementById('music-slider').addEventListener('input', (e) => { MusicEngine.setVolume(e.target.value / 100); });
 
-        // PAUSA E RITORNO AL MENU
         function openPauseMenu() {
             gameState = 'paused';
             if(!isMobile) document.exitPointerLock();
@@ -446,17 +564,13 @@
         });
         
         document.getElementById('btn-restart').addEventListener('click', () => {
-            document.getElementById('pause-menu').classList.add('hidden');
-            fullGameReset();
-            startGame();
+            document.getElementById('pause-menu').classList.add('hidden'); fullGameReset(); startGame();
         });
 
         document.getElementById('btn-home').addEventListener('click', () => {
-            document.getElementById('pause-menu').classList.add('hidden');
-            document.getElementById('ui-layer').classList.add('hidden');
-            fullGameReset();
-            gameState = 'menu';
-            document.getElementById('main-menu').classList.remove('hidden');
+            document.getElementById('pause-menu').classList.add('hidden'); document.getElementById('ui-layer').classList.add('hidden');
+            fullGameReset(); gameState = 'menu'; document.getElementById('main-menu').classList.remove('hidden');
+            MusicEngine.playMood('menu'); 
         });
 
         if(!isMobile) {
@@ -470,43 +584,30 @@
             });
         }
 
-        // ==========================================
-        // 1. MOTORE FISICO E GRAFICA (MIGLIORATA)
-        // ==========================================
+        /* ==========================================================================
+           SEZIONE 6: INIZIALIZZAZIONE FISICA E GRAFICA (CANNON.JS E THREE.JS)
+           ========================================================================== */
         const world = new CANNON.World();
-        world.gravity.set(0, -35, 0); 
-        world.broadphase = new CANNON.NaiveBroadphase();
-        world.solver.iterations = 10;
-
+        world.gravity.set(0, -35, 0); world.broadphase = new CANNON.NaiveBroadphase(); world.solver.iterations = 10;
         const physicsMaterial = new CANNON.Material("standard");
         const contactMaterial = new CANNON.ContactMaterial(physicsMaterial, physicsMaterial, { friction: 3.0, restitution: 0.1 });
         world.addContactMaterial(contactMaterial);
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x8ae2f5); 
-        scene.fog = new THREE.FogExp2(0x8ae2f5, 0.003); 
+        scene.background = new THREE.Color(0x8ae2f5); scene.fog = new THREE.FogExp2(0x8ae2f5, 0.003); 
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio); // Partenza Alta
-        // MIGLIORAMENTO GRAFICO: Tone Mapping Cinematografico
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.1;
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setSize(window.innerWidth, window.innerHeight); renderer.setPixelRatio(window.devicePixelRatio); 
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
+        renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-        scene.add(ambientLight);
-        
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); scene.add(ambientLight);
         const dirLight = new THREE.DirectionalLight(0xfffaee, 1.5);
-        dirLight.position.set(50, 100, 30);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
-        scene.add(dirLight);
+        dirLight.position.set(50, 100, 30); dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048; scene.add(dirLight);
 
         function createBrightChecker(color1, color2) {
             const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256;
@@ -514,24 +615,24 @@
             ctx.fillStyle = color1; ctx.fillRect(0, 0, 256, 256);
             ctx.fillStyle = color2; ctx.fillRect(0, 0, 128, 128); ctx.fillRect(128, 128, 128, 128);
             const tex = new THREE.CanvasTexture(canvas); 
-            tex.wrapS = THREE.RepeatWrapping; 
-            tex.wrapT = THREE.RepeatWrapping;
-            tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); // <-- FILTRO ANISOTROPICO AGGIUNTO
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
             return tex;
         }
 
         const textures = [
-            createBrightChecker('#2ed573', '#7bed9f'), // Base
-            createBrightChecker('#ffa502', '#eccc68'), // Deserto
-            createBrightChecker('#1e90ff', '#70a1ff'), // Ghiaccio
-            createBrightChecker('#ff4757', '#ff6b81'), // Vulcano
-            createBrightChecker('#9b59b6', '#8e44ad'), // Neon
-            createBrightChecker('#1e272e', '#485460')  // Ostacoli
+            createBrightChecker('#2ed573', '#7bed9f'), 
+            createBrightChecker('#ffa502', '#eccc68'), 
+            createBrightChecker('#1e90ff', '#70a1ff'), 
+            createBrightChecker('#ff4757', '#ff6b81'), 
+            createBrightChecker('#9b59b6', '#8e44ad'), 
+            createBrightChecker('#1e272e', '#485460'), 
+            createBrightChecker('#000000', '#222222')  
         ];
 
-        // ==========================================
-        // 3. IL GIOCATORE
-        // ==========================================
+        /* ==========================================================================
+           SEZIONE 7: CREAZIONE DEL GIOCATORE (PALLINA) E MATERIALI
+           ========================================================================== */
         const radius = 0.8;
         const sphereShape = new CANNON.Sphere(radius);
         const sphereBody = new CANNON.Body({ mass: 5, material: physicsMaterial, shape: sphereShape, angularDamping: 0.9, linearDamping: 0.1 });
@@ -541,25 +642,20 @@
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
             const ctx = canvas.getContext('2d'); const colors = ['#ff0000', '#ffffff', '#0000ff', '#ffffff', '#ffff00', '#ffffff'];
             for(let i=0; i<colors.length; i++) { ctx.fillStyle = colors[i]; ctx.fillRect(i * (512/colors.length), 0, 512/colors.length, 256); }
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); // <-- FILTRO ANISOTROPICO AGGIUNTO
-            return tex;
+            const tex = new THREE.CanvasTexture(canvas); tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); return tex;
         }
 
         const sphereGeo = new THREE.SphereGeometry(radius, 32, 32);
         const sphereMat = new THREE.MeshStandardMaterial({ map: createBeachBallTexture(), roughness: 0.3, metalness: 0.2 });
-        const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
-        sphereMesh.castShadow = true;
-        scene.add(sphereMesh);
+        const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat); sphereMesh.castShadow = true; scene.add(sphereMesh);
 
-        // ==========================================
-        // 4. GENERAZIONE LIVELLO E RESET
-        // ==========================================
+        /* ==========================================================================
+           SEZIONE 8: GENERAZIONE DEL LIVELLO PROCEDURALE E OSTACOLI
+           ========================================================================== */
         function createPlatform(x, y, z, w, h, d, texIndex, isFlag = false) {
             const shape = new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2));
             const body = new CANNON.Body({ mass: 0, material: physicsMaterial });
-            body.addShape(shape); body.position.set(x, y, z);
-            world.addBody(body);
+            body.addShape(shape); body.position.set(x, y, z); world.addBody(body);
 
             const geo = new THREE.BoxGeometry(w, h, d);
             let matTex = textures[texIndex % textures.length].clone();
@@ -567,19 +663,14 @@
             const mat = new THREE.MeshStandardMaterial({ map: matTex, roughness: 0.6 });
             const mesh = new THREE.Mesh(geo, mat);
             mesh.position.copy(body.position); mesh.receiveShadow = true; mesh.castShadow = true;
-            scene.add(mesh);
-            platforms.push({ mesh: mesh, body: body });
+            scene.add(mesh); platforms.push({ mesh: mesh, body: body });
 
             if(isFlag) {
-                const poleGeo = new THREE.CylinderGeometry(0.15, 0.15, 4);
-                const poleMat = new THREE.MeshStandardMaterial({color: 0xcccccc});
+                const poleGeo = new THREE.CylinderGeometry(0.15, 0.15, 4); const poleMat = new THREE.MeshStandardMaterial({color: 0xcccccc});
                 const pole = new THREE.Mesh(poleGeo, poleMat); pole.position.set(x + w/2 - 1.5, y + 2, z - d/2 + 1.5); pole.castShadow = true;
-                const flagGeo = new THREE.PlaneGeometry(1.5, 1);
-                const flagMat = new THREE.MeshStandardMaterial({color: 0x2ed573, side: THREE.DoubleSide});
+                const flagGeo = new THREE.PlaneGeometry(1.5, 1); const flagMat = new THREE.MeshStandardMaterial({color: 0x2ed573, side: THREE.DoubleSide});
                 const flag = new THREE.Mesh(flagGeo, flagMat); flag.position.set(x + w/2 - 2.25, y + 3.5, z - d/2 + 1.5); flag.castShadow = true;
-                scene.add(pole); scene.add(flag);
-                // Salva le mesh per eliminarle al reset
-                platforms[platforms.length-1].flagMeshes = [pole, flag];
+                scene.add(pole); scene.add(flag); platforms[platforms.length-1].flagMeshes = [pole, flag];
             }
         }
 
@@ -595,60 +686,76 @@
                 
                 if(genCurrentY >= nextTargetCheckpoint) {
                     w = 16; d = 16; 
-                    createPlatform(genCurrentX, genCurrentY, genCurrentZ, w, 1.5, d, texIndex, true); // true genera la bandiera
+                    createPlatform(genCurrentX, genCurrentY, genCurrentZ, w, 1.5, d, texIndex, true); 
                     checkpoints.push({ y: nextTargetCheckpoint, pos: { x: genCurrentX, y: genCurrentY, z: genCurrentZ }, reached: false });
                     nextTargetCheckpoint += 70;
                 } else {
                     createPlatform(genCurrentX, genCurrentY, genCurrentZ, w, 1, d, texIndex);
-                    if(currentBiome >= 1 && Math.random() > 0.6) {
-                        let obsW = w * 0.8, obsH = 1.5, obsD = d * 0.8;
-                        let shape = new CANNON.Box(new CANNON.Vec3(obsW/2, obsH/2, obsD/2));
-                        let body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC }); 
-                        body.addShape(shape); body.position.set(genCurrentX, genCurrentY + 1.2, genCurrentZ); body.isDeathObstacle = true; 
-                        world.addBody(body);
+                    
+                    if(currentBiome >= 1) {
+                        let rand = Math.random();
+                        let spawnRed = rand > 0.8; 
+                        let spawnBlack = rand > 0.5 && rand <= 0.8;
 
-                        let mat = new THREE.MeshStandardMaterial({ map: textures[5], color: 0xff0000, emissive: 0x550000 });
-                        let mesh = new THREE.Mesh(new THREE.BoxGeometry(obsW, obsH, obsD), mat);
-                        scene.add(mesh);
-                        movingObstacles.push({ body, mesh, type: Math.floor(Math.random() * 3), baseX: genCurrentX, baseZ: genCurrentZ, timeOffset: Math.random() * 100 });
+                        if(spawnRed || spawnBlack) {
+                            let obsW = spawnBlack ? w * 0.5 : w * 0.35; 
+                            let obsH = spawnBlack ? 2.5 : 1.0; 
+                            let obsD = spawnBlack ? d * 0.5 : d * 0.35;
+                            
+                            let shape = new CANNON.Box(new CANNON.Vec3(obsW/2, obsH/2, obsD/2));
+                            let body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC }); 
+                            body.addShape(shape); 
+                            body.position.set(genCurrentX, genCurrentY + obsH/2 + 0.5, genCurrentZ); 
+                            
+                            let mat;
+                            if(spawnRed) {
+                                body.isDeathObstacle = true; 
+                                mat = new THREE.MeshStandardMaterial({ map: textures[5], color: 0xff0000, emissive: 0x550000 });
+                            } else {
+                                mat = new THREE.MeshStandardMaterial({ map: textures[6], color: 0x333333, roughness: 0.8 });
+                            }
+                            
+                            world.addBody(body);
+
+                            let mesh = new THREE.Mesh(new THREE.BoxGeometry(obsW, obsH, obsD), mat);
+                            mesh.castShadow = true;
+                            scene.add(mesh);
+                            
+                            movingObstacles.push({ 
+                                body, mesh, 
+                                type: Math.floor(Math.random() * 3), 
+                                baseX: genCurrentX, baseZ: genCurrentZ, 
+                                timeOffset: Math.random() * 100,
+                                speed: spawnRed ? 1.0 : 1.8,
+                                ampX: w * 0.35, 
+                                ampZ: d * 0.35
+                            });
+                        }
                     }
                 }
                 highestPlatformY = genCurrentY;
             }
         }
 
-        // Funzione per ripulire e rigenerare il mondo da capo
         function fullGameReset() {
-            // Rimuove mesh e corpi fisici
-            for(let p of platforms) {
-                scene.remove(p.mesh); world.removeBody(p.body);
-                if(p.flagMeshes) p.flagMeshes.forEach(m => scene.remove(m));
-            }
+            for(let p of platforms) { scene.remove(p.mesh); world.removeBody(p.body); if(p.flagMeshes) p.flagMeshes.forEach(m => scene.remove(m)); }
             for(let o of movingObstacles) { scene.remove(o.mesh); world.removeBody(o.body); }
             platforms.length = 0; movingObstacles.length = 0;
             
-            // Resetta variabili
-            genCurrentX = 0; genCurrentY = 0; genCurrentZ = 0; platformIndex = 0; highestPlatformY = 0;
-            highestScore = 0; document.getElementById('score').innerText = '0';
-            checkpoints = []; lastCheckpoint = { x: 0, y: 5, z: 0 }; nextTargetCheckpoint = 70;
-            document.getElementById('cp-score').innerText = '0';
+            genCurrentX = 0; genCurrentY = 0; genCurrentZ = 0; platformIndex = 0; highestPlatformY = 0; highestScore = 0; document.getElementById('score').innerText = '0';
+            checkpoints = []; lastCheckpoint = { x: 0, y: 5, z: 0 }; nextTargetCheckpoint = 70; document.getElementById('cp-score').innerText = '0';
+            currentVisualBiome = 0;
             
-            // Riavvia generazione
-            createPlatform(0, 0, 0, 25, 2, 25, 0);
-            generateMorePlatforms(40);
+            createPlatform(0, 0, 0, 25, 2, 25, 0); generateMorePlatforms(40);
             
-            // Resetta giocatore e camera
             sphereBody.position.set(0, 5, 0); sphereBody.velocity.set(0,0,0); sphereBody.angularVelocity.set(0,0,0); sphereBody.torque.set(0,0,0);
-            camYaw = Math.PI; camPitch = 0.3;
-            scene.background.setHex(0x8ae2f5); scene.fog.color.setHex(0x8ae2f5);
+            camYaw = Math.PI; camPitch = 0.3; scene.background.setHex(0x8ae2f5); scene.fog.color.setHex(0x8ae2f5);
         }
-
-        // Setup iniziale all'avvio
         fullGameReset();
 
-        // ==========================================
-        // 5. FISICA E AGGIORNAMENTI CONTROLLI
-        // ==========================================
+        /* ==========================================================================
+           SEZIONE 9: GESTIONE INPUT (TASTIERA E GAMEPAD) E COLLISIONI
+           ========================================================================== */
         const keys = { w: false, a: false, s: false, d: false, space: false };
         
         document.addEventListener('keydown', (e) => {
@@ -656,21 +763,70 @@
             if(e.code === 'Space') keys.space = true;
             if(e.code === 'KeyH' && gameState === 'playing' && difficulty === 'normal') triggerRespawn();
         });
+        
         document.addEventListener('keyup', (e) => {
             const key = e.key.toLowerCase(); if(keys.hasOwnProperty(key)) keys[key] = false;
             if(e.code === 'Space') keys.space = false;
         });
+        
         document.addEventListener('mousemove', (e) => {
             if(gameState !== 'playing' || isMobile) return;
-            camYaw -= e.movementX * 0.003; camPitch -= e.movementY * 0.003;
+            camYaw -= e.movementX * 0.003; camPitch += e.movementY * 0.003; 
             camPitch = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, camPitch));
         });
+        
         document.addEventListener('wheel', (e) => {
             if(gameState !== 'playing' || isMobile) return;
             camDistance += e.deltaY * 0.02; camDistance = Math.max(5, Math.min(30, camDistance));
         });
 
+        window.addEventListener("gamepadconnected", (e) => { document.getElementById("gamepad-status").classList.remove("hidden"); });
+
+        function processGamepad() {
+            let gp = navigator.getGamepads()[0];
+            if (!gp) return { x: 0, y: 0, active: false };
+
+            if (gameState !== lastGameState) {
+                focusIndex = 0; let cMenu = menuGroups[gameState];
+                if (cMenu && document.getElementById(cMenu[0])) document.getElementById(cMenu[0]).focus();
+                lastGameState = gameState;
+            }
+
+            let A = gp.buttons[0].pressed, Y = gp.buttons[3].pressed, Start = gp.buttons[9] ? gp.buttons[9].pressed : false;
+            let D_Up = gp.buttons[12].pressed, D_Down = gp.buttons[13].pressed;
+
+            if (Start && !lastGpButtons[9]) {
+                if (gameState === 'playing') openPauseMenu();
+                else if (gameState === 'paused') document.getElementById('btn-resume').click();
+            }
+            if (Y && !lastGpButtons[3] && gameState === 'playing' && difficulty === 'normal') triggerRespawn();
+            if (A && !lastGpButtons[0] && gameState === 'playing') keys.space = true;
+            if (!A && lastGpButtons[0] && gameState === 'playing') keys.space = false;
+
+            if (gameState !== 'playing') {
+                let currentMenu = menuGroups[gameState];
+                if (currentMenu && currentMenu.length > 0) {
+                    if (D_Up && !lastGpButtons[12]) { focusIndex = (focusIndex - 1 + currentMenu.length) % currentMenu.length; document.getElementById(currentMenu[focusIndex]).focus(); }
+                    if (D_Down && !lastGpButtons[13]) { focusIndex = (focusIndex + 1) % currentMenu.length; document.getElementById(currentMenu[focusIndex]).focus(); }
+                    if (A && !lastGpButtons[0]) document.getElementById(currentMenu[focusIndex]).click();
+                }
+            }
+
+            if (gameState === 'playing') {
+                let lookX = gp.axes[2], lookY = gp.axes[3]; 
+                if (Math.abs(lookX) > 0.1) camYaw -= lookX * 0.04;
+                if (Math.abs(lookY) > 0.1) camPitch += lookY * 0.04; 
+                camPitch = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, camPitch));
+            }
+
+            for(let i=0; i<gp.buttons.length; i++) lastGpButtons[i] = gp.buttons[i].pressed;
+            let moveX = Math.abs(gp.axes[0]) > 0.1 ? gp.axes[0] : 0;
+            let moveY = Math.abs(gp.axes[1]) > 0.1 ? -gp.axes[1] : 0; 
+            return { x: moveX, y: moveY, active: (moveX !== 0 || moveY !== 0) };
+        }
+
         let canJump = false, hitDeathZone = false;
+        
         world.addEventListener("postStep", () => {
             canJump = false;
             for(let i = 0; i < world.contacts.length; i++) {
@@ -684,15 +840,21 @@
             }
         });
 
+        /* ==========================================================================
+           SEZIONE 10: LOOP DI AGGIORNAMENTO FISICA E TELECAMERA
+           ========================================================================== */
         const torqueAmount = 80, forceAmount = 150, maxVelocity = 25;    
 
         function updatePhysics() {
             world.step(1/60);
+            let gpData = processGamepad();
             let time = performance.now() * 0.002;
+            
             for(let obs of movingObstacles) {
-                if(obs.type === 0) obs.body.velocity.x = ((obs.baseX + Math.sin(time + obs.timeOffset) * 3.5) - obs.body.position.x) * 10;
-                else if(obs.type === 1) obs.body.velocity.z = ((obs.baseZ + Math.cos(time + obs.timeOffset) * 3.5) - obs.body.position.z) * 10;
-                else if(obs.type === 2) obs.body.angularVelocity.set(0, 3, 0); 
+                let s = obs.speed || 1, aX = obs.ampX || 3.5, aZ = obs.ampZ || 3.5;
+                if(obs.type === 0) obs.body.velocity.x = ((obs.baseX + Math.sin(time * s + obs.timeOffset) * aX) - obs.body.position.x) * 10;
+                else if(obs.type === 1) obs.body.velocity.z = ((obs.baseZ + Math.cos(time * s + obs.timeOffset) * aZ) - obs.body.position.z) * 10;
+                else if(obs.type === 2) obs.body.angularVelocity.set(0, 2 * s, 0); 
                 obs.mesh.position.copy(obs.body.position); obs.mesh.quaternion.copy(obs.body.quaternion);
             }
 
@@ -706,35 +868,36 @@
                 if(keys.a) { moveX -= rightX;   moveZ -= rightZ; }
                 if(keys.d) { moveX += rightX;   moveZ += rightZ; }
 
-                let inputStrength = 1;
-                let mobileSpeedFactor = 1; // 1 = Forza standard PC
+                let inputStrength = 1, mobileSpeedFactor = 1;
                 
-                if(joystickData.active) {
-                    mobileSpeedFactor = 0.35; // Riduzione per rendere la palla gestibile da mobile!
-                    let rawX = joystickData.x, rawY = -joystickData.y;
-                    let inputX = rawX * Math.abs(rawX), inputY = rawY * Math.abs(rawY);
+                if(joystickData.active || gpData.active) {
+                    let isGamepad = gpData.active && !joystickData.active;
+                    mobileSpeedFactor = isGamepad ? 1.0 : 0.35; 
+                    
+                    let rawX = joystickData.active ? joystickData.x : gpData.x;
+                    let rawY = joystickData.active ? -joystickData.y : gpData.y;
+                    
+                    let inputX = isGamepad ? rawX : rawX * Math.abs(rawX);
+                    let inputY = isGamepad ? rawY : rawY * Math.abs(rawY);
+                    
                     moveX = forwardX * inputY + rightX * inputX; moveZ = forwardZ * inputY + rightZ * inputX;
                     inputStrength = Math.min(1, Math.sqrt(inputX**2 + inputY**2));
                 }
 
                 if(moveX !== 0 || moveZ !== 0) {
-                    if(!joystickData.active) {
-                        const length = Math.sqrt(moveX*moveX + moveZ*moveZ);
-                        moveX /= length; moveZ /= length;
+                    if(!joystickData.active && !gpData.active) {
+                        const length = Math.sqrt(moveX*moveX + moveZ*moveZ); moveX /= length; moveZ /= length;
                     }
                     sphereBody.torque.x += moveZ * torqueAmount * inputStrength * mobileSpeedFactor;
                     sphereBody.torque.z += -moveX * torqueAmount * inputStrength * mobileSpeedFactor;
                     sphereBody.applyForce(new CANNON.Vec3(moveX * forceAmount * inputStrength * mobileSpeedFactor, 0, moveZ * forceAmount * inputStrength * mobileSpeedFactor), sphereBody.position);
                 }
-                if(keys.space && canJump) {
-                    sphereBody.velocity.y = 22; AudioEngine.playJump(); canJump = false; keys.space = false;
-                }
+                if(keys.space && canJump) { sphereBody.velocity.y = 22; AudioEngine.playJump(); canJump = false; keys.space = false; }
             }
 
             const speed = Math.sqrt(sphereBody.velocity.x**2 + sphereBody.velocity.z**2);
             if(speed > maxVelocity) {
-                const ratio = maxVelocity / speed;
-                sphereBody.velocity.x *= ratio; sphereBody.velocity.z *= ratio;
+                const ratio = maxVelocity / speed; sphereBody.velocity.x *= ratio; sphereBody.velocity.z *= ratio;
             }
 
             sphereMesh.position.copy(sphereBody.position); sphereMesh.quaternion.copy(sphereBody.quaternion);
@@ -754,55 +917,50 @@
             const skyColors = [0x8ae2f5, 0xffd384, 0x82ccdd, 0xeb4d4b, 0x2c2c54]; 
             let targetColor = new THREE.Color(skyColors[currBiome]);
             scene.background.lerp(targetColor, 0.05); scene.fog.color.lerp(targetColor, 0.05);
+            
+            if (gameState === 'playing' && currBiome !== currentVisualBiome) {
+                currentVisualBiome = currBiome;
+                MusicEngine.playMood(currBiome);
+            }
 
             dirLight.position.set(sphereMesh.position.x + 40, sphereMesh.position.y + 60, sphereMesh.position.z + 40);
             dirLight.target = sphereMesh;
         }
 
+        /* ==========================================================================
+           SEZIONE 11: LOOP DI ANIMAZIONE PRINCIPALE E RESPAWN
+           ========================================================================== */
         function triggerRespawn() {
             AudioEngine.playDeath();
             if(difficulty === 'normal') {
                 sphereBody.position.set(lastCheckpoint.x, lastCheckpoint.y + 4, lastCheckpoint.z);
                 sphereBody.velocity.set(0,0,0); sphereBody.angularVelocity.set(0,0,0); sphereBody.torque.set(0,0,0);
-                sphereBody.force.set(0,0,0); // Svuota le forze residue
-                camYaw = Math.PI; 
-                
-                // FIX BUG RESPAWN: Riporta il punteggio massimo all'altezza del checkpoint
-                // per evitare che la soglia di caduta ti uccida all'infinito
-                highestScore = Math.floor(lastCheckpoint.y);
-                document.getElementById('score').innerText = highestScore;
+                sphereBody.force.set(0,0,0); 
+                camYaw = Math.PI; highestScore = Math.floor(lastCheckpoint.y); document.getElementById('score').innerText = highestScore;
             } else {
                 gameState = 'gameover';
-                document.getElementById('ui-layer').classList.add('hidden');
-                document.getElementById('mobile-controls').classList.add('hidden');
-                document.getElementById('gameover').classList.remove('hidden');
-                document.getElementById('final-score').innerText = highestScore;
+                document.getElementById('ui-layer').classList.add('hidden'); document.getElementById('mobile-controls').classList.add('hidden');
+                document.getElementById('gameover').classList.remove('hidden'); document.getElementById('final-score').innerText = highestScore;
                 if(!isMobile) document.exitPointerLock();
             }
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            updatePhysics();
-            updateCamera();
+            updatePhysics(); updateCamera();
 
             if(gameState === 'playing') {
                 if(hitDeathZone) { hitDeathZone = false; triggerRespawn(); }
 
                 let currentHeight = Math.floor(sphereMesh.position.y);
-                if(currentHeight > highestScore) {
-                    highestScore = currentHeight;
-                    document.getElementById('score').innerText = highestScore;
-                }
+                if(currentHeight > highestScore) { highestScore = currentHeight; document.getElementById('score').innerText = highestScore; }
 
                 if(sphereMesh.position.y > highestPlatformY - 100) { generateMorePlatforms(20); }
 
                 if(difficulty === 'normal') {
                     for(let cp of checkpoints) {
                         if(!cp.reached && sphereMesh.position.y >= cp.y - 1) { 
-                            cp.reached = true; lastCheckpoint = cp.pos; 
-                            AudioEngine.playCheckpoint();
-                            document.getElementById('cp-score').innerText = cp.y;
+                            cp.reached = true; lastCheckpoint = cp.pos; AudioEngine.playCheckpoint(); document.getElementById('cp-score').innerText = cp.y;
                         }
                     }
                 }
@@ -814,9 +972,7 @@
         }
 
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
         animate();
