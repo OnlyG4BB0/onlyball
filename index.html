@@ -794,6 +794,7 @@
 
             let A = gp.buttons[0].pressed, Y = gp.buttons[3].pressed, Start = gp.buttons[9] ? gp.buttons[9].pressed : false;
             let D_Up = gp.buttons[12].pressed, D_Down = gp.buttons[13].pressed;
+            let D_Left = gp.buttons[14].pressed, D_Right = gp.buttons[15].pressed; // Aggiunti Sinistra/Destra
 
             if (Start && !lastGpButtons[9]) {
                 if (gameState === 'playing') openPauseMenu();
@@ -809,6 +810,22 @@
                     if (D_Up && !lastGpButtons[12]) { focusIndex = (focusIndex - 1 + currentMenu.length) % currentMenu.length; document.getElementById(currentMenu[focusIndex]).focus(); }
                     if (D_Down && !lastGpButtons[13]) { focusIndex = (focusIndex + 1) % currentMenu.length; document.getElementById(currentMenu[focusIndex]).focus(); }
                     if (A && !lastGpButtons[0]) document.getElementById(currentMenu[focusIndex]).click();
+
+                    // Gestione Volume tramite D-PAD Destra/Sinistra
+                    let focusedId = currentMenu[focusIndex];
+                    if (focusedId === 'vol-slider' || focusedId === 'music-slider') {
+                        let slider = document.getElementById(focusedId);
+                        if (slider) {
+                            if (D_Left && !lastGpButtons[14]) {
+                                slider.value = Math.max(0, parseInt(slider.value) - 5); // Abbassa del 5%
+                                slider.dispatchEvent(new Event('input')); // Applica il cambiamento
+                            }
+                            if (D_Right && !lastGpButtons[15]) {
+                                slider.value = Math.min(100, parseInt(slider.value) + 5); // Alza del 5%
+                                slider.dispatchEvent(new Event('input')); // Applica il cambiamento
+                            }
+                        }
+                    }
                 }
             }
 
