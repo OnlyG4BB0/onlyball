@@ -309,6 +309,11 @@
 
         if(isMobile) {
             document.getElementById('mobile-controls').classList.remove('hidden');
+            
+            // FIX: Nasconde forzatamente i suggerimenti desktop su mobile (anche in orizzontale)
+            const desktopHints = document.getElementById('desktop-hints');
+            if (desktopHints) desktopHints.style.display = 'none';
+
             const joyZone = document.getElementById('joystick-zone'), joyKnob = document.getElementById('joystick-knob');
             const camZone = document.getElementById('camera-zone'), jumpBtn = document.getElementById('jump-btn');
 
