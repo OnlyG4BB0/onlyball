@@ -49,9 +49,17 @@
             text-shadow: 0px 2px 4px rgba(0,0,0,0.5); 
         }
         
-        @keyframes scrollCredits { 0% { transform: translateY(100vh); } 100% { transform: translateY(-250%); } }
-        .animate-credits { animation: scrollCredits 65s linear forwards; } 
-        .credit-block { opacity: 0; transform: translateY(30px); transition: opacity 2s ease-out, transform 2s ease-out; }
+        /* FINALE CINEMATOGRAFICO */
+        @keyframes fadeInOverlay { 0% { opacity: 0; } 100% { opacity: 1; } }
+        .fade-in-overlay { animation: fadeInOverlay 2s ease-out forwards; }
+        
+        @keyframes scrollCredits { 
+            0% { transform: translateY(0); } 
+            100% { transform: translateY(calc(-100% - 100vh)); } 
+        }
+        .animate-credits { animation: scrollCredits 65s linear both; animation-delay: 2.5s; } 
+        
+        .credit-block { opacity: 0; transform: translateY(40px); transition: opacity 1.5s ease-out, transform 1.5s ease-out; }
         .credit-block.visible { opacity: 1; transform: translateY(0); }
 
         /* Scrollbar custom per menu impostazioni su schermi piccoli */
@@ -242,8 +250,8 @@
     </div>
 
     <!-- TITOLI DI CODA -->
-    <div id="credits-screen" class="absolute inset-0 z-[60] hidden bg-black text-white flex-col items-center justify-end overflow-hidden cursor-pointer">
-        <div id="credits-text" class="absolute w-full text-center flex flex-col gap-12 transform translate-y-[100vh] px-4 pb-32">
+    <div id="credits-screen" class="absolute inset-0 z-[60] hidden bg-black text-white flex-col items-center justify-end overflow-hidden cursor-pointer opacity-0">
+        <div id="credits-text" class="absolute top-[100vh] w-full text-center flex flex-col gap-12 px-4 pb-32">
             <div class="credit-block mt-32">
                 <h1 class="text-5xl sm:text-7xl font-black text-yellow-400 mb-2 text-outline">ONLY BALL</h1>
                 <p class="text-xl sm:text-3xl text-pink-300 font-bold text-outline-sm">Hai raggiunto la Vetta! (1000m)</p>
@@ -278,7 +286,7 @@
             
             <div class="mt-32 text-4xl sm:text-6xl font-black text-yellow-400 animate-pulse text-outline credit-block">GRAZIE PER AVER GIOCATO!</div>
         </div>
-        <div class="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 text-white/50 font-bold text-sm sm:text-lg bg-black/50 px-3 py-2 rounded-xl z-10">Premi ESC / Tocca per uscire</div>
+        <div class="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 text-white/50 font-bold text-sm sm:text-lg bg-black/50 px-3 py-2 rounded-xl z-10 transition-opacity duration-1000">Premi ESC / Tocca per uscire</div>
     </div>
 
     <script>
@@ -313,7 +321,6 @@
         let customTexture = null; 
         let biomeToastTimer = 0;
         
-        // FIX: Riferimenti alle variabili per le collisioni e la morte
         let canJump = false;
         let hitDeathZone = false;
         
@@ -871,7 +878,7 @@
                 const lava = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 1.51, 8), new THREE.MeshStandardMaterial({color: 0xff3300, emissive: 0xff0000})); lava.position.y = 0.75;
                 group.add(alt); group.add(lava);
             } else if (type === 4) { 
-                const gate1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 5, 0.8), new THREE.MeshStandardMaterial({color: 0x222222})); gate1.position.set(-2.5, 2.5, 0); gate1.castShadow = true;
+                const gate1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 5, 0.8), new MeshStandardMaterial({color: 0x222222})); gate1.position.set(-2.5, 2.5, 0); gate1.castShadow = true;
                 const gate2 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 5, 0.8), new THREE.MeshStandardMaterial({color: 0x222222})); gate2.position.set(2.5, 2.5, 0); gate2.castShadow = true;
                 const arch = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.8, 0.8), new THREE.MeshStandardMaterial({color: 0xff00ff, emissive: 0xff00ff, emissiveIntensity: 0.5})); arch.position.set(0, 5.4, 0);
                 group.add(gate1); group.add(gate2); group.add(arch);
@@ -1011,7 +1018,6 @@
             
             sphereBody.type = CANNON.Body.DYNAMIC;
             sphereBody.position.set(0, 5, 0); 
-            sphereBody.previousPosition.copy(sphereBody.position);
             sphereBody.velocity.set(0,0,0); sphereBody.angularVelocity.set(0,0,0); sphereBody.torque.set(0,0,0);
             
             camYaw = Math.PI; camPitch = 0.3; scene.background.setHex(0x8ae2f5); scene.fog.color.setHex(0x8ae2f5);
@@ -1021,7 +1027,7 @@
         fullGameReset();
 
         /* ==========================================================================
-           SEZIONE 9: EASTER EGG CONSOLE
+           SEZIONE 9: EASTER EGG CONSOLE E CREDITI
            ========================================================================== */
         document.getElementById('console-input').addEventListener('keydown', (e) => {
             if(e.key === 'Enter') {
@@ -1040,6 +1046,55 @@
                 else { closeConsole(); }
             }
         });
+
+        function triggerEnding() {
+            gameState = 'credits';
+            if(!isMobile) { try { document.exitPointerLock(); } catch(e){} }
+            document.getElementById('ui-layer').classList.add('hidden'); document.getElementById('mobile-controls').classList.add('hidden');
+            
+            sphereBody.type = CANNON.Body.STATIC;
+            sphereBody.velocity.set(0,0,0);
+            sphereBody.angularVelocity.set(0,0,0);
+
+            const creditsScreen = document.getElementById('credits-screen'); 
+            creditsScreen.classList.remove('hidden');
+            creditsScreen.classList.add('flex', 'fade-in-overlay'); 
+            
+            const creditsText = document.getElementById('credits-text');
+            creditsText.classList.remove('animate-credits');
+            void creditsText.offsetWidth; 
+            creditsText.classList.add('animate-credits');
+
+            const blocks = document.querySelectorAll('.credit-block');
+            blocks.forEach(b => b.classList.remove('visible'));
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if(entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.1, rootMargin: "0px 0px -5% 0px" }); 
+
+            blocks.forEach(block => observer.observe(block));
+
+            MusicEngine.playMood('credits'); 
+        }
+
+        function returnToMenuFromCredits() {
+            const creditsScreen = document.getElementById('credits-screen');
+            creditsScreen.classList.add('hidden');
+            creditsScreen.classList.remove('flex', 'fade-in-overlay'); 
+            
+            document.getElementById('credits-text').classList.remove('animate-credits');
+            fullGameReset(); gameState = 'menu'; document.getElementById('main-menu').classList.remove('hidden');
+            document.getElementById('menu-best-val').innerText = bestScore;
+            MusicEngine.playMood('menu');
+        }
+        
+        document.getElementById('credits-screen').addEventListener('click', () => { if (gameState === 'credits') returnToMenuFromCredits(); });
+        document.getElementById('credits-screen').addEventListener('touchstart', (e) => { e.preventDefault(); if (gameState === 'credits') returnToMenuFromCredits(); }, {passive: false});
+
 
         /* ==========================================================================
            SEZIONE 10: GESTIONE CONTROLLER E TASTIERA
@@ -1184,9 +1239,18 @@
         function triggerRespawn() {
             AudioEngine.playDeath();
             if(difficulty === 'normal') {
+                // RIPRISTINO STABILE SENZA COMANDI DEPRECATI
                 sphereBody.position.set(lastCheckpoint.x, lastCheckpoint.y + 4, lastCheckpoint.z);
-                sphereBody.previousPosition.copy(sphereBody.position);
-                sphereBody.velocity.set(0,0,0); sphereBody.angularVelocity.set(0,0,0); sphereBody.torque.set(0,0,0); sphereBody.force.set(0,0,0); 
+                sphereBody.velocity.set(0,0,0); 
+                sphereBody.angularVelocity.set(0,0,0); 
+                sphereBody.torque.set(0,0,0); 
+                sphereBody.force.set(0,0,0); 
+                sphereBody.wakeUp();
+                
+                // Aggiornamento immediato della mesh visiva
+                sphereMesh.position.copy(sphereBody.position);
+                sphereMesh.quaternion.copy(sphereBody.quaternion);
+
                 camYaw = Math.PI; 
                 
                 highestScore = Math.floor(lastCheckpoint.y); 
@@ -1206,9 +1270,7 @@
             world.step(1/60);
             
             if (isNaN(sphereBody.position.x) || isNaN(sphereBody.position.y) || isNaN(sphereBody.position.z)) {
-                sphereBody.position.set(lastCheckpoint.x, lastCheckpoint.y + 4, lastCheckpoint.z);
-                sphereBody.previousPosition.copy(sphereBody.position);
-                sphereBody.velocity.set(0,0,0); sphereBody.angularVelocity.set(0,0,0); sphereBody.torque.set(0,0,0); sphereBody.force.set(0,0,0);
+                triggerRespawn(); // Gestito ora direttamente dalla funzione sicura
             }
             
             let gpData = processGamepad();
@@ -1367,54 +1429,6 @@
 
             dirLight.position.set(safeX + 40, safeY + 60, safeZ + 40); dirLight.target = sphereMesh;
         }
-
-        function triggerEnding() {
-            gameState = 'credits';
-            if(!isMobile) { try { document.exitPointerLock(); } catch(e){} }
-            document.getElementById('ui-layer').classList.add('hidden'); document.getElementById('mobile-controls').classList.add('hidden');
-            
-            sphereBody.type = CANNON.Body.STATIC;
-            sphereBody.velocity.set(0,0,0);
-            sphereBody.angularVelocity.set(0,0,0);
-
-            const creditsScreen = document.getElementById('credits-screen'); 
-            creditsScreen.classList.remove('hidden');
-            creditsScreen.classList.add('flex'); 
-            
-            const creditsText = document.getElementById('credits-text');
-            creditsText.classList.remove('animate-credits');
-            void creditsText.offsetWidth; 
-            creditsText.classList.add('animate-credits');
-
-            const blocks = document.querySelectorAll('.credit-block');
-            blocks.forEach(b => b.classList.remove('visible'));
-            
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if(entry.isIntersecting) {
-                        entry.target.classList.add('visible');
-                    }
-                });
-            }, { threshold: 0.3 }); 
-
-            blocks.forEach(block => observer.observe(block));
-
-            MusicEngine.playMood('credits'); 
-        }
-
-        function returnToMenuFromCredits() {
-            const creditsScreen = document.getElementById('credits-screen');
-            creditsScreen.classList.add('hidden');
-            creditsScreen.classList.remove('flex'); 
-            
-            document.getElementById('credits-text').classList.remove('animate-credits');
-            fullGameReset(); gameState = 'menu'; document.getElementById('main-menu').classList.remove('hidden');
-            document.getElementById('menu-best-val').innerText = bestScore;
-            MusicEngine.playMood('menu');
-        }
-        
-        document.getElementById('credits-screen').addEventListener('click', () => { if (gameState === 'credits') returnToMenuFromCredits(); });
-        document.getElementById('credits-screen').addEventListener('touchstart', (e) => { e.preventDefault(); if (gameState === 'credits') returnToMenuFromCredits(); }, {passive: false});
 
         function animate() {
             requestAnimationFrame(animate);
