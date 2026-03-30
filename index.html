@@ -2,7 +2,12 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
+    <!-- Meta tag aggiunti per forzare l'esperienza Fullscreen su iOS se salvato nella Home -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, orientation=landscape">
+    
     <title>Only Ball: Ultimate Edition</title>
     <!-- Icona Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23f1c40f'/><path d='M50 5 a45 45 0 0 1 45 45 h-45 z' fill='%23e74c3c'/><path d='M50 95 a45 45 0 0 1 -45 -45 h45 z' fill='%233498db'/><circle cx='50' cy='50' r='15' fill='%23ffffff'/></svg>">
@@ -18,11 +23,23 @@
         body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: 'Nunito', sans-serif; user-select: none; touch-action: none; }
         canvas { display: block; }
         
+        /* OVERLAY ROTAZIONE (Infallibile anche su iOS) */
         #rotate-device { display: none; }
-        @media screen and (orientation: portrait) { #rotate-device { display: flex !important; } }
+        @media screen and (orientation: portrait) { 
+            #rotate-device { display: flex !important; } 
+            #main-menu, #ui-layer, #mobile-controls, #skin-menu, #settings-menu, #pause-menu { display: none !important; }
+        }
         
-        /* Pannelli di vetro (Glassmorphism) */
-        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 4px solid white; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border-radius: 1.5rem; }
+        /* Pannelli di vetro (Glassmorphism) - Migliorati per Landscape Mobile */
+        .glass-panel { 
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(12px); 
+            border: 4px solid white; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15); 
+            border-radius: 1.5rem; 
+            max-height: 85vh; /* Previene l'uscita dallo schermo in orizzontale */
+            overflow-y: auto; /* Permette lo scroll se lo schermo è troppo piccolo */
+        }
         .glass-dark { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(12px); border: 2px solid rgba(255,255,255,0.2); border-radius: 1.5rem; }
         
         /* STILI BOTTONI SIMMETRICI E UNIFORMI */
@@ -63,9 +80,9 @@
         .credit-block.visible { opacity: 1; transform: translateY(0); }
 
         /* Scrollbar custom per menu impostazioni su schermi piccoli */
-        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
@@ -79,27 +96,26 @@
 
     <!-- BLOCCO PORTRAIT -->
     <div id="rotate-device" class="fixed inset-0 z-[100] bg-black flex-col items-center justify-center text-white p-8 text-center">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-24 h-24 sm:w-32 sm:h-32 mb-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 sm:w-28 sm:h-28 mb-4 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 10l2 2m0 0l2-2m-2 2V4" style="transform-origin: center; transform: rotate(90deg);" />
         </svg>
-        <h1 class="text-3xl sm:text-4xl font-black mb-4">RUOTA IL DISPOSITIVO</h1>
-        <p class="text-lg sm:text-xl mb-8">Questo gioco deve essere giocato in modalità <b>Orizzontale</b>.</p>
-        <button id="btn-force-landscape" class="btn-primary px-6 py-3 text-lg sm:text-xl w-full max-w-[300px]">FORZA SCHERMO INTERO</button>
+        <h1 class="text-2xl sm:text-4xl font-black mb-2">RUOTA IL TELEFONO</h1>
+        <p class="text-sm sm:text-lg mb-6">Metti il dispositivo in <b>Orizzontale</b> per giocare.</p>
+        <p class="text-xs text-gray-400 mb-6 max-w-xs">(Se usi iPhone, assicurati di aver sbloccato la rotazione nel centro di controllo Apple)</p>
+        <button id="btn-force-landscape" class="btn-primary px-6 py-3 text-base sm:text-lg w-full max-w-[250px]">ENTRA NEL GIOCO</button>
     </div>
 
     <!-- CONTROLLI MOBILE -->
     <div id="mobile-controls" class="absolute inset-0 z-20 hidden pointer-events-none">
         <div id="camera-zone" class="absolute inset-0 pointer-events-auto"></div>
-        <div id="joystick-zone" class="absolute bottom-4 left-6 sm:bottom-6 sm:left-12 w-28 h-28 sm:w-32 sm:h-32 bg-white/20 backdrop-blur-sm rounded-full border-2 border-white/50 pointer-events-auto flex items-center justify-center shadow-lg">
+        <div id="joystick-zone" class="absolute bottom-4 left-6 sm:bottom-6 sm:left-12 w-24 h-24 sm:w-32 sm:h-32 bg-white/20 backdrop-blur-sm rounded-full border-2 border-white/50 pointer-events-auto flex items-center justify-center shadow-lg">
             <div id="joystick-knob" class="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-full shadow-md absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2 pointer-events-none"></div>
         </div>
         
         <!-- Pulsanti Azione (Destra) -->
         <div class="absolute bottom-4 right-6 sm:bottom-6 sm:right-12 flex flex-col gap-4 items-end">
-            <button id="dash-btn" class="w-14 h-14 sm:w-16 sm:h-16 bg-cyan-500/80 backdrop-blur-sm rounded-full border-4 border-white flex items-center justify-center pointer-events-auto shadow-[0_4px_0_#006080] transition-transform active:translate-y-1 active:shadow-none">
-                <span class="text-white font-black text-xl text-outline-sm pointer-events-none">⚡</span>
-            </button>
+            <!-- Tasto Dash rimosso come richiesto -->
             <button id="jump-btn" class="w-20 h-20 sm:w-24 sm:h-24 bg-red-500/80 backdrop-blur-sm rounded-full border-4 border-white flex items-center justify-center pointer-events-auto shadow-[0_5px_0_#990000] transition-transform active:translate-y-1 active:shadow-none">
                 <span class="text-white font-black text-lg sm:text-xl text-outline pointer-events-none">SALTA</span>
             </button>
@@ -113,26 +129,25 @@
     </div>
 
     <!-- HUD IN GIOCO (RESPONSIVE) -->
-    <div id="ui-layer" class="absolute inset-0 z-10 hidden pointer-events-none p-4 sm:p-6 w-full h-full flex flex-col justify-between">
+    <div id="ui-layer" class="absolute inset-0 z-10 hidden pointer-events-none p-3 sm:p-6 w-full h-full flex flex-col justify-between">
         <div class="flex justify-between items-start w-full gap-4">
             
             <!-- 1. PUNTEGGIO E INFO (Sempre visibile) -->
             <div class="text-white font-black text-outline flex-1">
-                <div class="text-lg sm:text-2xl md:text-3xl">ALTEZZA</div>
-                <div class="-mt-2 sm:-mt-3">
+                <div class="text-base sm:text-2xl md:text-3xl">ALTEZZA</div>
+                <div class="-mt-1 sm:-mt-3">
                     <span id="score" class="text-[#ffeaa7] text-4xl sm:text-6xl md:text-7xl drop-shadow-[0_0_10px_rgba(255,234,167,0.5)]">0</span>
-                    <span class="text-xl sm:text-2xl md:text-3xl text-white ml-1">m</span>
+                    <span class="text-lg sm:text-2xl md:text-3xl text-white ml-1">m</span>
                 </div>
                 <!-- Pillole Info -->
-                <div id="checkpoint-hud" class="hidden mt-2 text-xs sm:text-sm text-green-300 bg-black/60 px-3 py-1 rounded-full border border-green-500/50 w-max shadow-md" style="-webkit-text-stroke: 0;">Ultimo Check: <span id="cp-score">0</span>m</div>
-                <div id="goal-hud" class="hidden mt-2 text-xs sm:text-sm text-pink-300 bg-black/60 px-3 py-1 rounded-full border border-pink-500/50 w-max shadow-md animate-pulse" style="-webkit-text-stroke: 0;">Vetta: 1000m!</div>
-                <div id="speed-hud" class="mt-2 text-xs sm:text-sm text-cyan-300 font-bold bg-black/40 px-3 py-1 rounded-full w-max" style="-webkit-text-stroke: 0;">⚡ <span id="speed-val">0</span> m/s</div>
+                <div id="checkpoint-hud" class="hidden mt-1 sm:mt-2 text-[10px] sm:text-sm text-green-300 bg-black/60 px-2 sm:px-3 py-1 rounded-full border border-green-500/50 w-max shadow-md" style="-webkit-text-stroke: 0;">Ultimo Check: <span id="cp-score">0</span>m</div>
+                <div id="goal-hud" class="hidden mt-1 sm:mt-2 text-[10px] sm:text-sm text-pink-300 bg-black/60 px-2 sm:px-3 py-1 rounded-full border border-pink-500/50 w-max shadow-md animate-pulse" style="-webkit-text-stroke: 0;">Vetta: 1000m!</div>
             </div>
 
             <!-- 2. BARRA PROGRESSO (Nascosta su schermi piccolissimi, visibile su md+) -->
-            <div class="hidden md:flex flex-col items-center gap-1 w-[150px] lg:w-[200px] bg-black/40 p-3 rounded-2xl border border-white/20 backdrop-blur-sm">
+            <div class="hidden md:flex flex-col items-center gap-1 w-[150px] lg:w-[200px] bg-black/40 p-2 sm:p-3 rounded-2xl border border-white/20 backdrop-blur-sm">
                 <div class="text-white font-black text-xs lg:text-sm text-outline-sm mb-1">🏔️ PROGRESSO</div>
-                <div class="w-full bg-black/50 rounded-full h-3 border border-white/50 overflow-hidden relative">
+                <div class="w-full bg-black/50 rounded-full h-2 sm:h-3 border border-white/50 overflow-hidden relative">
                     <div id="progress-bar" class="absolute top-0 left-0 h-full rounded-full transition-all duration-300" style="width:0%; background:linear-gradient(90deg,#2ed573,#ffd700,#ff4757)"></div>
                 </div>
                 <div class="text-white text-[10px] lg:text-xs font-bold mt-1"><span id="progress-pct">0</span>% verso 1000m</div>
@@ -140,13 +155,12 @@
             </div>
 
             <!-- 3. COMANDI DESKTOP (Nascosti su Mobile/Touch) -->
-            <div id="desktop-hints" class="hidden lg:flex flex-col gap-2 glass-dark p-4 flex-1 max-w-[280px]">
-                <div class="text-white font-black text-sm text-center mb-1 text-outline-sm border-b border-white/20 pb-2">COMANDI PC</div>
-                <div class="text-white text-xs xl:text-sm font-bold space-y-1.5" style="-webkit-text-stroke:0;">
+            <div id="desktop-hints" class="hidden lg:flex flex-col gap-1.5 glass-dark p-3 sm:p-4 flex-1 max-w-[280px]">
+                <div class="text-white font-black text-sm text-center mb-1 text-outline-sm border-b border-white/20 pb-1">COMANDI PC</div>
+                <div class="text-white text-[11px] xl:text-sm font-bold space-y-1" style="-webkit-text-stroke:0;">
                     <div class="flex justify-between"><span>🎮 Muovi:</span> <span class="text-yellow-300">W A S D</span></div>
                     <div class="flex justify-between"><span>🖱️ Visuale:</span> <span class="text-yellow-300">Mouse (Trascina)</span></div>
                     <div class="flex justify-between"><span>🚀 Salta:</span> <span class="text-yellow-300">SPAZIO</span></div>
-                    <div class="flex justify-between"><span>⚡ Dash:</span> <span class="text-yellow-300">SHIFT</span></div>
                     <div class="flex justify-between"><span>🔄 Checkpoint:</span> <span class="text-yellow-300">H</span></div>
                     <div class="flex justify-between"><span>⏸️ Pausa:</span> <span class="text-yellow-300">ESC</span></div>
                 </div>
@@ -158,135 +172,135 @@
     </div>
 
     <!-- TOAST BIOMA -->
-    <div id="biome-toast" class="absolute top-[20%] left-1/2 z-15 transform -translate-x-1/2 pointer-events-none hidden transition-opacity duration-500">
-        <div class="text-white font-black text-xl sm:text-2xl md:text-3xl text-outline glass-dark px-6 py-3 border-2 border-white/40 text-center" id="biome-toast-text">🌿 Prato</div>
+    <div id="biome-toast" class="absolute top-[15%] sm:top-[20%] left-1/2 z-15 transform -translate-x-1/2 pointer-events-none hidden transition-opacity duration-500">
+        <div class="text-white font-black text-lg sm:text-2xl md:text-3xl text-outline glass-dark px-4 sm:px-6 py-2 sm:py-3 border-2 border-white/40 text-center" id="biome-toast-text">🌿 Prato</div>
     </div>
 
     <!-- MENU PRINCIPALE -->
-    <div id="main-menu" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-gradient-to-b from-[#74b9ff] to-[#81ecec] p-4 overflow-y-auto">
-        <div class="absolute top-10 left-10 w-24 h-24 sm:w-32 sm:h-32 bg-yellow-300 rounded-full blur-2xl opacity-80 animate-pulse pointer-events-none"></div>
-        <div class="absolute bottom-20 right-20 w-32 h-32 sm:w-48 sm:h-48 bg-white rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+    <div id="main-menu" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-gradient-to-b from-[#74b9ff] to-[#81ecec] p-2 sm:p-4 overflow-y-auto">
+        <div class="absolute top-10 left-10 w-16 h-16 sm:w-32 sm:h-32 bg-yellow-300 rounded-full blur-2xl opacity-80 animate-pulse pointer-events-none"></div>
+        <div class="absolute bottom-20 right-20 w-24 h-24 sm:w-48 sm:h-48 bg-white rounded-full blur-3xl opacity-50 pointer-events-none"></div>
 
-        <div class="flex flex-col items-center mt-auto mb-auto w-full max-w-[800px] z-10">
-            <h1 class="text-white font-black text-[3.5rem] leading-[1] sm:text-6xl md:text-8xl mb-2 text-outline tracking-tighter transform -rotate-2 text-center">ONLY BALL</h1>
-            <div class="bg-yellow-400 text-black px-4 sm:px-6 py-1 sm:py-2 rounded-full font-black text-xs sm:text-lg md:text-2xl mb-4 shadow-[0_3px_0_#d48806] transform rotate-3">ULTIMATE EDITION</div>
-            <p class="text-white font-black text-[10px] sm:text-sm md:text-base mb-6 tracking-widest text-outline-sm">CREATED BY <span class="text-yellow-300">ONLY_G4BB0</span></p>
+        <div class="flex flex-col items-center mt-auto mb-auto w-full max-w-[700px] z-10">
+            <h1 class="text-white font-black text-[2.5rem] leading-[1] sm:text-6xl md:text-7xl mb-1 sm:mb-2 text-outline tracking-tighter transform -rotate-2 text-center">ONLY BALL</h1>
+            <div class="bg-yellow-400 text-black px-3 sm:px-6 py-1 sm:py-2 rounded-full font-black text-[10px] sm:text-lg md:text-xl mb-2 sm:mb-4 shadow-[0_2px_0_#d48806] sm:shadow-[0_3px_0_#d48806] transform rotate-3">ULTIMATE EDITION</div>
+            <p class="text-white font-black text-[8px] sm:text-sm md:text-base mb-4 sm:mb-6 tracking-widest text-outline-sm">CREATED BY <span class="text-yellow-300">ONLY_G4BB0</span></p>
             
-            <div class="glass-panel p-5 md:p-8 w-full flex flex-col gap-4">
-                <p id="diff-desc" class="text-center text-xs sm:text-sm font-bold text-gray-700 w-full">Salvataggi abilitati ogni 70m.</p>
-                <div class="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <button id="btn-difficulty" class="btn-secondary w-full py-3 sm:py-4 text-sm sm:text-base md:text-lg">MODALITÀ: NORMALE</button>
-                    <button id="btn-play" class="btn-primary w-full py-3 sm:py-4 text-base sm:text-lg md:text-xl">GIOCA ORA</button>
-                    <button id="btn-open-skins" class="btn-purple w-full py-3 sm:py-4 text-sm sm:text-base md:text-lg">Scegli Pallina 🎨</button>
-                    <button id="btn-settings-main" class="btn-secondary w-full py-3 sm:py-4 text-sm sm:text-base md:text-lg opacity-95">Impostazioni Gioco</button>
+            <div class="glass-panel p-3 sm:p-6 w-full flex flex-col gap-2 sm:gap-4">
+                <p id="diff-desc" class="text-center text-[10px] sm:text-sm font-bold text-gray-700 w-full">Salvataggi abilitati ogni 70m.</p>
+                <div class="w-full grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
+                    <button id="btn-difficulty" class="btn-secondary w-full py-2 sm:py-3 text-[11px] sm:text-base md:text-lg">MODALITÀ: NORMALE</button>
+                    <button id="btn-play" class="btn-primary w-full py-2 sm:py-3 text-sm sm:text-lg md:text-xl">GIOCA ORA</button>
+                    <button id="btn-open-skins" class="btn-purple w-full py-2 sm:py-3 text-[11px] sm:text-base md:text-lg">Scegli Pallina 🎨</button>
+                    <button id="btn-settings-main" class="btn-secondary w-full py-2 sm:py-3 text-[11px] sm:text-base md:text-lg opacity-95">Impostazioni Gioco</button>
                 </div>
             </div>
             
-            <p class="mt-4 text-white font-bold text-xs sm:text-sm bg-black/40 px-4 py-2 rounded-full hidden" id="gamepad-status">🎮 Controller Rilevato!</p>
-            <p id="menu-best-score" class="mt-3 text-yellow-300 font-black text-sm sm:text-base lg:text-lg bg-black/60 px-5 py-2 rounded-full border border-yellow-500/30">🏆 Record Personale: <span id="menu-best-val">0</span>m</p>
+            <p class="mt-2 sm:mt-4 text-white font-bold text-[10px] sm:text-sm bg-black/40 px-3 sm:px-4 py-1 sm:py-2 rounded-full hidden" id="gamepad-status">🎮 Controller Rilevato!</p>
+            <p id="menu-best-score" class="mt-2 sm:mt-3 text-yellow-300 font-black text-[11px] sm:text-base lg:text-lg bg-black/60 px-4 sm:px-5 py-1 sm:py-2 rounded-full border border-yellow-500/30">🏆 Record Personale: <span id="menu-best-val">0</span>m</p>
         </div>
     </div>
 
     <!-- MENU SKIN -->
-    <div id="skin-menu" class="absolute inset-0 z-40 hidden flex flex-col items-center justify-end md:justify-center bg-black/40 backdrop-blur-sm p-4 pointer-events-none">
-        <div class="glass-panel p-5 md:p-8 w-full max-w-[600px] flex flex-col gap-4 items-center pointer-events-auto mb-4 md:mb-0">
-            <h2 class="text-black text-2xl sm:text-3xl font-black mb-2 text-center">SCEGLI PALLINA</h2>
-            <div class="flex items-center justify-between w-full bg-gray-100 p-3 rounded-2xl border-4 border-gray-300 shadow-inner">
-                <button id="btn-skin-prev" class="btn-secondary w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-lg sm:text-xl font-black rounded-full flex-shrink-0">&lt;</button>
-                <div id="skin-name-display" class="text-base sm:text-lg md:text-xl font-black text-gray-800 text-center flex-1 px-2 leading-tight">Pallone da Spiaggia</div>
-                <button id="btn-skin-next" class="btn-secondary w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-lg sm:text-xl font-black rounded-full flex-shrink-0">&gt;</button>
+    <div id="skin-menu" class="absolute inset-0 z-40 hidden flex flex-col items-center justify-end md:justify-center bg-black/40 backdrop-blur-sm p-2 sm:p-4 pointer-events-none">
+        <div class="glass-panel p-3 sm:p-6 w-full max-w-[500px] flex flex-col gap-2 sm:gap-4 items-center pointer-events-auto mb-2 md:mb-0">
+            <h2 class="text-black text-lg sm:text-3xl font-black mb-1 sm:mb-2 text-center">SCEGLI PALLINA</h2>
+            <div class="flex items-center justify-between w-full bg-gray-100 p-2 sm:p-3 rounded-2xl border-4 border-gray-300 shadow-inner">
+                <button id="btn-skin-prev" class="btn-secondary w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center text-sm sm:text-xl font-black rounded-full flex-shrink-0">&lt;</button>
+                <div id="skin-name-display" class="text-sm sm:text-lg md:text-xl font-black text-gray-800 text-center flex-1 px-1 sm:px-2 leading-tight">Pallone da Spiaggia</div>
+                <button id="btn-skin-next" class="btn-secondary w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center text-sm sm:text-xl font-black rounded-full flex-shrink-0">&gt;</button>
             </div>
             <input type="file" id="custom-skin-upload" accept="image/png, image/jpeg, image/jpg" class="hidden">
-            <button id="btn-custom-skin" class="btn-dark w-full py-2.5 sm:py-3 text-xs sm:text-sm md:text-base">Carica Immagine Personale 🖼️</button>
-            <button id="btn-close-skin" class="btn-primary mt-2 py-3 w-full text-base sm:text-lg">CONFERMA SELEZIONE</button>
+            <button id="btn-custom-skin" class="btn-dark w-full py-2 sm:py-3 text-[10px] sm:text-sm md:text-base">Carica Immagine Personale 🖼️</button>
+            <button id="btn-close-skin" class="btn-primary mt-1 sm:mt-2 py-2 sm:py-3 w-full text-sm sm:text-lg">CONFERMA SELEZIONE</button>
         </div>
     </div>
 
     <!-- MENU IMPOSTAZIONI -->
-    <div id="settings-menu" class="absolute inset-0 z-40 hidden flex flex-col items-center justify-center bg-black/70 backdrop-blur-md p-4">
-        <div class="glass-panel p-5 sm:p-8 w-full max-w-[500px] flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
-            <h2 class="text-black text-2xl sm:text-3xl font-black text-center mb-2">IMPOSTAZIONI</h2>
+    <div id="settings-menu" class="absolute inset-0 z-40 hidden flex flex-col items-center justify-center bg-black/70 backdrop-blur-md p-2 sm:p-4">
+        <div class="glass-panel p-4 sm:p-8 w-full max-w-[500px] flex flex-col gap-2 sm:gap-4 max-h-[85vh] overflow-y-auto">
+            <h2 class="text-black text-xl sm:text-3xl font-black text-center mb-1 sm:mb-2">IMPOSTAZIONI</h2>
             <div class="flex flex-col gap-1">
-                <label class="text-gray-700 font-bold text-xs sm:text-sm">Volume Effetti</label>
-                <input type="range" id="vol-slider" min="0" max="100" value="50" class="w-full h-3 sm:h-4 bg-gray-200 rounded-lg appearance-none">
+                <label class="text-gray-700 font-bold text-[11px] sm:text-sm">Volume Effetti</label>
+                <input type="range" id="vol-slider" min="0" max="100" value="50" class="w-full h-2 sm:h-4 bg-gray-200 rounded-lg appearance-none">
             </div>
             <div class="flex flex-col gap-1">
-                <label class="text-gray-700 font-bold text-xs sm:text-sm">Volume Musica</label>
-                <input type="range" id="music-slider" min="0" max="100" value="30" class="w-full h-3 sm:h-4 bg-gray-200 rounded-lg appearance-none">
+                <label class="text-gray-700 font-bold text-[11px] sm:text-sm">Volume Musica</label>
+                <input type="range" id="music-slider" min="0" max="100" value="30" class="w-full h-2 sm:h-4 bg-gray-200 rounded-lg appearance-none">
             </div>
-            <div class="flex flex-col gap-1 mt-2">
-                <label class="text-gray-700 font-bold text-xs sm:text-sm">Risoluzione Grafica</label>
-                <select id="res-select" class="w-full p-2.5 sm:p-3 rounded-xl border-2 border-blue-300 font-bold text-xs sm:text-sm text-gray-700 outline-none bg-white">
+            <div class="flex flex-col gap-1 mt-1 sm:mt-2">
+                <label class="text-gray-700 font-bold text-[11px] sm:text-sm">Risoluzione Grafica</label>
+                <select id="res-select" class="w-full p-1.5 sm:p-3 rounded-xl border-2 border-blue-300 font-bold text-[10px] sm:text-sm text-gray-700 outline-none bg-white">
                     <option value="ultra">Ultra (RTX - PC Potenti)</option>
                     <option value="high">Alta (Ottima Qualità)</option>
                     <option value="medium" selected>Media (Consigliata)</option>
-                    <option value="low">Bassa (Per Smartphone/Lent)</option>
+                    <option value="low">Bassa (Per Smartphone/Lenti)</option>
                 </select>
             </div>
-            <div class="flex justify-between items-center bg-gray-100 p-3 sm:p-4 rounded-xl border-2 border-gray-200 mt-2">
-                <span class="text-gray-700 font-bold text-xs sm:text-sm">Ombre Dinamiche</span>
-                <input type="checkbox" id="shadow-toggle" checked class="w-5 h-5 sm:w-6 sm:h-6 rounded text-blue-500">
+            <div class="flex justify-between items-center bg-gray-100 p-2 sm:p-4 rounded-xl border-2 border-gray-200 mt-1 sm:mt-2">
+                <span class="text-gray-700 font-bold text-[11px] sm:text-sm">Ombre Dinamiche</span>
+                <input type="checkbox" id="shadow-toggle" checked class="w-4 h-4 sm:w-6 sm:h-6 rounded text-blue-500">
             </div>
-            <button id="btn-close-settings" class="btn-secondary mt-4 py-3 w-full text-sm sm:text-base">SALVA E CHIUDI</button>
+            <button id="btn-close-settings" class="btn-secondary mt-2 sm:mt-4 py-2 sm:py-3 w-full text-xs sm:text-base">SALVA E CHIUDI</button>
         </div>
     </div>
 
     <!-- MENU PAUSA -->
     <div id="pause-menu" class="absolute inset-0 z-20 hidden flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <h1 class="text-white font-black text-5xl sm:text-6xl md:text-7xl mb-6 text-outline tracking-wider">PAUSA</h1>
-        <div class="w-full max-w-[600px] grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <button id="btn-resume" class="btn-primary w-full py-3 sm:py-4 text-base sm:text-lg">RIPRENDI</button>
-            <button id="btn-restart" class="btn-hard w-full py-3 sm:py-4 text-base sm:text-lg">Riavvia Partita</button>
-            <button id="btn-settings-pause" class="btn-purple w-full py-3 sm:py-4 text-base sm:text-lg">Impostazioni</button>
-            <button id="btn-home" class="btn-dark w-full py-3 sm:py-4 text-base sm:text-lg">Menu Principale</button>
+        <h1 class="text-white font-black text-4xl sm:text-6xl md:text-7xl mb-4 sm:mb-6 text-outline tracking-wider">PAUSA</h1>
+        <div class="w-full max-w-[600px] grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 glass-panel p-4 sm:p-6 !bg-transparent !border-none !shadow-none">
+            <button id="btn-resume" class="btn-primary w-full py-3 sm:py-4 text-sm sm:text-lg">RIPRENDI</button>
+            <button id="btn-restart" class="btn-hard w-full py-3 sm:py-4 text-sm sm:text-lg">Riavvia Partita</button>
+            <button id="btn-settings-pause" class="btn-purple w-full py-3 sm:py-4 text-sm sm:text-lg">Impostazioni</button>
+            <button id="btn-home" class="btn-dark w-full py-3 sm:py-4 text-sm sm:text-lg">Menu Principale</button>
         </div>
     </div>
 
     <!-- GAME OVER -->
     <div id="gameover" class="absolute inset-0 z-50 hidden flex flex-col items-center justify-center bg-red-900/90 backdrop-blur-md p-4 text-center">
-        <h1 class="text-white font-black text-5xl sm:text-7xl mb-4 text-outline animate-bounce">GAME OVER!</h1>
-        <p class="text-white text-lg sm:text-2xl mb-8 font-bold text-outline-sm">Altezza raggiunta: <span id="final-score" class="text-yellow-300">0</span> metri</p>
-        <button id="btn-gameover-restart" class="btn-primary px-8 py-4 text-lg sm:text-2xl w-full max-w-[400px]">Riprova da Zero</button>
+        <h1 class="text-white font-black text-4xl sm:text-7xl mb-2 sm:mb-4 text-outline animate-bounce">GAME OVER!</h1>
+        <p class="text-white text-base sm:text-2xl mb-6 sm:mb-8 font-bold text-outline-sm">Altezza raggiunta: <span id="final-score" class="text-yellow-300">0</span> metri</p>
+        <button id="btn-gameover-restart" class="btn-primary px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-2xl w-full max-w-[300px] sm:max-w-[400px]">Riprova da Zero</button>
     </div>
 
     <!-- TITOLI DI CODA -->
     <div id="credits-screen" class="absolute inset-0 z-[60] hidden bg-black text-white flex-col items-center justify-end overflow-hidden cursor-pointer opacity-0">
-        <div id="credits-text" class="absolute top-[100vh] w-full text-center flex flex-col gap-12 px-4 pb-32">
-            <div class="credit-block mt-32">
-                <h1 class="text-5xl sm:text-7xl font-black text-yellow-400 mb-2 text-outline">ONLY BALL</h1>
-                <p class="text-xl sm:text-3xl text-pink-300 font-bold text-outline-sm">Hai raggiunto la Vetta! (1000m)</p>
+        <div id="credits-text" class="absolute top-[100vh] w-full text-center flex flex-col gap-8 sm:gap-12 px-4 pb-32">
+            <div class="credit-block mt-20 sm:mt-32">
+                <h1 class="text-4xl sm:text-7xl font-black text-yellow-400 mb-1 sm:mb-2 text-outline">ONLY BALL</h1>
+                <p class="text-lg sm:text-3xl text-pink-300 font-bold text-outline-sm">Hai raggiunto la Vetta! (1000m)</p>
             </div>
             
-            <div class="mt-8 text-base sm:text-xl max-w-3xl mx-auto credit-block">
-                <h2 class="text-2xl sm:text-4xl font-bold text-orange-400 mb-4 text-outline-sm">La Storia</h2>
-                <p class="text-gray-300 italic leading-relaxed">
+            <div class="mt-6 sm:mt-8 text-sm sm:text-xl max-w-3xl mx-auto credit-block">
+                <h2 class="text-xl sm:text-4xl font-bold text-orange-400 mb-2 sm:mb-4 text-outline-sm">La Storia</h2>
+                <p class="text-gray-300 italic leading-relaxed px-2">
                     "Nata in una fabbrica di plastica di dubbia qualità, questa pallina ha deciso che rotolare sul pavimento era troppo mainstream. Ha sfidato la gravità, ha ignorato le leggi della termodinamica e ha saltato su piattaforme fluttuanti senza alcun motivo logico... solo per guardare il mondo dall'alto in basso."
                 </p>
             </div>
 
-            <div class="mt-8 credit-block"><h2 class="text-xl sm:text-3xl font-bold text-blue-400 mb-1 text-outline-sm">Creatore & Sviluppatore Principale</h2><p class="font-black text-white text-lg sm:text-2xl">ONLY_G4BB0</p></div>
-            <div class="mt-8 credit-block"><h2 class="text-xl sm:text-3xl font-bold text-teal-400 mb-1 text-outline-sm">Direzione Artistica e Level Design</h2><p class="font-black text-white text-lg sm:text-2xl">ONLY_G4BB0</p></div>
+            <div class="mt-6 sm:mt-8 credit-block"><h2 class="text-lg sm:text-3xl font-bold text-blue-400 mb-1 text-outline-sm">Creatore & Sviluppatore Principale</h2><p class="font-black text-white text-base sm:text-2xl">ONLY_G4BB0</p></div>
+            <div class="mt-6 sm:mt-8 credit-block"><h2 class="text-lg sm:text-3xl font-bold text-teal-400 mb-1 text-outline-sm">Direzione Artistica e Level Design</h2><p class="font-black text-white text-base sm:text-2xl">ONLY_G4BB0</p></div>
             
-            <div class="mt-8 credit-block">
-                <h2 class="text-2xl sm:text-4xl font-bold text-red-400 mb-4 text-outline-sm">Team di Testing Ufficiale</h2>
-                <ul class="text-lg sm:text-xl space-y-2 font-bold text-gray-200">
-                    <li>Anastasia Messina (Kiri) - <span class="text-sm italic text-gray-400">Chief Bug Hunter</span></li>
-                    <li>Roberto Di Caro (Reef) - <span class="text-sm italic text-gray-400">Lead QA</span></li>
-                    <li>Francesco Di Dio (Franko) - <span class="text-sm italic text-gray-400">Senior Game Tester</span></li>
-                    <li>Antonio (Antonix) - <span class="text-sm italic text-gray-400">Gameplay Analyst</span></li>
-                    <li>Conci (Mamma) - <span class="text-sm italic text-gray-400">Supporto Morale</span></li>
-                    <li>Macco (Papà) - <span class="text-sm italic text-gray-400">Hardware Tester</span></li>
-                    <li>Simone Lazzara (RomanoDeRoma) - <span class="text-sm italic text-gray-400">Speedrunner</span></li>
+            <div class="mt-6 sm:mt-8 credit-block">
+                <h2 class="text-xl sm:text-4xl font-bold text-red-400 mb-3 sm:mb-4 text-outline-sm">Team di Testing Ufficiale</h2>
+                <ul class="text-base sm:text-xl space-y-1.5 sm:space-y-2 font-bold text-gray-200">
+                    <li>Anastasia Messina (Kiri) - <span class="text-xs sm:text-sm italic text-gray-400">Chief Bug Hunter</span></li>
+                    <li>Roberto Di Caro (Reef) - <span class="text-xs sm:text-sm italic text-gray-400">Lead QA</span></li>
+                    <li>Francesco Di Dio (Franko) - <span class="text-xs sm:text-sm italic text-gray-400">Senior Game Tester</span></li>
+                    <li>Antonio (Antonix) - <span class="text-xs sm:text-sm italic text-gray-400">Gameplay Analyst</span></li>
+                    <li>Conci (Mamma) - <span class="text-xs sm:text-sm italic text-gray-400">Supporto Morale</span></li>
+                    <li>Macco (Papà) - <span class="text-xs sm:text-sm italic text-gray-400">Hardware Tester</span></li>
+                    <li>Simone Lazzara (RomanoDeRoma) - <span class="text-xs sm:text-sm italic text-gray-400">Speedrunner</span></li>
                 </ul>
             </div>
 
-            <div class="mt-8 credit-block"><h2 class="text-xl sm:text-3xl font-bold text-green-400 mb-1 text-outline-sm">Motore Fisico</h2><p class="text-lg sm:text-xl">Cannon.js</p></div>
-            <div class="mt-8 credit-block"><h2 class="text-xl sm:text-3xl font-bold text-pink-400 mb-1 text-outline-sm">Motore Grafico</h2><p class="text-lg sm:text-xl">Three.js</p></div>
-            <div class="mt-8 credit-block"><h2 class="text-xl sm:text-3xl font-bold text-purple-400 mb-1 text-outline-sm">Audio & VFX</h2><p class="text-lg sm:text-xl">Web Audio API & WebGL</p></div>
+            <div class="mt-6 sm:mt-8 credit-block"><h2 class="text-lg sm:text-3xl font-bold text-green-400 mb-1 text-outline-sm">Motore Fisico</h2><p class="text-base sm:text-xl">Cannon.js</p></div>
+            <div class="mt-6 sm:mt-8 credit-block"><h2 class="text-lg sm:text-3xl font-bold text-pink-400 mb-1 text-outline-sm">Motore Grafico</h2><p class="text-base sm:text-xl">Three.js</p></div>
+            <div class="mt-6 sm:mt-8 credit-block"><h2 class="text-lg sm:text-3xl font-bold text-purple-400 mb-1 text-outline-sm">Audio & VFX</h2><p class="text-base sm:text-xl">Web Audio API & WebGL</p></div>
             
-            <div class="mt-32 text-4xl sm:text-6xl font-black text-yellow-400 animate-pulse text-outline credit-block">GRAZIE PER AVER GIOCATO!</div>
+            <div class="mt-24 sm:mt-32 text-3xl sm:text-6xl font-black text-yellow-400 animate-pulse text-outline credit-block">GRAZIE PER AVER GIOCATO!</div>
         </div>
-        <div class="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 text-white/50 font-bold text-sm sm:text-lg bg-black/50 px-3 py-2 rounded-xl z-10 transition-opacity duration-1000">Premi ESC / Tocca per uscire</div>
+        <div class="absolute bottom-2 sm:bottom-6 right-2 sm:right-6 text-white/50 font-bold text-xs sm:text-lg bg-black/50 px-2 sm:px-3 py-1 sm:py-2 rounded-xl z-10 transition-opacity duration-1000">Premi ESC / Tocca per uscire</div>
     </div>
 
     <script>
@@ -315,12 +329,11 @@
         const COYOTE_FRAMES = 9, JUMP_BUFFER_FRAMES = 9; 
         let wasOnGround = false, lastVelY = 0;             
         let screenShakeIntensity = 0; 
-        let dashCooldown = 0;         
-        const DASH_COOLDOWN = 90, DASH_FORCE = 35;        
         let currentBiomeNotified = -1, displayedScore = 0;        
         let customTexture = null; 
         let biomeToastTimer = 0;
         
+        // Riferimenti alle variabili per le collisioni e la morte
         let canJump = false;
         let hitDeathZone = false;
         
@@ -383,6 +396,8 @@
                     }
                 } catch(e) { console.warn("Orientation API fallita:", e); }
             }
+            // Tentativo scroll per iOS Safari per nascondere la barra degli indirizzi
+            setTimeout(() => { window.scrollTo(0, 1); }, 100);
         }
 
         btnForceLandscape.addEventListener('click', forceFullscreen);
@@ -451,13 +466,6 @@
 
             jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys.space = true; }, {passive: false});
             jumpBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.space = false; });
-
-            const dashBtnMob = document.getElementById('dash-btn');
-            if(dashBtnMob) {
-                dashBtnMob.addEventListener('touchstart', (e) => {
-                    e.preventDefault(); if(dashCooldown === 0) { keys.shift = true; setTimeout(() => { keys.shift = false; }, 80); }
-                }, {passive: false});
-            }
 
             document.getElementById('btn-respawn-mob').addEventListener('touchstart', (e) => { e.preventDefault(); if(difficulty === 'normal') triggerRespawn(); });
             document.getElementById('btn-pause-mob').addEventListener('touchstart', (e) => { e.preventDefault(); openPauseMenu(); });
@@ -878,7 +886,7 @@
                 const lava = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 1.51, 8), new THREE.MeshStandardMaterial({color: 0xff3300, emissive: 0xff0000})); lava.position.y = 0.75;
                 group.add(alt); group.add(lava);
             } else if (type === 4) { 
-                const gate1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 5, 0.8), new MeshStandardMaterial({color: 0x222222})); gate1.position.set(-2.5, 2.5, 0); gate1.castShadow = true;
+                const gate1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 5, 0.8), new THREE.MeshStandardMaterial({color: 0x222222})); gate1.position.set(-2.5, 2.5, 0); gate1.castShadow = true;
                 const gate2 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 5, 0.8), new THREE.MeshStandardMaterial({color: 0x222222})); gate2.position.set(2.5, 2.5, 0); gate2.castShadow = true;
                 const arch = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.8, 0.8), new THREE.MeshStandardMaterial({color: 0xff00ff, emissive: 0xff00ff, emissiveIntensity: 0.5})); arch.position.set(0, 5.4, 0);
                 group.add(gate1); group.add(gate2); group.add(arch);
@@ -928,8 +936,8 @@
                     body: body, mesh: mesh, 
                     type: Math.random() > 0.5 ? 0 : 1, 
                     baseX: x, baseZ: z, 
-                    timeOffset: Math.random() * 100, speed: 0.8 + Math.random()*0.5, 
-                    ampX: 8, ampZ: 8, isPlatform: true 
+                    timeOffset: Math.random() * 100, speed: 0.35 + Math.random()*0.35, 
+                    ampX: 7, ampZ: 7, isPlatform: true 
                 });
             }
 
@@ -953,25 +961,25 @@
 
         function generateMorePlatforms(count) {
             for(let i = 1; i <= count; i++) {
-                platformIndex++; let angle = platformIndex * 0.9;
+                platformIndex++; let angle = platformIndex * 0.7;
                 let currentBiome = Math.max(0, Math.min(14, Math.floor(genCurrentY / 70))); let texIndex = currentBiome;
-                let distMultiplier = 1 + (currentBiome * 0.05); let sizeMultiplier = Math.max(0.4, 1 - (currentBiome * 0.04)); 
-                let distance = (6 + Math.random() * 5) * distMultiplier; 
+                let distMultiplier = 1 + (currentBiome * 0.03); let sizeMultiplier = Math.max(0.5, 1 - (currentBiome * 0.03)); 
+                let distance = (7.5 + Math.random() * 3) * distMultiplier; 
                 
-                genCurrentX += Math.cos(angle) * distance; genCurrentZ += Math.sin(angle) * distance; genCurrentY += 2.5 + Math.random() * 3; 
-                let w = (5 + Math.random() * 4) * sizeMultiplier, d = (5 + Math.random() * 4) * sizeMultiplier;
+                genCurrentX += Math.cos(angle) * distance; genCurrentZ += Math.sin(angle) * distance; genCurrentY += 2.5 + Math.random() * 2; 
+                let w = (6 + Math.random() * 4) * sizeMultiplier, d = (6 + Math.random() * 4) * sizeMultiplier;
                 
                 if(genCurrentY >= nextTargetCheckpoint && genCurrentY < 1000) {
                     w = 20; d = 20; 
-                    genCurrentX += Math.cos(angle) * 15;
-                    genCurrentZ += Math.sin(angle) * 15;
-                    genCurrentY += 4;
+                    genCurrentX += Math.cos(angle) * 10;
+                    genCurrentZ += Math.sin(angle) * 10;
+                    genCurrentY += 2;
                     createPlatform(genCurrentX, genCurrentY, genCurrentZ, w, 1.5, d, texIndex, true, false, false); 
                     checkpoints.push({ y: nextTargetCheckpoint, pos: { x: genCurrentX, y: genCurrentY, z: genCurrentZ }, reached: false });
                     nextTargetCheckpoint += 70;
                 } else if (genCurrentY < 1000) {
                     let rand = Math.random();
-                    let isBouncer = rand > 0.90; 
+                    let isBouncer = rand > 0.92; 
                     let isMoving = currentBiome >= 1 && rand < 0.15; 
                     
                     let hasObstacle = false, spawnRed = false, spawnBlack = false;
@@ -993,7 +1001,7 @@
                         else mat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 });
                         
                         world.addBody(body); let mesh = new THREE.Mesh(new THREE.BoxGeometry(obsW, obsH, obsD), mat); mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh);
-                        movingObstacles.push({ body, mesh, type: Math.floor(Math.random() * 3), baseX: genCurrentX, baseZ: genCurrentZ, timeOffset: Math.random() * 100, speed: spawnRed ? 1.0 : 1.8, ampX: w * 0.35, ampZ: d * 0.35, isPlatform: false });
+                        movingObstacles.push({ body, mesh, type: Math.floor(Math.random() * 3), baseX: genCurrentX, baseZ: genCurrentZ, timeOffset: Math.random() * 100, speed: spawnRed ? 0.8 : 1.2, ampX: w * 0.35, ampZ: d * 0.35, isPlatform: false });
                     }
                 }
                 highestPlatformY = genCurrentY;
@@ -1012,7 +1020,7 @@
             currentVisualBiome = 0; currentBiomeNotified = -1;
             document.getElementById('progress-bar').style.width = '0%'; document.getElementById('progress-pct').innerText = '0';
             document.getElementById('biome-toast').classList.add('hidden');
-            dashCooldown = 0; jumpBufferTimer = 0; coyoteTimer = 0; screenShakeIntensity = 0; biomeToastTimer = 0;
+            jumpBufferTimer = 0; coyoteTimer = 0; screenShakeIntensity = 0; biomeToastTimer = 0;
             
             createPlatform(0, 0, 0, 25, 2, 25, 0); generateMorePlatforms(40);
             
@@ -1095,7 +1103,6 @@
         document.getElementById('credits-screen').addEventListener('click', () => { if (gameState === 'credits') returnToMenuFromCredits(); });
         document.getElementById('credits-screen').addEventListener('touchstart', (e) => { e.preventDefault(); if (gameState === 'credits') returnToMenuFromCredits(); }, {passive: false});
 
-
         /* ==========================================================================
            SEZIONE 10: GESTIONE CONTROLLER E TASTIERA
            ========================================================================== */
@@ -1112,14 +1119,14 @@
             if (gameState === 'console') { if (e.key === 'Escape') { gameState = lastGameState; document.getElementById('dev-console').classList.add('hidden'); if(gameState === 'playing') try { document.body.requestPointerLock(); } catch(err){} } return; }
 
             const key = e.key.toLowerCase(); if(keys.hasOwnProperty(key)) keys[key] = true;
-            if(e.code === 'Space') keys.space = true; if(e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = true;
+            if(e.code === 'Space') keys.space = true;
             if(e.code === 'KeyH' && gameState === 'playing' && difficulty === 'normal') triggerRespawn();
             if(e.code === 'Escape') { if (gameState === 'credits') returnToMenuFromCredits(); else if (gameState === 'playing') openPauseMenu(); }
         });
         
         document.addEventListener('keyup', (e) => {
             const key = e.key.toLowerCase(); if(keys.hasOwnProperty(key)) keys[key] = false;
-            if(e.code === 'Space') keys.space = false; if(e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = false;
+            if(e.code === 'Space') keys.space = false;
         });
 
         let lastMouseX = null, lastMouseY = null, isMouseDown = false;
@@ -1239,25 +1246,28 @@
         function triggerRespawn() {
             AudioEngine.playDeath();
             if(difficulty === 'normal') {
-                // RIPRISTINO STABILE SENZA COMANDI DEPRECATI
-                sphereBody.position.set(lastCheckpoint.x, lastCheckpoint.y + 4, lastCheckpoint.z);
+                // Sincronizzazione Pura: Assicuriamoci che la fisica non crashi usando coordinate sicure
+                let spawnX = isNaN(lastCheckpoint.x) ? 0 : lastCheckpoint.x;
+                let spawnY = isNaN(lastCheckpoint.y) ? 5 : lastCheckpoint.y + 4;
+                let spawnZ = isNaN(lastCheckpoint.z) ? 0 : lastCheckpoint.z;
+                
+                sphereBody.position.set(spawnX, spawnY, spawnZ);
                 sphereBody.velocity.set(0,0,0); 
                 sphereBody.angularVelocity.set(0,0,0); 
                 sphereBody.torque.set(0,0,0); 
                 sphereBody.force.set(0,0,0); 
                 sphereBody.wakeUp();
                 
-                // Aggiornamento immediato della mesh visiva
                 sphereMesh.position.copy(sphereBody.position);
                 sphereMesh.quaternion.copy(sphereBody.quaternion);
 
                 camYaw = Math.PI; 
                 
-                highestScore = Math.floor(lastCheckpoint.y); 
+                highestScore = Math.floor(spawnY - 4); 
                 displayedScore = highestScore;
                 document.getElementById('score').innerText = highestScore;
                 
-                resetParticles(lastCheckpoint.x, lastCheckpoint.y + 4, lastCheckpoint.z);
+                resetParticles(spawnX, spawnY, spawnZ);
             } else {
                 gameState = 'gameover';
                 document.getElementById('ui-layer').classList.add('hidden'); document.getElementById('mobile-controls').classList.add('hidden');
@@ -1269,14 +1279,15 @@
         function updatePhysics() {
             world.step(1/60);
             
+            // Interrompe istantaneamente i calcoli ed esegue il respawn prima che si propaghi l'errore
             if (isNaN(sphereBody.position.x) || isNaN(sphereBody.position.y) || isNaN(sphereBody.position.z)) {
-                triggerRespawn(); // Gestito ora direttamente dalla funzione sicura
+                triggerRespawn();
+                return; // QUESTO PREVIENE IL CRASH
             }
             
             let gpData = processGamepad();
             let time = performance.now() * 0.002;
             
-            if(dashCooldown > 0) dashCooldown--;
             if(jumpBufferTimer > 0) jumpBufferTimer--;
             if(screenShakeIntensity > 0) screenShakeIntensity *= 0.75;
 
@@ -1337,13 +1348,6 @@
                     AudioEngine.playJump(); 
                     canJump = false; coyoteTimer = 0; jumpBufferTimer = 0; keys.space = false; 
                 }
-                
-                if(keys.shift && dashCooldown === 0 && (moveX !== 0 || moveZ !== 0)) {
-                    let dashLen = Math.sqrt(moveX*moveX + moveZ*moveZ); let dX = moveX/dashLen, dZ = moveZ/dashLen;
-                    sphereBody.velocity.x += dX * DASH_FORCE; sphereBody.velocity.z += dZ * DASH_FORCE;
-                    dashCooldown = DASH_COOLDOWN; keys.shift = false;
-                    AudioEngine.playJump(); screenShakeIntensity = 0.15;
-                }
             }
 
             const speed = Math.sqrt(sphereBody.velocity.x**2 + sphereBody.velocity.z**2);
@@ -1354,7 +1358,6 @@
             sphereMesh.position.copy(sphereBody.position); sphereMesh.quaternion.copy(sphereBody.quaternion);
             
             if (gameState === 'skins') { sphereMesh.rotation.y += 0.01; sphereMesh.rotation.x += 0.005; }
-            if(gameState === 'playing') { document.getElementById('speed-val').innerText = Math.round(speed); }
         }
 
         /* ==========================================================================
@@ -1474,14 +1477,6 @@
                         if(!cp.reached && sphereMesh.position.y >= cp.y - 1) { 
                             cp.reached = true; lastCheckpoint = cp.pos; AudioEngine.playCheckpoint(); document.getElementById('cp-score').innerText = cp.y;
                         }
-                    }
-                }
-
-                if(isMobile) {
-                    const dashBtn = document.getElementById('dash-btn');
-                    if(dashBtn) {
-                        let alpha = dashCooldown > 0 ? 0.35 + 0.45 * (1 - dashCooldown/DASH_COOLDOWN) : 1;
-                        dashBtn.style.opacity = alpha.toFixed(2);
                     }
                 }
 
