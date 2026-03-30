@@ -264,6 +264,8 @@
                 <ul class="text-lg sm:text-xl space-y-2 font-bold text-gray-200">
                     <li>Anastasia Messina (Kiri) - <span class="text-sm italic text-gray-400">Chief Bug Hunter</span></li>
                     <li>Roberto Di Caro (Reef) - <span class="text-sm italic text-gray-400">Lead QA</span></li>
+                    <li>Francesco Di Dio (Franko) - <span class="text-sm italic text-gray-400">Senior Game Tester</span></li>
+                    <li>Antonio (Antonix) - <span class="text-sm italic text-gray-400">Gameplay Analyst</span></li>
                     <li>Conci (Mamma) - <span class="text-sm italic text-gray-400">Supporto Morale</span></li>
                     <li>Macco (Papà) - <span class="text-sm italic text-gray-400">Hardware Tester</span></li>
                     <li>Simone Lazzara (RomanoDeRoma) - <span class="text-sm italic text-gray-400">Speedrunner</span></li>
@@ -310,6 +312,10 @@
         let currentBiomeNotified = -1, displayedScore = 0;        
         let customTexture = null; 
         let biomeToastTimer = 0;
+        
+        // FIX: Riferimenti alle variabili per le collisioni e la morte
+        let canJump = false;
+        let hitDeathZone = false;
         
         document.getElementById('menu-best-val').innerText = bestScore;
         
@@ -465,7 +471,7 @@
                 gain.gain.setValueAtTime(0.3, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.2);
             },
-            playBounce: () => { // Suono Trampolino
+            playBounce: () => { 
                 if(audioCtx.state === 'suspended') return;
                 const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
                 osc.type = 'square'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.1);
@@ -513,12 +519,12 @@
                 this.stopAll(); this.currentMood = moodKey; if (moodKey === null) return;
 
                 const baseScales = [
-                    [349.23, 392.00, 440.00, 523.25, 587.33], // F Maj
-                    [146.83, 174.61, 196.00, 220.00, 261.63], // D Min
-                    [523.25, 587.33, 659.25, 783.99, 880.00], // High C
-                    [98.00, 103.83, 130.81, 146.83, 164.81],  // G Phryg
-                    [220.00, 261.63, 293.66, 329.63, 392.00], // A Min
-                    [261.63, 293.66, 329.63, 392.00, 440.00]  // C Maj
+                    [349.23, 392.00, 440.00, 523.25, 587.33], 
+                    [146.83, 174.61, 196.00, 220.00, 261.63], 
+                    [523.25, 587.33, 659.25, 783.99, 880.00], 
+                    [98.00, 103.83, 130.81, 146.83, 164.81],  
+                    [220.00, 261.63, 293.66, 329.63, 392.00], 
+                    [261.63, 293.66, 329.63, 392.00, 440.00]  
                 ];
                 
                 let scale = (moodKey === 'menu' || moodKey === 'skins' || moodKey === 'console') ? baseScales[5] : (moodKey === 'credits' ? [523.25, 659.25, 783.99, 1046.50, 1318.51] : baseScales[moodKey % 6]);
@@ -793,6 +799,16 @@
         particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3)); particleGeo.setAttribute('velocity', new THREE.BufferAttribute(velocityArray, 3));
         const particleMat = new THREE.PointsMaterial({ size: 0.6, color: 0xffffff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending }); const particleMesh = new THREE.Points(particleGeo, particleMat); scene.add(particleMesh);
 
+        function resetParticles(x, y, z) {
+            const positions = particleMesh.geometry.attributes.position.array;
+            for(let i=0; i<particleCount*3; i+=3) {
+                positions[i] = x + (Math.random() - 0.5) * 150;
+                positions[i+1] = y + (Math.random() - 0.5) * 80;
+                positions[i+2] = z + (Math.random() - 0.5) * 150;
+            }
+            particleMesh.geometry.attributes.position.needsUpdate = true;
+        }
+
         function createAdvancedTexture(color1, color2) {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
             ctx.fillStyle = color1; ctx.fillRect(0, 0, 512, 512); ctx.fillStyle = color2; ctx.fillRect(0, 0, 256, 256); ctx.fillRect(256, 256, 256, 256);
@@ -863,19 +879,17 @@
             return group;
         }
 
-        // NUOVA FUNZIONE: Crea Piattaforma (normale, bouncer o mobile)
         function createPlatform(x, y, z, w, h, d, texIndex, isFlag = false, isBouncer = false, isMoving = false) {
             const shape = new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2));
             const bodyType = isMoving ? CANNON.Body.KINEMATIC : CANNON.Body.STATIC;
             const body = new CANNON.Body({ mass: 0, type: bodyType, material: physicsMaterial });
             body.addShape(shape); body.position.set(x, y, z); 
             
-            if(isBouncer) body.isBouncer = true; // Marcatore per il trampolino
+            if(isBouncer) body.isBouncer = true; 
             world.addBody(body);
 
             const geo = new THREE.BoxGeometry(w, h, d);
             
-            // Texture e Materiale
             let useTex = isBouncer ? 17 : (texIndex % 15);
             let matTex = textures[useTex].clone();
             matTex.repeat.set(Math.max(1, w/3), Math.max(1, d/3)); matTex.needsUpdate = true;
@@ -890,16 +904,22 @@
             }
             const mat = new THREE.MeshStandardMaterial(matOptions);
             const mesh = new THREE.Mesh(geo, mat); mesh.position.copy(body.position); mesh.receiveShadow = true; mesh.castShadow = true;
+            
+            if(isBouncer) {
+                const edges = new THREE.EdgesGeometry(geo);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 }));
+                mesh.add(line);
+            }
+            
             scene.add(mesh); 
             
             let meshRef = { mesh: mesh, body: body, flagMeshes: [] };
             platforms.push(meshRef);
 
-            // Se è mobile, aggiungiamo la logica di movimento
             if(isMoving) {
                 movingObstacles.push({ 
                     body: body, mesh: mesh, 
-                    type: Math.random() > 0.5 ? 0 : 1, // 0 = Asse X, 1 = Asse Z
+                    type: Math.random() > 0.5 ? 0 : 1, 
                     baseX: x, baseZ: z, 
                     timeOffset: Math.random() * 100, speed: 0.8 + Math.random()*0.5, 
                     ampX: 8, ampZ: 8, isPlatform: true 
@@ -936,14 +956,16 @@
                 
                 if(genCurrentY >= nextTargetCheckpoint && genCurrentY < 1000) {
                     w = 20; d = 20; 
+                    genCurrentX += Math.cos(angle) * 15;
+                    genCurrentZ += Math.sin(angle) * 15;
+                    genCurrentY += 4;
                     createPlatform(genCurrentX, genCurrentY, genCurrentZ, w, 1.5, d, texIndex, true, false, false); 
                     checkpoints.push({ y: nextTargetCheckpoint, pos: { x: genCurrentX, y: genCurrentY, z: genCurrentZ }, reached: false });
                     nextTargetCheckpoint += 70;
                 } else if (genCurrentY < 1000) {
-                    // Logica Meccaniche Speciali
                     let rand = Math.random();
-                    let isBouncer = rand > 0.90; // 10% Trampolino
-                    let isMoving = currentBiome >= 1 && rand < 0.15; // 15% Piattaforma Mobile (dopo il prato)
+                    let isBouncer = rand > 0.90; 
+                    let isMoving = currentBiome >= 1 && rand < 0.15; 
                     
                     let hasObstacle = false, spawnRed = false, spawnBlack = false;
                     if(currentBiome >= 1 && !isBouncer && !isMoving) {
@@ -952,7 +974,6 @@
                     
                     if(hasObstacle) { w = Math.max(w, 8 * sizeMultiplier) + 4; d = Math.max(d, 8 * sizeMultiplier) + 4; }
                     
-                    // Creiamo la piattaforma base
                     createPlatform(genCurrentX, genCurrentY, genCurrentZ, w, 1, d, texIndex, false, isBouncer, isMoving);
                     
                     if(hasObstacle) {
@@ -988,9 +1009,14 @@
             
             createPlatform(0, 0, 0, 25, 2, 25, 0); generateMorePlatforms(40);
             
-            sphereBody.position.set(0, 5, 0); sphereBody.velocity.set(0,0,0); sphereBody.angularVelocity.set(0,0,0); sphereBody.torque.set(0,0,0);
+            sphereBody.type = CANNON.Body.DYNAMIC;
+            sphereBody.position.set(0, 5, 0); 
+            sphereBody.previousPosition.copy(sphereBody.position);
+            sphereBody.velocity.set(0,0,0); sphereBody.angularVelocity.set(0,0,0); sphereBody.torque.set(0,0,0);
+            
             camYaw = Math.PI; camPitch = 0.3; scene.background.setHex(0x8ae2f5); scene.fog.color.setHex(0x8ae2f5);
             applyGraphicsSettings(); 
+            resetParticles(0, 5, 0);
         }
         fullGameReset();
 
@@ -1068,7 +1094,6 @@
 
         window.addEventListener("gamepadconnected", (e) => { document.getElementById("gamepad-status").classList.remove("hidden"); });
 
-        let canJump = false, hitDeathZone = false;
         function processGamepad() {
             let gp = navigator.getGamepads()[0];
             if (!gp) return { x: 0, y: 0, active: false };
@@ -1132,13 +1157,12 @@
                     
                     let normal = c.ni; if(c.bi.id === sphereBody.id) normal.negate(normal);
                     
-                    // MECCANICA TRAMPOLINO (Bouncer)
                     if(otherBody.isBouncer && normal.y > 0.5) {
-                        sphereBody.velocity.y = 45; // Super Salto!
+                        sphereBody.velocity.y = 45; 
                         AudioEngine.playBounce();
                         screenShakeIntensity = 0.4;
                         onGround = false;
-                        continue; // Salta logica terreno normale
+                        continue; 
                     }
 
                     if(normal.y > 0.5) onGround = true;
@@ -1153,15 +1177,37 @@
         });
 
         /* ==========================================================================
-           SEZIONE 11: LOOP DI AGGIORNAMENTO FISICA
+           SEZIONE 11: LOOP DI AGGIORNAMENTO FISICA E RESPAWN
            ========================================================================== */
         const torqueAmount = 80, forceAmount = 150, maxVelocity = 25;    
+
+        function triggerRespawn() {
+            AudioEngine.playDeath();
+            if(difficulty === 'normal') {
+                sphereBody.position.set(lastCheckpoint.x, lastCheckpoint.y + 4, lastCheckpoint.z);
+                sphereBody.previousPosition.copy(sphereBody.position);
+                sphereBody.velocity.set(0,0,0); sphereBody.angularVelocity.set(0,0,0); sphereBody.torque.set(0,0,0); sphereBody.force.set(0,0,0); 
+                camYaw = Math.PI; 
+                
+                highestScore = Math.floor(lastCheckpoint.y); 
+                displayedScore = highestScore;
+                document.getElementById('score').innerText = highestScore;
+                
+                resetParticles(lastCheckpoint.x, lastCheckpoint.y + 4, lastCheckpoint.z);
+            } else {
+                gameState = 'gameover';
+                document.getElementById('ui-layer').classList.add('hidden'); document.getElementById('mobile-controls').classList.add('hidden');
+                document.getElementById('gameover').classList.remove('hidden'); document.getElementById('final-score').innerText = highestScore;
+                if(!isMobile) { try { document.exitPointerLock(); } catch(e){} }
+            }
+        }
 
         function updatePhysics() {
             world.step(1/60);
             
             if (isNaN(sphereBody.position.x) || isNaN(sphereBody.position.y) || isNaN(sphereBody.position.z)) {
                 sphereBody.position.set(lastCheckpoint.x, lastCheckpoint.y + 4, lastCheckpoint.z);
+                sphereBody.previousPosition.copy(sphereBody.position);
                 sphereBody.velocity.set(0,0,0); sphereBody.angularVelocity.set(0,0,0); sphereBody.torque.set(0,0,0); sphereBody.force.set(0,0,0);
             }
             
@@ -1172,15 +1218,12 @@
             if(jumpBufferTimer > 0) jumpBufferTimer--;
             if(screenShakeIntensity > 0) screenShakeIntensity *= 0.75;
 
-            // Aggiornamento Piattaforme Mobili e Ostacoli
             for(let obs of movingObstacles) {
                 let s = obs.speed || 1, aX = obs.ampX || 3.5, aZ = obs.ampZ || 3.5;
                 if(obs.isPlatform) {
-                    // Piattaforme che si muovono orizzontalmente
                     if(obs.type === 0) obs.body.velocity.x = ((obs.baseX + Math.sin(time * s + obs.timeOffset) * aX) - obs.body.position.x) * 10;
                     else if(obs.type === 1) obs.body.velocity.z = ((obs.baseZ + Math.cos(time * s + obs.timeOffset) * aZ) - obs.body.position.z) * 10;
                 } else {
-                    // Ostacoli Rossi/Neri (movimento veloce)
                     if(obs.type === 0) obs.body.velocity.x = ((obs.baseX + Math.sin(time * s + obs.timeOffset) * aX) - obs.body.position.x) * 10;
                     else if(obs.type === 1) obs.body.velocity.z = ((obs.baseZ + Math.cos(time * s + obs.timeOffset) * aZ) - obs.body.position.z) * 10;
                     else if(obs.type === 2) obs.body.angularVelocity.set(0, 2 * s, 0); 
@@ -1288,6 +1331,7 @@
             
             const positions = particleMesh.geometry.attributes.position.array;
             const velocities = particleMesh.geometry.attributes.velocity.array;
+            
             for(let i=0; i<800*3; i+=3) {
                 if(currBiome === 0 || currBiome === 5) { positions[i+1] += Math.sin(performance.now()*0.002 + i)*0.05; } 
                 else if(currBiome === 1 || currBiome === 8) { positions[i] -= 0.5; positions[i+1] += velocities[i+1]; } 
@@ -1295,12 +1339,14 @@
                 else if(currBiome === 3 || currBiome === 10) { positions[i+1] += 0.4; positions[i] += velocities[i]; } 
                 else { positions[i+1] += velocities[i+1]*2; } 
 
-                if(positions[i+1] < safeY - 40) positions[i+1] = safeY + 40;
-                if(positions[i+1] > safeY + 40) positions[i+1] = safeY - 40;
-                if(positions[i] < safeX - 75) positions[i] = safeX + 75;
-                if(positions[i] > safeX + 75) positions[i] = safeX - 75;
-                if(positions[i+2] < safeZ - 75) positions[i+2] = safeZ + 75;
-                if(positions[i+2] > safeZ + 75) positions[i+2] = safeZ - 75;
+                if(positions[i+1] < safeY - 40) positions[i+1] += 80;
+                if(positions[i+1] > safeY + 40) positions[i+1] -= 80;
+                
+                if(positions[i] < safeX - 75) positions[i] += 150;
+                if(positions[i] > safeX + 75) positions[i] -= 150;
+                
+                if(positions[i+2] < safeZ - 75) positions[i+2] += 150;
+                if(positions[i+2] > safeZ + 75) positions[i+2] -= 150;
             }
             particleMesh.geometry.attributes.position.needsUpdate = true;
             particleMesh.material.color.lerp(new THREE.Color(biomeDefs[currBiome].c1), 0.05);
@@ -1322,9 +1368,64 @@
             dirLight.position.set(safeX + 40, safeY + 60, safeZ + 40); dirLight.target = sphereMesh;
         }
 
+        function triggerEnding() {
+            gameState = 'credits';
+            if(!isMobile) { try { document.exitPointerLock(); } catch(e){} }
+            document.getElementById('ui-layer').classList.add('hidden'); document.getElementById('mobile-controls').classList.add('hidden');
+            
+            sphereBody.type = CANNON.Body.STATIC;
+            sphereBody.velocity.set(0,0,0);
+            sphereBody.angularVelocity.set(0,0,0);
+
+            const creditsScreen = document.getElementById('credits-screen'); 
+            creditsScreen.classList.remove('hidden');
+            creditsScreen.classList.add('flex'); 
+            
+            const creditsText = document.getElementById('credits-text');
+            creditsText.classList.remove('animate-credits');
+            void creditsText.offsetWidth; 
+            creditsText.classList.add('animate-credits');
+
+            const blocks = document.querySelectorAll('.credit-block');
+            blocks.forEach(b => b.classList.remove('visible'));
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if(entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.3 }); 
+
+            blocks.forEach(block => observer.observe(block));
+
+            MusicEngine.playMood('credits'); 
+        }
+
+        function returnToMenuFromCredits() {
+            const creditsScreen = document.getElementById('credits-screen');
+            creditsScreen.classList.add('hidden');
+            creditsScreen.classList.remove('flex'); 
+            
+            document.getElementById('credits-text').classList.remove('animate-credits');
+            fullGameReset(); gameState = 'menu'; document.getElementById('main-menu').classList.remove('hidden');
+            document.getElementById('menu-best-val').innerText = bestScore;
+            MusicEngine.playMood('menu');
+        }
+        
+        document.getElementById('credits-screen').addEventListener('click', () => { if (gameState === 'credits') returnToMenuFromCredits(); });
+        document.getElementById('credits-screen').addEventListener('touchstart', (e) => { e.preventDefault(); if (gameState === 'credits') returnToMenuFromCredits(); }, {passive: false});
+
         function animate() {
             requestAnimationFrame(animate);
-            if (gameState !== 'console') { updatePhysics(); updateCamera(); }
+            
+            if (gameState !== 'console' && gameState !== 'gameover' && gameState !== 'credits') { 
+                updatePhysics(); 
+            }
+            
+            if (gameState !== 'console') {
+                updateCamera(); 
+            }
 
             if(gameState === 'playing') {
                 if (isRTX && typeof cubeCamera !== 'undefined') {
