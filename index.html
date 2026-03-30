@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
     <title>Only Ball: Ultimate Edition</title>
-    <!-- Icona Favicon generata in SVG a forma di pallone da spiaggia -->
+    <!-- Icona Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23f1c40f'/><path d='M50 5 a45 45 0 0 1 45 45 h-45 z' fill='%23e74c3c'/><path d='M50 95 a45 45 0 0 1 -45 -45 h45 z' fill='%233498db'/><circle cx='50' cy='50' r='15' fill='%23ffffff'/></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -17,46 +17,48 @@
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: 'Nunito', sans-serif; user-select: none; touch-action: none; }
         canvas { display: block; }
+        
         #rotate-device { display: none; }
         @media screen and (orientation: portrait) { #rotate-device { display: flex !important; } }
         
-        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 4px solid white; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 2rem; }
+        /* Pannelli di vetro (Glassmorphism) */
+        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 4px solid white; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border-radius: 1.5rem; }
+        .glass-dark { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(12px); border: 2px solid rgba(255,255,255,0.2); border-radius: 1.5rem; }
         
         /* STILI BOTTONI SIMMETRICI E UNIFORMI */
-        .btn-primary { background: #ff4757; color: white; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; border: 4px solid #ff6b81; box-shadow: 0 8px 0 #ff0000, 0 15px 20px rgba(0,0,0,0.2); transition: all 0.1s ease; border-radius: 1.5rem; }
-        .btn-primary:active { transform: translateY(8px); box-shadow: 0 0px 0 #ff0000; }
-        .btn-secondary { background: #1e90ff; color: white; font-weight: 800; border: 4px solid #70a1ff; box-shadow: 0 6px 0 #0060c0; border-radius: 1.5rem; transition: all 0.1s ease; }
+        .btn-primary { background: #ff4757; color: white; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; border: 4px solid #ff6b81; box-shadow: 0 6px 0 #ff0000, 0 10px 15px rgba(0,0,0,0.2); transition: all 0.1s ease; border-radius: 1rem; }
+        .btn-primary:active { transform: translateY(6px); box-shadow: 0 0px 0 #ff0000; }
+        .btn-secondary { background: #1e90ff; color: white; font-weight: 800; border: 4px solid #70a1ff; box-shadow: 0 6px 0 #0060c0; border-radius: 1rem; transition: all 0.1s ease; }
         .btn-secondary:active { transform: translateY(6px); box-shadow: 0 0px 0 #0060c0; }
-        .btn-hard { background: #ff9f43; color: white; font-weight: 800; border: 4px solid #feca57; box-shadow: 0 6px 0 #ff7f50; border-radius: 1.5rem; transition: all 0.1s ease; }
+        .btn-hard { background: #ff9f43; color: white; font-weight: 800; border: 4px solid #feca57; box-shadow: 0 6px 0 #ff7f50; border-radius: 1rem; transition: all 0.1s ease; }
         .btn-hard:active { transform: translateY(6px); box-shadow: 0 0px 0 #ff7f50; }
-        .btn-purple { background: #a55eea; color: white; font-weight: 800; border: 4px solid #d1a3ff; box-shadow: 0 6px 0 #8854d0; border-radius: 1.5rem; transition: all 0.1s ease; }
+        .btn-purple { background: #a55eea; color: white; font-weight: 800; border: 4px solid #d1a3ff; box-shadow: 0 6px 0 #8854d0; border-radius: 1rem; transition: all 0.1s ease; }
         .btn-purple:active { transform: translateY(6px); box-shadow: 0 0px 0 #8854d0; }
-        .btn-dark { background: #2f3542; color: white; font-weight: 800; border: 4px solid #57606f; box-shadow: 0 6px 0 #1e272e; border-radius: 1.5rem; transition: all 0.1s ease; }
+        .btn-dark { background: #2f3542; color: white; font-weight: 800; border: 4px solid #57606f; box-shadow: 0 6px 0 #1e272e; border-radius: 1rem; transition: all 0.1s ease; }
         .btn-dark:active { transform: translateY(6px); box-shadow: 0 0px 0 #1e272e; }
         
-        button:focus, select:focus, input[type="range"]:focus, input[type="checkbox"]:focus { outline: 4px solid #f1c40f !important; box-shadow: 0 0 20px #f1c40f !important; transform: scale(1.05); transition: all 0.1s ease; }
+        button:focus, select:focus, input[type="range"]:focus, input[type="checkbox"]:focus { outline: 4px solid #f1c40f !important; box-shadow: 0 0 20px #f1c40f !important; transform: scale(1.02); transition: all 0.1s ease; }
         
+        /* Contorni testo perfetti */
         .text-outline { 
             -webkit-text-stroke: 1.5px #111;
-            text-shadow: 0px 4px 8px rgba(0,0,0,0.6); 
+            text-shadow: 0px 4px 6px rgba(0,0,0,0.5); 
+        }
+        .text-outline-sm {
+            -webkit-text-stroke: 1px #111;
+            text-shadow: 0px 2px 4px rgba(0,0,0,0.5); 
         }
         
-        @keyframes scrollCredits {
-            0% { transform: translateY(100vh); }
-            100% { transform: translateY(-250%); }
-        }
+        @keyframes scrollCredits { 0% { transform: translateY(100vh); } 100% { transform: translateY(-250%); } }
         .animate-credits { animation: scrollCredits 65s linear forwards; } 
+        .credit-block { opacity: 0; transform: translateY(30px); transition: opacity 2s ease-out, transform 2s ease-out; }
+        .credit-block.visible { opacity: 1; transform: translateY(0); }
 
-        /* Effetto Fade-in per i blocchi di testo dei titoli di coda */
-        .credit-block {
-            opacity: 0;
-            transform: translateY(30px);
-            transition: opacity 2s ease-out, transform 2s ease-out;
-        }
-        .credit-block.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        /* Scrollbar custom per menu impostazioni su schermi piccoli */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body>
@@ -67,186 +69,229 @@
         <input type="text" id="console-input" class="w-full bg-transparent border-none outline-none text-green-400 font-mono text-lg md:text-2xl placeholder-green-700" placeholder="Inserisci un comando..." autocomplete="off" spellcheck="false">
     </div>
 
-    <!-- ==========================================================================
-         SEZIONE 2: OVERLAYS E MENU HTML
-         ========================================================================== -->
+    <!-- BLOCCO PORTRAIT -->
     <div id="rotate-device" class="fixed inset-0 z-[100] bg-black flex-col items-center justify-center text-white p-8 text-center">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-32 h-32 mb-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-24 h-24 sm:w-32 sm:h-32 mb-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 10l2 2m0 0l2-2m-2 2V4" style="transform-origin: center; transform: rotate(90deg);" />
         </svg>
-        <h1 class="text-4xl font-black mb-4">RUOTA IL DISPOSITIVO</h1>
-        <p class="text-xl mb-8">Questo gioco deve essere giocato in modalità <b>Orizzontale (Landscape)</b>.</p>
-        <button id="btn-force-landscape" class="btn-primary px-8 py-4 text-xl">FORZA SCHERMO INTERO</button>
+        <h1 class="text-3xl sm:text-4xl font-black mb-4">RUOTA IL DISPOSITIVO</h1>
+        <p class="text-lg sm:text-xl mb-8">Questo gioco deve essere giocato in modalità <b>Orizzontale</b>.</p>
+        <button id="btn-force-landscape" class="btn-primary px-6 py-3 text-lg sm:text-xl w-full max-w-[300px]">FORZA SCHERMO INTERO</button>
     </div>
 
     <!-- CONTROLLI MOBILE -->
     <div id="mobile-controls" class="absolute inset-0 z-20 hidden pointer-events-none">
         <div id="camera-zone" class="absolute inset-0 pointer-events-auto"></div>
-        <div id="joystick-zone" class="absolute bottom-6 left-12 w-32 h-32 bg-white/20 backdrop-blur-sm rounded-full border-2 border-white/50 pointer-events-auto flex items-center justify-center">
-            <div id="joystick-knob" class="w-12 h-12 bg-white rounded-full shadow-lg absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2 pointer-events-none"></div>
+        <div id="joystick-zone" class="absolute bottom-4 left-6 sm:bottom-6 sm:left-12 w-28 h-28 sm:w-32 sm:h-32 bg-white/20 backdrop-blur-sm rounded-full border-2 border-white/50 pointer-events-auto flex items-center justify-center shadow-lg">
+            <div id="joystick-knob" class="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-full shadow-md absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2 pointer-events-none"></div>
         </div>
-        <button id="jump-btn" class="absolute bottom-10 right-12 w-24 h-24 bg-red-500/80 backdrop-blur-sm rounded-full border-4 border-white flex items-center justify-center pointer-events-auto shadow-[0_5px_0_#990000] transition-transform">
-            <span class="text-white font-black text-xl text-outline pointer-events-none">SALTA</span>
-        </button>
-        <div class="absolute top-4 right-12 flex gap-4 pointer-events-auto">
-            <button id="btn-respawn-mob" class="bg-blue-500 text-white w-12 h-12 rounded-full font-bold text-xl border-2 border-white shadow-lg flex items-center justify-center pt-1">H</button>
-            <button id="btn-pause-mob" class="bg-gray-800 text-white w-12 h-12 rounded-full font-bold border-2 border-white shadow-lg flex items-center justify-center pt-1">||</button>
+        
+        <!-- Pulsanti Azione (Destra) -->
+        <div class="absolute bottom-4 right-6 sm:bottom-6 sm:right-12 flex flex-col gap-4 items-end">
+            <button id="dash-btn" class="w-14 h-14 sm:w-16 sm:h-16 bg-cyan-500/80 backdrop-blur-sm rounded-full border-4 border-white flex items-center justify-center pointer-events-auto shadow-[0_4px_0_#006080] transition-transform active:translate-y-1 active:shadow-none">
+                <span class="text-white font-black text-xl text-outline-sm pointer-events-none">⚡</span>
+            </button>
+            <button id="jump-btn" class="w-20 h-20 sm:w-24 sm:h-24 bg-red-500/80 backdrop-blur-sm rounded-full border-4 border-white flex items-center justify-center pointer-events-auto shadow-[0_5px_0_#990000] transition-transform active:translate-y-1 active:shadow-none">
+                <span class="text-white font-black text-lg sm:text-xl text-outline pointer-events-none">SALTA</span>
+            </button>
+        </div>
+
+        <!-- Menu/Respawn Rapidi (Alto Destra) -->
+        <div class="absolute top-4 right-6 sm:right-12 flex gap-3 sm:gap-4 pointer-events-auto">
+            <button id="btn-respawn-mob" class="bg-blue-500 text-white w-10 h-10 sm:w-12 sm:h-12 rounded-full font-bold text-lg sm:text-xl border-2 border-white shadow-md flex items-center justify-center pt-0.5">H</button>
+            <button id="btn-pause-mob" class="bg-gray-800 text-white w-10 h-10 sm:w-12 sm:h-12 rounded-full font-bold text-lg border-2 border-white shadow-md flex items-center justify-center pt-0.5">||</button>
         </div>
     </div>
 
-    <!-- HUD IN GIOCO -->
-    <div id="ui-layer" class="absolute inset-0 z-10 flex flex-col justify-between p-6 hidden pointer-events-none">
-        <div class="flex justify-between items-start">
-            <div class="text-white font-black text-2xl md:text-4xl text-outline">
-                ALTEZZA <br><span id="score" class="text-[#ffeaa7] text-5xl md:text-7xl">0</span><span class="text-2xl md:text-3xl text-white">m</span>
-                <div id="checkpoint-hud" class="text-sm md:text-lg text-green-300 mt-1 hidden">Ultimo Checkpoint: <span id="cp-score">0</span>m</div>
-                <div id="goal-hud" class="text-sm md:text-lg text-pink-300 mt-1 hidden animate-pulse">Obiettivo Finale: 1000m!</div>
+    <!-- HUD IN GIOCO (RESPONSIVE) -->
+    <div id="ui-layer" class="absolute inset-0 z-10 hidden pointer-events-none p-4 sm:p-6 w-full h-full flex flex-col justify-between">
+        <div class="flex justify-between items-start w-full gap-4">
+            
+            <!-- 1. PUNTEGGIO E INFO (Sempre visibile) -->
+            <div class="text-white font-black text-outline flex-1">
+                <div class="text-lg sm:text-2xl md:text-3xl">ALTEZZA</div>
+                <div class="-mt-2 sm:-mt-3">
+                    <span id="score" class="text-[#ffeaa7] text-4xl sm:text-6xl md:text-7xl drop-shadow-[0_0_10px_rgba(255,234,167,0.5)]">0</span>
+                    <span class="text-xl sm:text-2xl md:text-3xl text-white ml-1">m</span>
+                </div>
+                <!-- Pillole Info -->
+                <div id="checkpoint-hud" class="hidden mt-2 text-xs sm:text-sm text-green-300 bg-black/60 px-3 py-1 rounded-full border border-green-500/50 w-max shadow-md" style="-webkit-text-stroke: 0;">Ultimo Check: <span id="cp-score">0</span>m</div>
+                <div id="goal-hud" class="hidden mt-2 text-xs sm:text-sm text-pink-300 bg-black/60 px-3 py-1 rounded-full border border-pink-500/50 w-max shadow-md animate-pulse" style="-webkit-text-stroke: 0;">Vetta: 1000m!</div>
+                <div id="speed-hud" class="mt-2 text-xs sm:text-sm text-cyan-300 font-bold bg-black/40 px-3 py-1 rounded-full w-max" style="-webkit-text-stroke: 0;">⚡ <span id="speed-val">0</span> m/s</div>
             </div>
-            <div id="desktop-hints" class="text-white text-right text-lg font-bold bg-white/20 p-4 border-2 border-white rounded-2xl backdrop-blur-md text-outline hidden md:block">
-                🎮 W A S D / L-Stick - Muovi<br>
-                🖱️ Mouse (o Clicca+Trascina) - Visuale<br>
-                🚀 SPAZIO / A - Salta<br>
-                🔄 H / Y - Checkpoint<br>
-                ⏸️ ESC / Start - Pausa
+
+            <!-- 2. BARRA PROGRESSO (Nascosta su schermi piccolissimi, visibile su md+) -->
+            <div class="hidden md:flex flex-col items-center gap-1 w-[150px] lg:w-[200px] bg-black/40 p-3 rounded-2xl border border-white/20 backdrop-blur-sm">
+                <div class="text-white font-black text-xs lg:text-sm text-outline-sm mb-1">🏔️ PROGRESSO</div>
+                <div class="w-full bg-black/50 rounded-full h-3 border border-white/50 overflow-hidden relative">
+                    <div id="progress-bar" class="absolute top-0 left-0 h-full rounded-full transition-all duration-300" style="width:0%; background:linear-gradient(90deg,#2ed573,#ffd700,#ff4757)"></div>
+                </div>
+                <div class="text-white text-[10px] lg:text-xs font-bold mt-1"><span id="progress-pct">0</span>% verso 1000m</div>
+                <div class="text-yellow-300 text-[10px] lg:text-xs font-bold mt-1 border-t border-white/20 pt-1 w-full text-center">🏆 Record: <span id="best-score-val">0</span>m</div>
+            </div>
+
+            <!-- 3. COMANDI DESKTOP (Nascosti su Mobile/Touch) -->
+            <div id="desktop-hints" class="hidden lg:flex flex-col gap-2 glass-dark p-4 flex-1 max-w-[280px]">
+                <div class="text-white font-black text-sm text-center mb-1 text-outline-sm border-b border-white/20 pb-2">COMANDI PC</div>
+                <div class="text-white text-xs xl:text-sm font-bold space-y-1.5" style="-webkit-text-stroke:0;">
+                    <div class="flex justify-between"><span>🎮 Muovi:</span> <span class="text-yellow-300">W A S D</span></div>
+                    <div class="flex justify-between"><span>🖱️ Visuale:</span> <span class="text-yellow-300">Mouse (Trascina)</span></div>
+                    <div class="flex justify-between"><span>🚀 Salta:</span> <span class="text-yellow-300">SPAZIO</span></div>
+                    <div class="flex justify-between"><span>⚡ Dash:</span> <span class="text-yellow-300">SHIFT</span></div>
+                    <div class="flex justify-between"><span>🔄 Checkpoint:</span> <span class="text-yellow-300">H</span></div>
+                    <div class="flex justify-between"><span>⏸️ Pausa:</span> <span class="text-yellow-300">ESC</span></div>
+                </div>
             </div>
         </div>
-        <div class="absolute top-1/2 left-1/2 w-3 h-3 bg-white border-2 border-black rounded-full transform -translate-x-1/2 -translate-y-1/2 pointer-events-none hidden md:block"></div>
+
+        <!-- Mirino -->
+        <div id="pc-crosshair" class="absolute top-1/2 left-1/2 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white/80 border border-black/50 rounded-full transform -translate-x-1/2 -translate-y-1/2 pointer-events-none hidden md:block"></div>
+    </div>
+
+    <!-- TOAST BIOMA -->
+    <div id="biome-toast" class="absolute top-[20%] left-1/2 z-15 transform -translate-x-1/2 pointer-events-none hidden transition-opacity duration-500">
+        <div class="text-white font-black text-xl sm:text-2xl md:text-3xl text-outline glass-dark px-6 py-3 border-2 border-white/40 text-center" id="biome-toast-text">🌿 Prato</div>
     </div>
 
     <!-- MENU PRINCIPALE -->
-    <div id="main-menu" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-gradient-to-b from-[#74b9ff] to-[#81ecec]">
-        <div class="absolute top-10 left-10 w-32 h-32 bg-yellow-300 rounded-full blur-xl opacity-80 animate-pulse"></div>
-        <div class="absolute bottom-20 right-20 w-48 h-48 bg-white rounded-full blur-3xl opacity-50"></div>
+    <div id="main-menu" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-gradient-to-b from-[#74b9ff] to-[#81ecec] p-4 overflow-y-auto">
+        <div class="absolute top-10 left-10 w-24 h-24 sm:w-32 sm:h-32 bg-yellow-300 rounded-full blur-2xl opacity-80 animate-pulse pointer-events-none"></div>
+        <div class="absolute bottom-20 right-20 w-32 h-32 sm:w-48 sm:h-48 bg-white rounded-full blur-3xl opacity-50 pointer-events-none"></div>
 
-        <h1 class="text-white font-black text-5xl sm:text-6xl md:text-8xl mb-1 md:mb-2 text-outline tracking-tighter transform -rotate-2 text-center leading-none">ONLY BALL</h1>
-        <div class="bg-yellow-400 text-black px-4 md:px-6 py-1 md:py-2 rounded-full font-black text-sm sm:text-lg md:text-2xl mb-2 md:mb-3 shadow-[0_3px_0_#d48806] md:shadow-[0_5px_0_#d48806] transform rotate-3">
-            ULTIMATE EDITION
-        </div>
-        
-        <p class="text-white font-black text-xs sm:text-sm md:text-base mb-4 md:mb-6 tracking-widest drop-shadow-md z-10 text-outline">
-            CREATED BY <span class="text-yellow-300">ONLY_G4BB0</span>
-        </p>
-        
-        <div class="glass-panel p-4 md:p-8 w-[95%] max-w-[800px] flex flex-col gap-3 md:gap-4 items-center justify-center z-10">
-            <p id="diff-desc" class="text-center text-[11px] sm:text-xs md:text-sm font-bold text-gray-700 leading-tight w-full">Salvataggi abilitati ogni 70m.</p>
+        <div class="flex flex-col items-center mt-auto mb-auto w-full max-w-[800px] z-10">
+            <h1 class="text-white font-black text-[3.5rem] leading-[1] sm:text-6xl md:text-8xl mb-2 text-outline tracking-tighter transform -rotate-2 text-center">ONLY BALL</h1>
+            <div class="bg-yellow-400 text-black px-4 sm:px-6 py-1 sm:py-2 rounded-full font-black text-xs sm:text-lg md:text-2xl mb-4 shadow-[0_3px_0_#d48806] transform rotate-3">ULTIMATE EDITION</div>
+            <p class="text-white font-black text-[10px] sm:text-sm md:text-base mb-6 tracking-widest text-outline-sm">CREATED BY <span class="text-yellow-300">ONLY_G4BB0</span></p>
             
-            <div class="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-5">
-                <button id="btn-difficulty" class="btn-secondary w-full h-full py-4 md:py-5 text-base sm:text-lg md:text-xl">MODALITÀ: NORMALE</button>
-                <button id="btn-play" class="btn-primary w-full h-full py-4 md:py-5 text-lg sm:text-xl md:text-2xl">GIOCA ORA</button>
-                <button id="btn-open-skins" class="btn-purple w-full h-full py-4 md:py-5 text-base sm:text-lg md:text-xl">Scegli Pallina 🎨</button>
-                <button id="btn-settings-main" class="btn-secondary w-full h-full py-4 md:py-5 text-base sm:text-lg md:text-xl opacity-90">Impostazioni Gioco</button>
+            <div class="glass-panel p-5 md:p-8 w-full flex flex-col gap-4">
+                <p id="diff-desc" class="text-center text-xs sm:text-sm font-bold text-gray-700 w-full">Salvataggi abilitati ogni 70m.</p>
+                <div class="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <button id="btn-difficulty" class="btn-secondary w-full py-3 sm:py-4 text-sm sm:text-base md:text-lg">MODALITÀ: NORMALE</button>
+                    <button id="btn-play" class="btn-primary w-full py-3 sm:py-4 text-base sm:text-lg md:text-xl">GIOCA ORA</button>
+                    <button id="btn-open-skins" class="btn-purple w-full py-3 sm:py-4 text-sm sm:text-base md:text-lg">Scegli Pallina 🎨</button>
+                    <button id="btn-settings-main" class="btn-secondary w-full py-3 sm:py-4 text-sm sm:text-base md:text-lg opacity-95">Impostazioni Gioco</button>
+                </div>
             </div>
+            
+            <p class="mt-4 text-white font-bold text-xs sm:text-sm bg-black/40 px-4 py-2 rounded-full hidden" id="gamepad-status">🎮 Controller Rilevato!</p>
+            <p id="menu-best-score" class="mt-3 text-yellow-300 font-black text-sm sm:text-base lg:text-lg bg-black/60 px-5 py-2 rounded-full border border-yellow-500/30">🏆 Record Personale: <span id="menu-best-val">0</span>m</p>
         </div>
-        <p class="mt-4 text-white font-bold text-sm bg-black/40 px-4 py-2 rounded-full hidden" id="gamepad-status">🎮 Controller Rilevato!</p>
     </div>
 
     <!-- MENU SKIN -->
-    <div id="skin-menu" class="absolute inset-0 z-40 hidden flex flex-col items-center justify-end bg-black/20 backdrop-blur-sm p-4 pb-8 md:pb-12 pointer-events-none">
-        <div class="glass-panel p-4 md:p-8 w-full max-w-[600px] flex flex-col gap-4 items-center pointer-events-auto">
-            <h2 class="text-black text-2xl md:text-3xl font-black mb-1 text-center">SCEGLI PALLINA</h2>
-            
-            <div class="flex items-center justify-between w-full bg-gray-100 p-3 md:p-4 rounded-2xl border-4 border-gray-300">
-                <button id="btn-skin-prev" class="btn-secondary w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-xl md:text-2xl font-black rounded-full">&lt;</button>
-                <div id="skin-name-display" class="text-lg md:text-2xl font-black text-gray-800 text-center flex-1 mx-2">Pallone da Spiaggia</div>
-                <button id="btn-skin-next" class="btn-secondary w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-xl md:text-2xl font-black rounded-full">&gt;</button>
+    <div id="skin-menu" class="absolute inset-0 z-40 hidden flex flex-col items-center justify-end md:justify-center bg-black/40 backdrop-blur-sm p-4 pointer-events-none">
+        <div class="glass-panel p-5 md:p-8 w-full max-w-[600px] flex flex-col gap-4 items-center pointer-events-auto mb-4 md:mb-0">
+            <h2 class="text-black text-2xl sm:text-3xl font-black mb-2 text-center">SCEGLI PALLINA</h2>
+            <div class="flex items-center justify-between w-full bg-gray-100 p-3 rounded-2xl border-4 border-gray-300 shadow-inner">
+                <button id="btn-skin-prev" class="btn-secondary w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-lg sm:text-xl font-black rounded-full flex-shrink-0">&lt;</button>
+                <div id="skin-name-display" class="text-base sm:text-lg md:text-xl font-black text-gray-800 text-center flex-1 px-2 leading-tight">Pallone da Spiaggia</div>
+                <button id="btn-skin-next" class="btn-secondary w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-lg sm:text-xl font-black rounded-full flex-shrink-0">&gt;</button>
             </div>
-            
-            <button id="btn-close-skin" class="btn-primary mt-2 py-3 md:py-4 w-full text-lg md:text-xl">CONFERMA SELEZIONE</button>
+            <input type="file" id="custom-skin-upload" accept="image/png, image/jpeg, image/jpg" class="hidden">
+            <button id="btn-custom-skin" class="btn-dark w-full py-2.5 sm:py-3 text-xs sm:text-sm md:text-base">Carica Immagine Personale 🖼️</button>
+            <button id="btn-close-skin" class="btn-primary mt-2 py-3 w-full text-base sm:text-lg">CONFERMA SELEZIONE</button>
         </div>
     </div>
 
     <!-- MENU IMPOSTAZIONI -->
-    <div id="settings-menu" class="absolute inset-0 z-40 hidden flex flex-col items-center justify-center bg-black/70 backdrop-blur-md p-2">
-        <div class="glass-panel p-4 sm:p-6 md:p-10 w-full max-w-[500px] flex flex-col gap-3 md:gap-5 max-h-screen overflow-y-auto">
-            <h2 class="text-black text-2xl sm:text-3xl md:text-4xl font-black mb-1 md:mb-2 text-center">IMPOSTAZIONI</h2>
-            <div class="flex flex-col gap-1 md:gap-2">
-                <label class="text-gray-700 font-bold text-sm md:text-lg">Volume Effetti</label>
-                <input type="range" id="vol-slider" min="0" max="100" value="50" class="w-full h-3 md:h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+    <div id="settings-menu" class="absolute inset-0 z-40 hidden flex flex-col items-center justify-center bg-black/70 backdrop-blur-md p-4">
+        <div class="glass-panel p-5 sm:p-8 w-full max-w-[500px] flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+            <h2 class="text-black text-2xl sm:text-3xl font-black text-center mb-2">IMPOSTAZIONI</h2>
+            <div class="flex flex-col gap-1">
+                <label class="text-gray-700 font-bold text-xs sm:text-sm">Volume Effetti</label>
+                <input type="range" id="vol-slider" min="0" max="100" value="50" class="w-full h-3 sm:h-4 bg-gray-200 rounded-lg appearance-none">
             </div>
-            <div class="flex flex-col gap-1 md:gap-2">
-                <label class="text-gray-700 font-bold text-sm md:text-lg">Volume Musica</label>
-                <input type="range" id="music-slider" min="0" max="100" value="30" class="w-full h-3 md:h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            <div class="flex flex-col gap-1">
+                <label class="text-gray-700 font-bold text-xs sm:text-sm">Volume Musica</label>
+                <input type="range" id="music-slider" min="0" max="100" value="30" class="w-full h-3 sm:h-4 bg-gray-200 rounded-lg appearance-none">
             </div>
-            <div class="flex flex-col gap-1 md:gap-2 mt-1">
-                <label class="text-gray-700 font-bold text-sm md:text-lg">Risoluzione Grafica</label>
-                <select id="res-select" class="w-full p-2 md:p-3 rounded-lg md:rounded-xl border-2 border-blue-300 font-bold text-sm md:text-base text-gray-700 outline-none">
-                    <option value="ultra">Ultra (Simulazione RTX - Riflessi Reali)</option>
-                    <option value="high">Alta (Migliore Qualità)</option>
-                    <option value="medium" selected>Media (Bilanciata)</option>
-                    <option value="low">Bassa (Migliori Prestazioni)</option>
+            <div class="flex flex-col gap-1 mt-2">
+                <label class="text-gray-700 font-bold text-xs sm:text-sm">Risoluzione Grafica</label>
+                <select id="res-select" class="w-full p-2.5 sm:p-3 rounded-xl border-2 border-blue-300 font-bold text-xs sm:text-sm text-gray-700 outline-none bg-white">
+                    <option value="ultra">Ultra (RTX - PC Potenti)</option>
+                    <option value="high">Alta (Ottima Qualità)</option>
+                    <option value="medium" selected>Media (Consigliata)</option>
+                    <option value="low">Bassa (Per Smartphone/Lent)</option>
                 </select>
             </div>
-            <div class="flex justify-between items-center bg-gray-100 p-2 md:p-4 rounded-lg md:rounded-xl border-2 border-gray-200">
-                <span class="text-gray-700 font-bold text-sm md:text-base">Ombre (Effetti Luce)</span>
-                <input type="checkbox" id="shadow-toggle" checked class="w-5 h-5 md:w-6 md:h-6 rounded text-blue-500 cursor-pointer">
+            <div class="flex justify-between items-center bg-gray-100 p-3 sm:p-4 rounded-xl border-2 border-gray-200 mt-2">
+                <span class="text-gray-700 font-bold text-xs sm:text-sm">Ombre Dinamiche</span>
+                <input type="checkbox" id="shadow-toggle" checked class="w-5 h-5 sm:w-6 sm:h-6 rounded text-blue-500">
             </div>
-            <button id="btn-close-settings" class="btn-secondary mt-2 py-2 md:py-3 w-full text-sm md:text-base">SALVA E CHIUDI</button>
+            <button id="btn-close-settings" class="btn-secondary mt-4 py-3 w-full text-sm sm:text-base">SALVA E CHIUDI</button>
         </div>
     </div>
 
     <!-- MENU PAUSA -->
-    <div id="pause-menu" class="absolute inset-0 z-20 hidden flex flex-col items-center justify-center bg-white/40 backdrop-blur-lg p-4">
-        <h1 class="text-white font-black text-4xl sm:text-5xl md:text-7xl mb-4 md:mb-6 text-outline">PAUSA</h1>
-        <div class="w-full max-w-[800px] grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-5">
-            <button id="btn-resume" class="btn-primary w-full h-full py-4 md:py-5 text-lg sm:text-xl md:text-2xl">RIPRENDI</button>
-            <button id="btn-restart" class="btn-dark w-full h-full py-4 md:py-5 text-base sm:text-lg md:text-xl">Riavvia Partita</button>
-            <button id="btn-settings-pause" class="btn-secondary w-full h-full py-4 md:py-5 text-base sm:text-lg md:text-xl">Impostazioni</button>
-            <button id="btn-home" class="btn-primary w-full h-full py-4 md:py-5 text-base sm:text-lg md:text-xl">Menu Principale</button>
+    <div id="pause-menu" class="absolute inset-0 z-20 hidden flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <h1 class="text-white font-black text-5xl sm:text-6xl md:text-7xl mb-6 text-outline tracking-wider">PAUSA</h1>
+        <div class="w-full max-w-[600px] grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <button id="btn-resume" class="btn-primary w-full py-3 sm:py-4 text-base sm:text-lg">RIPRENDI</button>
+            <button id="btn-restart" class="btn-hard w-full py-3 sm:py-4 text-base sm:text-lg">Riavvia Partita</button>
+            <button id="btn-settings-pause" class="btn-purple w-full py-3 sm:py-4 text-base sm:text-lg">Impostazioni</button>
+            <button id="btn-home" class="btn-dark w-full py-3 sm:py-4 text-base sm:text-lg">Menu Principale</button>
         </div>
     </div>
 
     <!-- GAME OVER -->
-    <div id="gameover" class="absolute inset-0 z-50 hidden flex flex-col items-center justify-center bg-red-500/90 backdrop-blur-md p-4">
-        <h1 class="text-white font-black text-5xl sm:text-6xl md:text-8xl mb-1 md:mb-2 text-outline animate-bounce text-center">GAME OVER!</h1>
-        <p class="text-white text-lg sm:text-xl md:text-3xl mb-4 md:mb-8 font-bold text-outline text-center px-4">Altezza massima: <span id="final-score" class="text-yellow-300">0</span> metri</p>
-        <button id="btn-gameover-restart" class="btn-primary px-6 sm:px-8 md:px-12 py-3 sm:py-4 md:py-6 text-lg sm:text-xl md:text-3xl">RIPROVA DA ZERO!</button>
+    <div id="gameover" class="absolute inset-0 z-50 hidden flex flex-col items-center justify-center bg-red-900/90 backdrop-blur-md p-4 text-center">
+        <h1 class="text-white font-black text-5xl sm:text-7xl mb-4 text-outline animate-bounce">GAME OVER!</h1>
+        <p class="text-white text-lg sm:text-2xl mb-8 font-bold text-outline-sm">Altezza raggiunta: <span id="final-score" class="text-yellow-300">0</span> metri</p>
+        <button id="btn-gameover-restart" class="btn-primary px-8 py-4 text-lg sm:text-2xl w-full max-w-[400px]">Riprova da Zero</button>
     </div>
 
-    <!-- TITOLI DI CODA (FINALE) -->
+    <!-- TITOLI DI CODA -->
     <div id="credits-screen" class="absolute inset-0 z-[60] hidden bg-black text-white flex-col items-center justify-end overflow-hidden cursor-pointer">
-        <div id="credits-text" class="absolute w-full text-center flex flex-col gap-12 transform translate-y-[100vh] px-4">
+        <div id="credits-text" class="absolute w-full text-center flex flex-col gap-12 transform translate-y-[100vh] px-4 pb-32">
             <div class="credit-block mt-32">
-                <h1 class="text-7xl font-black text-yellow-400 mb-4 text-outline">ONLY BALL</h1>
-                <p class="text-3xl text-pink-300 font-bold">Hai raggiunto la Vetta! (1000m)</p>
+                <h1 class="text-5xl sm:text-7xl font-black text-yellow-400 mb-2 text-outline">ONLY BALL</h1>
+                <p class="text-xl sm:text-3xl text-pink-300 font-bold text-outline-sm">Hai raggiunto la Vetta! (1000m)</p>
             </div>
             
-            <div id="story-block" class="mt-8 text-xl max-w-3xl mx-auto credit-block">
-                <h2 class="text-4xl font-bold text-orange-400 mb-4 text-outline">La Storia</h2>
-                <p id="credits-story" class="text-gray-300 italic leading-relaxed min-h-[160px]">
+            <div class="mt-8 text-base sm:text-xl max-w-3xl mx-auto credit-block">
+                <h2 class="text-2xl sm:text-4xl font-bold text-orange-400 mb-4 text-outline-sm">La Storia</h2>
+                <p class="text-gray-300 italic leading-relaxed">
                     "Nata in una fabbrica di plastica di dubbia qualità, questa pallina ha deciso che rotolare sul pavimento era troppo mainstream. Ha sfidato la gravità, ha ignorato le leggi della termodinamica e ha saltato su piattaforme fluttuanti senza alcun motivo logico... solo per guardare il mondo dall'alto in basso."
                 </p>
             </div>
 
-            <div class="mt-8 text-2xl credit-block"><h2 class="text-4xl font-bold text-blue-400 mb-2 text-outline">Creatore & Sviluppatore Principale</h2><p class="font-black text-white">ONLY_G4BB0</p></div>
-            <div class="mt-8 text-2xl credit-block"><h2 class="text-4xl font-bold text-teal-400 mb-2 text-outline">Direzione Artistica e Level Design</h2><p class="font-black text-white">ONLY_G4BB0</p></div>
+            <div class="mt-8 credit-block"><h2 class="text-xl sm:text-3xl font-bold text-blue-400 mb-1 text-outline-sm">Creatore & Sviluppatore Principale</h2><p class="font-black text-white text-lg sm:text-2xl">ONLY_G4BB0</p></div>
+            <div class="mt-8 credit-block"><h2 class="text-xl sm:text-3xl font-bold text-teal-400 mb-1 text-outline-sm">Direzione Artistica e Level Design</h2><p class="font-black text-white text-lg sm:text-2xl">ONLY_G4BB0</p></div>
             
-            <div class="mt-8 text-2xl credit-block">
-                <h2 class="text-4xl font-bold text-red-400 mb-4 text-outline">Team di Testing Ufficiale</h2>
-                <ul class="text-xl space-y-2 font-bold text-gray-200">
+            <div class="mt-8 credit-block">
+                <h2 class="text-2xl sm:text-4xl font-bold text-red-400 mb-4 text-outline-sm">Team di Testing Ufficiale</h2>
+                <ul class="text-lg sm:text-xl space-y-2 font-bold text-gray-200">
                     <li>Anastasia Messina (Kiri) - <span class="text-sm italic text-gray-400">Chief Bug Hunter</span></li>
                     <li>Roberto Di Caro (Reef) - <span class="text-sm italic text-gray-400">Lead QA</span></li>
-                    <li>Conci (Mamma) - <span class="text-sm italic text-gray-400">Supporto Morale & Playtesting</span></li>
+                    <li>Conci (Mamma) - <span class="text-sm italic text-gray-400">Supporto Morale</span></li>
                     <li>Macco (Papà) - <span class="text-sm italic text-gray-400">Hardware Tester</span></li>
-                    <li>Simone Lazzara (RomanoDeRoma) - <span class="text-sm italic text-gray-400">Speedrunner Ufficiale</span></li>
+                    <li>Simone Lazzara (RomanoDeRoma) - <span class="text-sm italic text-gray-400">Speedrunner</span></li>
                 </ul>
             </div>
 
-            <div class="mt-8 text-2xl credit-block"><h2 class="text-4xl font-bold text-green-400 mb-2 text-outline">Motore Fisico</h2><p>Cannon.js (Physics Perfect Edition)</p></div>
-            <div class="mt-8 text-2xl credit-block"><h2 class="text-4xl font-bold text-pink-400 mb-2 text-outline">Motore Grafico</h2><p>Three.js (Ultimate WebGL)</p></div>
-            <div class="mt-8 text-2xl credit-block"><h2 class="text-4xl font-bold text-purple-400 mb-2 text-outline">Design del Suono & Musiche</h2><p>Procedural Web Audio API</p></div>
-            <div class="mt-8 text-2xl credit-block"><h2 class="text-4xl font-bold text-yellow-300 mb-2 text-outline">VFX & Particelle</h2><p>Real-Time GPU Computation</p></div>
+            <div class="mt-8 credit-block"><h2 class="text-xl sm:text-3xl font-bold text-green-400 mb-1 text-outline-sm">Motore Fisico</h2><p class="text-lg sm:text-xl">Cannon.js</p></div>
+            <div class="mt-8 credit-block"><h2 class="text-xl sm:text-3xl font-bold text-pink-400 mb-1 text-outline-sm">Motore Grafico</h2><p class="text-lg sm:text-xl">Three.js</p></div>
+            <div class="mt-8 credit-block"><h2 class="text-xl sm:text-3xl font-bold text-purple-400 mb-1 text-outline-sm">Audio & VFX</h2><p class="text-lg sm:text-xl">Web Audio API & WebGL</p></div>
             
-            <div class="mt-32 text-5xl font-black text-yellow-400 animate-pulse pb-64 text-outline credit-block">GRAZIE PER AVER GIOCATO!</div>
+            <div class="mt-32 text-4xl sm:text-6xl font-black text-yellow-400 animate-pulse text-outline credit-block">GRAZIE PER AVER GIOCATO!</div>
         </div>
-        <div class="absolute bottom-6 right-6 text-white/50 font-bold text-xl bg-black/50 px-4 py-2 rounded-xl z-10">Premi ESC (o tocca lo schermo) per uscire</div>
+        <div class="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 text-white/50 font-bold text-sm sm:text-lg bg-black/50 px-3 py-2 rounded-xl z-10">Premi ESC / Tocca per uscire</div>
     </div>
 
     <script>
         /* ==========================================================================
-           SEZIONE 3: VARIABILI GLOBALI, STATO E SETUP BIOMI
+           SEZIONE 3: VARIABILI GLOBALI E SETUP
            ========================================================================== */
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        // Forza nascondimento UI Desktop su dispositivi Touch
+        if (window.matchMedia("(hover: none) and (pointer: coarse)").matches) {
+            let css = document.createElement("style");
+            css.innerHTML = "#desktop-hints, #pc-crosshair { display: none !important; }";
+            document.head.appendChild(css);
+        }
+
         let camYaw = Math.PI, camPitch = 0.3, camDistance = 12; 
         let gameState = 'menu', lastGameState = 'menu', previousState = 'menu', difficulty = 'normal'; 
         let checkpoints = [], lastCheckpoint = { x: 0, y: 5, z: 0 }, nextTargetCheckpoint = 70; 
@@ -255,10 +300,23 @@
         let isRTX = false; 
         const platforms = []; const movingObstacles = []; const sceneProps = [];
         
+        let bestScore = parseInt(localStorage.getItem('onlyball_best') || '0');
+        let coyoteTimer = 0, jumpBufferTimer = 0;      
+        const COYOTE_FRAMES = 9, JUMP_BUFFER_FRAMES = 9; 
+        let wasOnGround = false, lastVelY = 0;             
+        let screenShakeIntensity = 0; 
+        let dashCooldown = 0;         
+        const DASH_COOLDOWN = 90, DASH_FORCE = 35;        
+        let currentBiomeNotified = -1, displayedScore = 0;        
+        let customTexture = null; 
+        let biomeToastTimer = 0;
+        
+        document.getElementById('menu-best-val').innerText = bestScore;
+        
         let lastGpButtons = [], focusIndex = 0;
         const menuGroups = {
             'menu': ['btn-play', 'btn-difficulty', 'btn-open-skins', 'btn-settings-main'],
-            'skins': ['btn-skin-prev', 'btn-skin-next', 'btn-close-skin'],
+            'skins': ['btn-skin-prev', 'btn-skin-next', 'btn-custom-skin', 'btn-close-skin'],
             'paused': ['btn-resume', 'btn-restart', 'btn-settings-pause', 'btn-home'],
             'settings': ['vol-slider', 'music-slider', 'res-select', 'shadow-toggle', 'btn-close-settings'],
             'gameover': ['btn-gameover-restart']
@@ -272,14 +330,20 @@
             { sky: 0x2c2c54, c1: '#9b59b6', c2: '#8e44ad' }, // 4: Neon
             { sky: 0xfd79a8, c1: '#e84393', c2: '#fd79a8' }, // 5: Caramella
             { sky: 0x000000, c1: '#badc58', c2: '#b8e994' }, // 6: Tossico
-            { sky: 0x0984e3, c1: '#0984e3', c2: '#74b9ff' }, // 7: Oceano Profondo
+            { sky: 0x0984e3, c1: '#0984e3', c2: '#74b9ff' }, // 7: Oceano
             { sky: 0xf1c40f, c1: '#f39c12', c2: '#f1c40f' }, // 8: Solare
             { sky: 0x111111, c1: '#00cec9', c2: '#81ecec' }, // 9: Cyberpunk
             { sky: 0x2d3436, c1: '#d63031', c2: '#ff7675' }, // 10: Sangue
             { sky: 0xffffff, c1: '#dfe6e9', c2: '#b2bec3' }, // 11: Nuvole
-            { sky: 0x192a56, c1: '#273c75', c2: '#487eb0' }, // 12: Spazio Profondo
+            { sky: 0x192a56, c1: '#273c75', c2: '#487eb0' }, // 12: Spazio
             { sky: 0x3B3B98, c1: '#82589F', c2: '#D6A2E8' }, // 13: Cristallo
             { sky: 0xf5f6fa, c1: '#fbc531', c2: '#e1b12c' }  // 14: Paradiso
+        ];
+
+        const biomeNames = [
+            '🌿 Prato','🏜️ Deserto','🧊 Ghiaccio','🌋 Vulcano','💜 Neon',
+            '🍬 Caramella','☢️ Tossico','🌊 Oceano Profondo','☀️ Solare','🤖 Cyberpunk',
+            '🩸 Sangue','☁️ Nuvole','🪐 Spazio Profondo','💎 Cristallo','🌟 Paradiso'
         ];
 
         /* ==========================================================================
@@ -290,37 +354,40 @@
         function forceFullscreen() {
             let doc = document.documentElement;
             let reqFS = doc.requestFullscreen || doc.webkitRequestFullscreen || doc.mozRequestFullScreen || doc.msRequestFullscreen;
-            try { if (reqFS) reqFS.call(doc); } catch(e) { console.warn("Fullscreen API fallita:", e); }
-            try {
-                if (screen.orientation && screen.orientation.lock) {
-                    screen.orientation.lock('landscape').catch(e => console.warn("Lock orientamento non supportato:", e));
-                }
-            } catch(e) { console.warn("Orientation API fallita:", e); }
+            if (reqFS) {
+                try { 
+                    let promise = reqFS.call(doc); 
+                    if (promise !== undefined && promise.catch) {
+                        promise.catch(e => console.warn("Fullscreen API fallita:", e));
+                    }
+                } catch(e) { console.warn("Fullscreen API fallita:", e); }
+            }
+            if (screen.orientation && screen.orientation.lock) {
+                try { 
+                    let promise = screen.orientation.lock('landscape');
+                    if (promise !== undefined && promise.catch) {
+                        promise.catch(e => console.warn("Orientation API fallita:", e));
+                    }
+                } catch(e) { console.warn("Orientation API fallita:", e); }
+            }
         }
 
         btnForceLandscape.addEventListener('click', forceFullscreen);
-        btnForceLandscape.addEventListener('touchend', (e) => { 
-            e.preventDefault(); forceFullscreen(); 
-        }, {passive: false});
+        btnForceLandscape.addEventListener('touchend', (e) => { e.preventDefault(); forceFullscreen(); }, {passive: false});
 
-        let joystickData = { x: 0, y: 0, active: false };
-        let joyCenter = { x: 0, y: 0 };
+        let joystickData = { x: 0, y: 0, active: false }, joyCenter = { x: 0, y: 0 };
         let joyTouchId = null, camTouchId = null, lastTouchCam = {x: 0, y: 0};
 
         if(isMobile) {
             document.getElementById('mobile-controls').classList.remove('hidden');
-            
-            // FIX: Nasconde forzatamente i suggerimenti desktop su mobile (anche in orizzontale)
-            const desktopHints = document.getElementById('desktop-hints');
-            if (desktopHints) desktopHints.style.display = 'none';
 
             const joyZone = document.getElementById('joystick-zone'), joyKnob = document.getElementById('joystick-knob');
             const camZone = document.getElementById('camera-zone'), jumpBtn = document.getElementById('jump-btn');
 
             joyZone.addEventListener('touchstart', (e) => {
-                e.preventDefault(); let touch = e.changedTouches[0]; joyTouchId = touch.identifier;
+                e.preventDefault(); joyTouchId = e.changedTouches[0].identifier;
                 let rect = joyZone.getBoundingClientRect(); joyCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
-                updateJoystick(touch);
+                updateJoystick(e.changedTouches[0]);
             }, {passive: false});
 
             joyZone.addEventListener('touchmove', (e) => {
@@ -339,7 +406,8 @@
 
             function updateJoystick(touch) {
                 let dx = touch.clientX - joyCenter.x, dy = touch.clientY - joyCenter.y;
-                let dist = Math.sqrt(dx*dx + dy*dy), maxDist = 45; 
+                let maxDist = joyZone.offsetWidth / 2 - joyKnob.offsetWidth / 2;
+                let dist = Math.sqrt(dx*dx + dy*dy); 
                 if(dist > maxDist) { dx = (dx/dist)*maxDist; dy = (dy/dist)*maxDist; }
                 joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
                 joystickData.x = dx / maxDist; joystickData.y = dy / maxDist; joystickData.active = true;
@@ -356,11 +424,10 @@
                 e.preventDefault(); if(gameState !== 'playing') return;
                 for(let i=0; i<e.changedTouches.length; i++) {
                     if(e.changedTouches[i].identifier === camTouchId) {
-                        let touch = e.changedTouches[i];
-                        camYaw -= (touch.clientX - lastTouchCam.x) * 0.008;
-                        camPitch += (touch.clientY - lastTouchCam.y) * 0.008; 
+                        let t = e.changedTouches[i];
+                        camYaw -= (t.clientX - lastTouchCam.x) * 0.008; camPitch += (t.clientY - lastTouchCam.y) * 0.008; 
                         camPitch = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, camPitch));
-                        lastTouchCam.x = touch.clientX; lastTouchCam.y = touch.clientY;
+                        lastTouchCam.x = t.clientX; lastTouchCam.y = t.clientY;
                     }
                 }
             }, {passive: false});
@@ -369,19 +436,22 @@
                 for(let i=0; i<e.changedTouches.length; i++) if(e.changedTouches[i].identifier === camTouchId) camTouchId = null;
             }, {passive: false});
 
-            jumpBtn.addEventListener('touchstart', (e) => { 
-                e.preventDefault(); keys.space = true; jumpBtn.style.transform = "translateY(5px)"; jumpBtn.style.boxShadow = "0 0px 0 #990000";
-            }, {passive: false});
-            jumpBtn.addEventListener('touchend', (e) => { 
-                e.preventDefault(); keys.space = false; jumpBtn.style.transform = "translateY(0px)"; jumpBtn.style.boxShadow = "0 5px 0 #990000";
-            });
+            jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys.space = true; }, {passive: false});
+            jumpBtn.addEventListener('touchend', (e) => { e.preventDefault(); keys.space = false; });
+
+            const dashBtnMob = document.getElementById('dash-btn');
+            if(dashBtnMob) {
+                dashBtnMob.addEventListener('touchstart', (e) => {
+                    e.preventDefault(); if(dashCooldown === 0) { keys.shift = true; setTimeout(() => { keys.shift = false; }, 80); }
+                }, {passive: false});
+            }
 
             document.getElementById('btn-respawn-mob').addEventListener('touchstart', (e) => { e.preventDefault(); if(difficulty === 'normal') triggerRespawn(); });
             document.getElementById('btn-pause-mob').addEventListener('touchstart', (e) => { e.preventDefault(); openPauseMenu(); });
         }
 
         /* ==========================================================================
-           SEZIONE 5: MOTORE AUDIO E MUSICA
+           SEZIONE 5: MOTORE AUDIO
            ========================================================================== */
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const masterGain = audioCtx.createGain(); masterGain.gain.value = 0.5; masterGain.connect(audioCtx.destination);
@@ -390,11 +460,18 @@
             playJump: () => {
                 if(audioCtx.state === 'suspended') return;
                 const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-                osc.type = 'sine'; osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
                 osc.connect(gain); gain.connect(masterGain);
                 gain.gain.setValueAtTime(0.3, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+            },
+            playBounce: () => { // Suono Trampolino
+                if(audioCtx.state === 'suspended') return;
+                const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                osc.type = 'square'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+                osc.connect(gain); gain.connect(masterGain);
+                gain.gain.setValueAtTime(0.4, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
             },
             playCheckpoint: () => {
                 if(audioCtx.state === 'suspended') return;
@@ -444,11 +521,7 @@
                     [261.63, 293.66, 329.63, 392.00, 440.00]  // C Maj
                 ];
                 
-                let scale;
-                if(moodKey === 'menu' || moodKey === 'skins' || moodKey === 'console') scale = baseScales[5];
-                else if(moodKey === 'credits') scale = [523.25, 659.25, 783.99, 1046.50, 1318.51]; 
-                else scale = baseScales[moodKey % 6]; 
-                
+                let scale = (moodKey === 'menu' || moodKey === 'skins' || moodKey === 'console') ? baseScales[5] : (moodKey === 'credits' ? [523.25, 659.25, 783.99, 1046.50, 1318.51] : baseScales[moodKey % 6]);
                 let droneFreq = scale[0] / 2; if (moodKey === 2 || moodKey === 11) droneFreq = scale[0] / 4; 
                 let droneType = (moodKey === 3 || moodKey === 4 || moodKey === 6 || moodKey === 10) ? 'sawtooth' : 'sine';
                 
@@ -458,8 +531,7 @@
                 this.currentInterval = setInterval(() => {
                     if(Math.random() > 0.25 && this.ctx.state !== 'suspended') {
                         let freq = scale[Math.floor(Math.random() * scale.length)];
-                        const octaveJumps = [0.5, 1, 1, 2, 4]; 
-                        freq *= octaveJumps[Math.floor(Math.random() * octaveJumps.length)];
+                        const octaveJumps = [0.5, 1, 1, 2, 4]; freq *= octaveJumps[Math.floor(Math.random() * octaveJumps.length)];
                         this.playChime(freq, chimeType);
                     }
                 }, 300); 
@@ -486,8 +558,7 @@
                 const now = this.ctx.currentTime;
                 this.activeNodes.forEach(n => {
                     n.gain.gain.cancelScheduledValues(now); n.gain.gain.setValueAtTime(n.gain.gain.value, now);
-                    n.gain.gain.linearRampToValueAtTime(0.001, now + 1.5); 
-                    setTimeout(() => { try { n.osc.stop(); n.lfo.stop(); n.osc.disconnect(); n.gain.disconnect(); } catch(e){} }, 1600);
+                    n.gain.gain.linearRampToValueAtTime(0.001, now + 1.5); setTimeout(() => { try { n.osc.stop(); n.lfo.stop(); n.osc.disconnect(); n.gain.disconnect(); } catch(e){} }, 1600);
                 });
                 this.activeNodes = [];
             }
@@ -495,8 +566,13 @@
         MusicEngine.init();
 
         let audioStarted = false;
-        function initAudio() {
-            if(!audioStarted) { audioCtx.resume().then(() => { audioStarted = true; if(gameState === 'menu') MusicEngine.playMood('menu'); }); }
+        function initAudio() { 
+            if(!audioStarted) { 
+                audioCtx.resume().then(() => { 
+                    audioStarted = true; 
+                    if(gameState === 'menu') MusicEngine.playMood('menu'); 
+                }).catch(e => console.warn("AudioContext resume failed:", e)); 
+            } 
         }
         document.addEventListener('click', initAudio, {once: true}); document.addEventListener('touchstart', initAudio, {once: true}); document.addEventListener('keydown', initAudio, {once: true});
 
@@ -512,8 +588,7 @@
         function createTennisTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ccff00'; ctx.fillRect(0,0,512,256);
-            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 12;
+            ctx.fillStyle = '#ccff00'; ctx.fillRect(0,0,512,256); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 12;
             ctx.beginPath(); ctx.arc(128, 128, 110, -Math.PI/2, Math.PI/2); ctx.stroke();
             ctx.beginPath(); ctx.arc(384, 128, 110, Math.PI/2, 3*Math.PI/2); ctx.stroke();
             const tex = new THREE.CanvasTexture(canvas); tex.anisotropy = renderer?.capabilities?.getMaxAnisotropy() || 16; return tex;
@@ -521,38 +596,48 @@
         function createVolleyballTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,170,256);
-            ctx.fillStyle = '#f1c40f'; ctx.fillRect(170,0,170,256);
-            ctx.fillStyle = '#3498db'; ctx.fillRect(340,0,172,256);
-            ctx.strokeStyle = '#222222'; ctx.lineWidth = 4;
-            ctx.strokeRect(0,0,170,256); ctx.strokeRect(170,0,170,256); ctx.strokeRect(340,0,172,256);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,170,256); ctx.fillStyle = '#f1c40f'; ctx.fillRect(170,0,170,256); ctx.fillStyle = '#3498db'; ctx.fillRect(340,0,172,256);
+            ctx.strokeStyle = '#222222'; ctx.lineWidth = 4; ctx.strokeRect(0,0,170,256); ctx.strokeRect(170,0,170,256); ctx.strokeRect(340,0,172,256);
             const tex = new THREE.CanvasTexture(canvas); tex.anisotropy = renderer?.capabilities?.getMaxAnisotropy() || 16; return tex;
         }
         function createGolfTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,256,256);
-            ctx.fillStyle = '#e0e0e0';
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,256,256); ctx.fillStyle = '#e0e0e0';
             for(let i=0; i<256; i+=32) { for(let j=0; j<256; j+=32) { ctx.beginPath(); ctx.arc(i+16, j+16, 10, 0, 2*Math.PI); ctx.fill(); } }
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2,1); tex.anisotropy = renderer?.capabilities?.getMaxAnisotropy() || 16; return tex;
         }
         function createBasketballTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#e67e22'; ctx.fillRect(0,0,512,256);
-            ctx.strokeStyle = '#222222'; ctx.lineWidth = 6;
-            ctx.beginPath(); ctx.moveTo(0, 128); ctx.lineTo(512, 128); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(256, 0); ctx.lineTo(256, 256); ctx.stroke();
-            ctx.beginPath(); ctx.arc(0, 128, 90, -Math.PI/2, Math.PI/2); ctx.stroke();
-            ctx.beginPath(); ctx.arc(512, 128, 90, Math.PI/2, 3*Math.PI/2); ctx.stroke();
+            ctx.fillStyle = '#e67e22'; ctx.fillRect(0,0,512,256); ctx.strokeStyle = '#222222'; ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.moveTo(0, 128); ctx.lineTo(512, 128); ctx.stroke(); ctx.beginPath(); ctx.moveTo(256, 0); ctx.lineTo(256, 256); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 128, 90, -Math.PI/2, Math.PI/2); ctx.stroke(); ctx.beginPath(); ctx.arc(512, 128, 90, Math.PI/2, 3*Math.PI/2); ctx.stroke();
             const tex = new THREE.CanvasTexture(canvas); tex.anisotropy = renderer?.capabilities?.getMaxAnisotropy() || 16; return tex;
         }
         function createEightBallTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#111111'; ctx.fillRect(0,0,512,256);
-            ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(256, 128, 60, 0, 2*Math.PI); ctx.fill();
+            ctx.fillStyle = '#111111'; ctx.fillRect(0,0,512,256); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(256, 128, 60, 0, 2*Math.PI); ctx.fill();
             ctx.fillStyle = '#000000'; ctx.font = "bold 70px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("8", 256, 128);
+            const tex = new THREE.CanvasTexture(canvas); tex.anisotropy = renderer?.capabilities?.getMaxAnisotropy() || 16; return tex;
+        }
+        function createSoccerTexture() {
+            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,512,256); const hexCenters = [[256,128],[128,64],[384,64],[128,192],[384,192],[0,128],[512,128],[256,0],[256,256]];
+            ctx.fillStyle = '#111111';
+            hexCenters.forEach(([cx,cy]) => {
+                ctx.beginPath();
+                for(let i=0;i<6;i++){ let angle = (Math.PI/3)*i - Math.PI/6; let r = 38; if(i===0) ctx.moveTo(cx+r*Math.cos(angle),cy+r*Math.sin(angle)); else ctx.lineTo(cx+r*Math.cos(angle),cy+r*Math.sin(angle)); }
+                ctx.closePath(); ctx.fill();
+            });
+            ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 3;
+            hexCenters.forEach(([cx,cy]) => {
+                ctx.beginPath();
+                for(let i=0;i<6;i++){ let angle = (Math.PI/3)*i - Math.PI/6; let r = 38; if(i===0) ctx.moveTo(cx+r*Math.cos(angle),cy+r*Math.sin(angle)); else ctx.lineTo(cx+r*Math.cos(angle),cy+r*Math.sin(angle)); }
+                ctx.closePath(); ctx.stroke();
+            });
             const tex = new THREE.CanvasTexture(canvas); tex.anisotropy = renderer?.capabilities?.getMaxAnisotropy() || 16; return tex;
         }
 
@@ -562,48 +647,62 @@
             { name: "🏐 Classica (Pallavolo)", generator: createVolleyballTexture, roughness: 0.4, metalness: 0.1, color: 0xffffff },
             { name: "⛳ Pallina da Golf", generator: createGolfTexture, roughness: 0.8, metalness: 0.1, color: 0xffffff },
             { name: "🏀 Palla da Basket", generator: createBasketballTexture, roughness: 0.8, metalness: 0.1, color: 0xffffff },
-            { name: "🎱 Palla Numero 8", generator: createEightBallTexture, roughness: 0.1, metalness: 0.8, color: 0xffffff }
+            { name: "🎱 Palla Numero 8", generator: createEightBallTexture, roughness: 0.1, metalness: 0.8, color: 0xffffff },
+            { name: "⚽ Pallone da Calcio", generator: createSoccerTexture, roughness: 0.7, metalness: 0.05, color: 0xffffff }
         ];
-        let currentSkinIndex = 0;
+
+        let currentSkinIndex = 0; 
 
         function applySkin(index) {
+            if(index === -1 && customTexture !== null) {
+                if(typeof sphereMesh !== 'undefined') {
+                    sphereMesh.material.map = customTexture;
+                    sphereMesh.material.roughness = isRTX ? 0.1 : 0.5; sphereMesh.material.metalness = isRTX ? 0.8 : 0.1;
+                    sphereMesh.material.color.setHex(0xffffff); sphereMesh.material.needsUpdate = true;
+                }
+                document.getElementById('skin-name-display').innerText = "🖼️ Skin Personale"; return;
+            }
             let s = skinList[index];
             if(typeof sphereMesh !== 'undefined') {
                 sphereMesh.material.map = s.generator();
-                let finalMetal = isRTX ? Math.min(0.8, s.metalness + 0.3) : s.metalness;
-                let finalRough = isRTX ? Math.max(0.1, s.roughness - 0.2) : s.roughness;
-                
-                sphereMesh.material.roughness = finalRough;
-                sphereMesh.material.metalness = finalMetal;
-                sphereMesh.material.color.setHex(s.color);
-                sphereMesh.material.needsUpdate = true;
+                sphereMesh.material.roughness = isRTX ? Math.max(0.1, s.roughness - 0.2) : s.roughness;
+                sphereMesh.material.metalness = isRTX ? Math.min(0.8, s.metalness + 0.3) : s.metalness;
+                sphereMesh.material.color.setHex(s.color); sphereMesh.material.needsUpdate = true;
             }
             document.getElementById('skin-name-display').innerText = s.name;
         }
 
-        const btnDiff = document.getElementById('btn-difficulty');
-        const diffDesc = document.getElementById('diff-desc');
+        document.getElementById('btn-custom-skin').addEventListener('click', () => { document.getElementById('custom-skin-upload').click(); });
+        document.getElementById('custom-skin-upload').addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
+                    customTexture = new THREE.CanvasTexture(canvas); customTexture.anisotropy = renderer?.capabilities?.getMaxAnisotropy() || 16;
+                    currentSkinIndex = -1; applySkin(-1);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
 
+        const btnDiff = document.getElementById('btn-difficulty'); const diffDesc = document.getElementById('diff-desc');
         btnDiff.addEventListener('click', () => {
             if(difficulty === 'normal') {
-                difficulty = 'hard'; btnDiff.innerText = 'MODALITÀ: DIFFICILE';
-                btnDiff.className = 'btn-hard w-full h-full py-4 md:py-5 text-base sm:text-lg md:text-xl';
+                difficulty = 'hard'; btnDiff.innerText = 'MODALITÀ: DIFFICILE'; btnDiff.className = 'btn-hard w-full h-full py-4 md:py-5 text-base sm:text-lg md:text-xl';
                 diffDesc.innerText = 'Niente salvataggi. Se cadi o muori, hai perso.'; diffDesc.classList.replace('text-gray-700', 'text-red-700');
             } else {
-                difficulty = 'normal'; btnDiff.innerText = 'MODALITÀ: NORMALE';
-                btnDiff.className = 'btn-secondary w-full h-full py-4 md:py-5 text-base sm:text-lg md:text-xl';
+                difficulty = 'normal'; btnDiff.innerText = 'MODALITÀ: NORMALE'; btnDiff.className = 'btn-secondary w-full h-full py-4 md:py-5 text-base sm:text-lg md:text-xl';
                 diffDesc.innerText = 'Salvataggi abilitati ogni 70m.'; diffDesc.classList.replace('text-red-700', 'text-gray-700');
             }
         });
 
-        document.getElementById('btn-open-skins').addEventListener('click', () => {
-            gameState = 'skins';
-            document.getElementById('main-menu').classList.add('hidden');
-            document.getElementById('skin-menu').classList.remove('hidden');
-            MusicEngine.playMood('skins');
-        });
-        document.getElementById('btn-skin-prev').addEventListener('click', () => { currentSkinIndex = (currentSkinIndex - 1 + skinList.length) % skinList.length; applySkin(currentSkinIndex); });
-        document.getElementById('btn-skin-next').addEventListener('click', () => { currentSkinIndex = (currentSkinIndex + 1) % skinList.length; applySkin(currentSkinIndex); });
+        document.getElementById('btn-open-skins').addEventListener('click', () => { gameState = 'skins'; document.getElementById('main-menu').classList.add('hidden'); document.getElementById('skin-menu').classList.remove('hidden'); MusicEngine.playMood('skins'); });
+        document.getElementById('btn-skin-prev').addEventListener('click', () => { currentSkinIndex = currentSkinIndex === -1 ? skinList.length - 1 : (currentSkinIndex - 1 + skinList.length) % skinList.length; applySkin(currentSkinIndex); });
+        document.getElementById('btn-skin-next').addEventListener('click', () => { currentSkinIndex = currentSkinIndex === -1 ? 0 : (currentSkinIndex + 1) % skinList.length; applySkin(currentSkinIndex); });
         document.getElementById('btn-close-skin').addEventListener('click', () => {
             gameState = 'menu';
             document.getElementById('skin-menu').classList.add('hidden');
@@ -614,38 +713,22 @@
         function startGame() {
             document.getElementById('main-menu').classList.add('hidden');
             document.getElementById('ui-layer').classList.remove('hidden');
-            if(difficulty === 'normal') {
-                document.getElementById('checkpoint-hud').classList.remove('hidden'); document.getElementById('goal-hud').classList.remove('hidden');
-            } else {
-                document.getElementById('checkpoint-hud').classList.add('hidden'); document.getElementById('goal-hud').classList.remove('hidden');
-            }
+            document.getElementById('best-score-val').innerText = bestScore;
+            if(difficulty === 'normal') { document.getElementById('checkpoint-hud').classList.remove('hidden'); document.getElementById('goal-hud').classList.remove('hidden'); } 
+            else { document.getElementById('checkpoint-hud').classList.add('hidden'); document.getElementById('goal-hud').classList.remove('hidden'); }
             
-            gameState = 'playing';
-            if(!isMobile) { try { document.body.requestPointerLock(); } catch(e) {} }
-            
+            gameState = 'playing'; if(!isMobile) { try { document.body.requestPointerLock(); } catch(e) {} }
             initAudio(); MusicEngine.playMood(currentVisualBiome); 
         }
         document.getElementById('btn-play').addEventListener('click', startGame);
 
-        function openSettings(from) {
-            previousState = from; gameState = 'settings';
-            if(from === 'menu') document.getElementById('main-menu').classList.add('hidden');
-            if(from === 'paused') document.getElementById('pause-menu').classList.add('hidden');
-            document.getElementById('settings-menu').classList.remove('hidden');
-        }
-        document.getElementById('btn-settings-main').addEventListener('click', () => openSettings('menu'));
-        document.getElementById('btn-settings-pause').addEventListener('click', () => openSettings('paused'));
+        function openSettings(from) { previousState = from; gameState = 'settings'; if(from === 'menu') document.getElementById('main-menu').classList.add('hidden'); if(from === 'paused') document.getElementById('pause-menu').classList.add('hidden'); document.getElementById('settings-menu').classList.remove('hidden'); }
+        document.getElementById('btn-settings-main').addEventListener('click', () => openSettings('menu')); document.getElementById('btn-settings-pause').addEventListener('click', () => openSettings('paused'));
         
         function applyGraphicsSettings() {
-            const quality = document.getElementById('res-select').value;
-            const useShadows = document.getElementById('shadow-toggle').checked;
-            
+            const quality = document.getElementById('res-select').value; const useShadows = document.getElementById('shadow-toggle').checked;
             let resScale = 1; isRTX = false; 
-            if(quality === 'ultra') { resScale = window.devicePixelRatio; isRTX = true; } 
-            else if(quality === 'high') { resScale = Math.min(window.devicePixelRatio, 1.5); } 
-            else if(quality === 'medium') { resScale = Math.min(window.devicePixelRatio, 1.0); } 
-            else if(quality === 'low') { resScale = Math.min(window.devicePixelRatio, 0.5); } 
-            
+            if(quality === 'ultra') { resScale = window.devicePixelRatio; isRTX = true; } else if(quality === 'high') { resScale = Math.min(window.devicePixelRatio, 1.5); } else if(quality === 'medium') { resScale = Math.min(window.devicePixelRatio, 1.0); } else if(quality === 'low') { resScale = Math.min(window.devicePixelRatio, 0.5); } 
             renderer.setPixelRatio(resScale);
             
             if(isRTX) {
@@ -653,52 +736,34 @@
                 if (typeof cubeRenderTarget !== 'undefined') sphereMesh.material.envMap = cubeRenderTarget.texture;
                 platforms.forEach(p => { p.mesh.material.metalness = 0.2; p.mesh.material.roughness = 0.3; p.mesh.material.needsUpdate = true; });
             } else {
-                dirLight.shadow.mapSize.width = quality === 'low' ? 512 : 2048;
-                dirLight.shadow.mapSize.height = quality === 'low' ? 512 : 2048;
+                dirLight.shadow.mapSize.width = quality === 'low' ? 512 : 2048; dirLight.shadow.mapSize.height = quality === 'low' ? 512 : 2048;
                 sphereMesh.material.envMap = null; 
                 platforms.forEach(p => { p.mesh.material.metalness = 0.1; p.mesh.material.roughness = 0.6; p.mesh.material.needsUpdate = true; });
             }
             applySkin(currentSkinIndex); 
-            
             dirLight.shadow.map = null; renderer.shadowMap.enabled = useShadows; dirLight.castShadow = useShadows;
             scene.traverse((child) => { if (child.isMesh) { child.castShadow = useShadows; child.receiveShadow = useShadows; } });
         }
 
         document.getElementById('btn-close-settings').addEventListener('click', () => {
-            document.getElementById('settings-menu').classList.add('hidden');
-            gameState = previousState;
-            if(previousState === 'menu') document.getElementById('main-menu').classList.remove('hidden');
-            if(previousState === 'paused') document.getElementById('pause-menu').classList.remove('hidden');
+            document.getElementById('settings-menu').classList.add('hidden'); gameState = previousState;
+            if(previousState === 'menu') document.getElementById('main-menu').classList.remove('hidden'); if(previousState === 'paused') document.getElementById('pause-menu').classList.remove('hidden');
             applyGraphicsSettings();
         });
 
         document.getElementById('vol-slider').addEventListener('input', (e) => { masterGain.gain.value = e.target.value / 100; });
         document.getElementById('music-slider').addEventListener('input', (e) => { MusicEngine.setVolume(e.target.value / 100); });
 
-        function openPauseMenu() {
-            gameState = 'paused';
-            if(!isMobile) { try { document.exitPointerLock(); } catch(e) {} }
-            document.getElementById('pause-menu').classList.remove('hidden');
-        }
-
-        document.getElementById('btn-resume').addEventListener('click', () => {
-            gameState = 'playing';
-            if(!isMobile) { try { document.body.requestPointerLock(); } catch(e) {} }
-            document.getElementById('pause-menu').classList.add('hidden'); 
-        });
+        function openPauseMenu() { gameState = 'paused'; if(!isMobile) { try { document.exitPointerLock(); } catch(e) {} } document.getElementById('pause-menu').classList.remove('hidden'); }
+        document.getElementById('btn-resume').addEventListener('click', () => { gameState = 'playing'; if(!isMobile) { try { document.body.requestPointerLock(); } catch(e) {} } document.getElementById('pause-menu').classList.add('hidden'); });
         document.getElementById('btn-restart').addEventListener('click', () => { document.getElementById('pause-menu').classList.add('hidden'); fullGameReset(); startGame(); });
         document.getElementById('btn-gameover-restart').addEventListener('click', () => { location.reload(); });
-        document.getElementById('btn-home').addEventListener('click', () => {
-            document.getElementById('pause-menu').classList.add('hidden'); document.getElementById('ui-layer').classList.add('hidden');
-            fullGameReset(); gameState = 'menu'; document.getElementById('main-menu').classList.remove('hidden'); MusicEngine.playMood('menu'); 
-        });
+        document.getElementById('btn-home').addEventListener('click', () => { document.getElementById('pause-menu').classList.add('hidden'); document.getElementById('ui-layer').classList.add('hidden'); fullGameReset(); gameState = 'menu'; document.getElementById('main-menu').classList.remove('hidden'); MusicEngine.playMood('menu'); });
 
         if(!isMobile) {
             document.addEventListener('pointerlockchange', () => {
-                if (document.pointerLockElement === document.body) {
-                    if(gameState === 'paused' || gameState === 'menu') gameState = 'playing';
-                    document.getElementById('pause-menu').classList.add('hidden');
-                } else if(gameState === 'playing') { openPauseMenu(); }
+                if (document.pointerLockElement === document.body) { if(gameState === 'paused' || gameState === 'menu') gameState = 'playing'; document.getElementById('pause-menu').classList.add('hidden'); } 
+                else if(gameState === 'playing') { openPauseMenu(); }
             });
         }
 
@@ -708,68 +773,47 @@
         const world = new CANNON.World();
         world.gravity.set(0, -35, 0); world.broadphase = new CANNON.NaiveBroadphase(); world.solver.iterations = 10;
         const physicsMaterial = new CANNON.Material("standard");
-        const contactMaterial = new CANNON.ContactMaterial(physicsMaterial, physicsMaterial, { friction: 3.0, restitution: 0.1 });
-        world.addContactMaterial(contactMaterial);
+        const contactMaterial = new CANNON.ContactMaterial(physicsMaterial, physicsMaterial, { friction: 3.0, restitution: 0.1 }); world.addContactMaterial(contactMaterial);
 
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x8ae2f5); scene.fog = new THREE.FogExp2(0x8ae2f5, 0.003); 
-
+        const scene = new THREE.Scene(); scene.background = new THREE.Color(0x8ae2f5); scene.fog = new THREE.FogExp2(0x8ae2f5, 0.003); 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0)); 
-        renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
-        renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1; renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
         const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6); scene.add(hemiLight);
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xfffaee, 1.2);
-        dirLight.position.set(50, 100, 30); dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 1024; dirLight.shadow.mapSize.height = 1024; dirLight.shadow.bias = -0.0005; scene.add(dirLight);
+        const dirLight = new THREE.DirectionalLight(0xfffaee, 1.2); dirLight.position.set(50, 100, 30); dirLight.castShadow = true; dirLight.shadow.mapSize.width = 1024; dirLight.shadow.mapSize.height = 1024; dirLight.shadow.bias = -0.0005; scene.add(dirLight);
 
         const particleGeo = new THREE.BufferGeometry(); const particleCount = 800;
         const posArray = new Float32Array(particleCount * 3), velocityArray = new Float32Array(particleCount * 3); 
-        for(let i=0; i<particleCount*3; i+=3) {
-            posArray[i] = (Math.random() - 0.5) * 150; posArray[i+1] = (Math.random() - 0.5) * 100; posArray[i+2] = (Math.random() - 0.5) * 150;
-            velocityArray[i] = (Math.random() - 0.5) * 0.1; velocityArray[i+1] = (Math.random() - 0.5) * 0.1; velocityArray[i+2] = (Math.random() - 0.5) * 0.1;
-        }
+        for(let i=0; i<particleCount*3; i+=3) { posArray[i] = (Math.random() - 0.5) * 150; posArray[i+1] = (Math.random() - 0.5) * 100; posArray[i+2] = (Math.random() - 0.5) * 150; velocityArray[i] = (Math.random() - 0.5) * 0.1; velocityArray[i+1] = (Math.random() - 0.5) * 0.1; velocityArray[i+2] = (Math.random() - 0.5) * 0.1; }
         particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3)); particleGeo.setAttribute('velocity', new THREE.BufferAttribute(velocityArray, 3));
-        const particleMat = new THREE.PointsMaterial({ size: 0.6, color: 0xffffff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending });
-        const particleMesh = new THREE.Points(particleGeo, particleMat); scene.add(particleMesh);
+        const particleMat = new THREE.PointsMaterial({ size: 0.6, color: 0xffffff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending }); const particleMesh = new THREE.Points(particleGeo, particleMat); scene.add(particleMesh);
 
         function createAdvancedTexture(color1, color2) {
-            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = color1; ctx.fillRect(0, 0, 512, 512);
-            ctx.fillStyle = color2; ctx.fillRect(0, 0, 256, 256); ctx.fillRect(256, 256, 256, 256);
-            ctx.globalAlpha = 0.08;
-            for(let i=0; i<6000; i++) { ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#000000'; ctx.fillRect(Math.random()*512, Math.random()*512, 2 + Math.random()*2, 2 + Math.random()*2); }
-            ctx.globalAlpha = 0.4; ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
-            ctx.strokeRect(0,0,512,512); ctx.strokeRect(256,0,256,512); ctx.strokeRect(0,256,512,256);
+            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
+            ctx.fillStyle = color1; ctx.fillRect(0, 0, 512, 512); ctx.fillStyle = color2; ctx.fillRect(0, 0, 256, 256); ctx.fillRect(256, 256, 256, 256);
+            ctx.globalAlpha = 0.08; for(let i=0; i<6000; i++) { ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#000000'; ctx.fillRect(Math.random()*512, Math.random()*512, 2 + Math.random()*2, 2 + Math.random()*2); }
+            ctx.globalAlpha = 0.4; ctx.strokeStyle = '#000000'; ctx.lineWidth = 4; ctx.strokeRect(0,0,512,512); ctx.strokeRect(256,0,256,512); ctx.strokeRect(0,256,512,256);
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); return tex;
         }
 
         const textures = biomeDefs.map(b => createAdvancedTexture(b.c1, b.c2));
-        textures.push(createAdvancedTexture('#1e272e', '#485460')); 
-        textures.push(createAdvancedTexture('#000000', '#222222')); 
+        textures.push(createAdvancedTexture('#1e272e', '#485460')); // 15: Rosso Ostacoli
+        textures.push(createAdvancedTexture('#000000', '#222222')); // 16: Nero Ostacoli
+        textures.push(createAdvancedTexture('#2ecc71', '#27ae60')); // 17: Trampolino Bouncer
 
         const radius = 0.8; const sphereShape = new CANNON.Sphere(radius);
         const sphereBody = new CANNON.Body({ mass: 5, material: physicsMaterial, shape: sphereShape, angularDamping: 0.9, linearDamping: 0.1 }); world.addBody(sphereBody);
-
-        const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256, { format: THREE.RGBAFormat, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
-        cubeRenderTarget.texture.encoding = THREE.sRGBEncoding;
-        const cubeCamera = new THREE.CubeCamera(0.1, 1000, cubeRenderTarget); scene.add(cubeCamera);
-
-        const sphereGeo = new THREE.SphereGeometry(radius, 32, 32);
-        const sphereMat = new THREE.MeshStandardMaterial({ map: skinList[0].generator(), roughness: skinList[0].roughness, metalness: skinList[0].metalness });
-        const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat); sphereMesh.castShadow = true; scene.add(sphereMesh);
-        applySkin(0);
-
+        const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256, { format: THREE.RGBAFormat, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter }); cubeRenderTarget.texture.encoding = THREE.sRGBEncoding; const cubeCamera = new THREE.CubeCamera(0.1, 1000, cubeRenderTarget); scene.add(cubeCamera);
+        const sphereGeo = new THREE.SphereGeometry(radius, 32, 32); const sphereMat = new THREE.MeshStandardMaterial({ map: skinList[0].generator(), roughness: skinList[0].roughness, metalness: skinList[0].metalness }); const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat); sphereMesh.castShadow = true; scene.add(sphereMesh); applySkin(0);
         const ballLight = new THREE.PointLight(0xffffff, 0.8, 15); sphereMesh.add(ballLight); 
 
         /* ==========================================================================
-           SEZIONE 8: GENERAZIONE LEVEL DESIGN PROCEDURALE
+           SEZIONE 8: NUOVE MECCANICHE E LEVEL DESIGN
            ========================================================================== */
         function createBiomeProp(biome) {
             const group = new THREE.Group();
@@ -794,9 +838,7 @@
         }
 
         function createCheckpointStructure(biome) {
-            const group = new THREE.Group();
-            let type = biome % 5;
-            
+            const group = new THREE.Group(); let type = biome % 5;
             if (type === 0) { 
                 const base = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 3), new THREE.MeshStandardMaterial({color: 0x8B4513})); base.position.y = 1; base.castShadow = true;
                 const roof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 2, 4), new THREE.MeshStandardMaterial({color: 0x8B0000})); roof.position.y = 3; roof.rotation.y = Math.PI / 4; roof.castShadow = true;
@@ -821,52 +863,71 @@
             return group;
         }
 
-        function createPlatform(x, y, z, w, h, d, texIndex, isFlag = false) {
+        // NUOVA FUNZIONE: Crea Piattaforma (normale, bouncer o mobile)
+        function createPlatform(x, y, z, w, h, d, texIndex, isFlag = false, isBouncer = false, isMoving = false) {
             const shape = new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2));
-            const body = new CANNON.Body({ mass: 0, material: physicsMaterial });
-            body.addShape(shape); body.position.set(x, y, z); world.addBody(body);
+            const bodyType = isMoving ? CANNON.Body.KINEMATIC : CANNON.Body.STATIC;
+            const body = new CANNON.Body({ mass: 0, type: bodyType, material: physicsMaterial });
+            body.addShape(shape); body.position.set(x, y, z); 
+            
+            if(isBouncer) body.isBouncer = true; // Marcatore per il trampolino
+            world.addBody(body);
 
             const geo = new THREE.BoxGeometry(w, h, d);
-            let matTex = textures[texIndex % textures.length].clone();
+            
+            // Texture e Materiale
+            let useTex = isBouncer ? 17 : (texIndex % 15);
+            let matTex = textures[useTex].clone();
             matTex.repeat.set(Math.max(1, w/3), Math.max(1, d/3)); matTex.needsUpdate = true;
             
             let mMetalness = document.getElementById('res-select').value === 'ultra' ? 0.2 : 0.1;
             let mRoughness = document.getElementById('res-select').value === 'ultra' ? 0.3 : 0.6;
             
-            const mat = new THREE.MeshStandardMaterial({ map: matTex, roughness: mRoughness, metalness: mMetalness });
+            let matOptions = { map: matTex, roughness: mRoughness, metalness: mMetalness };
+            if(isBouncer) {
+                matOptions.emissive = 0x2ecc71;
+                matOptions.emissiveIntensity = 0.5;
+            }
+            const mat = new THREE.MeshStandardMaterial(matOptions);
             const mesh = new THREE.Mesh(geo, mat); mesh.position.copy(body.position); mesh.receiveShadow = true; mesh.castShadow = true;
             scene.add(mesh); 
             
             let meshRef = { mesh: mesh, body: body, flagMeshes: [] };
             platforms.push(meshRef);
 
-            if(!isFlag) {
+            // Se è mobile, aggiungiamo la logica di movimento
+            if(isMoving) {
+                movingObstacles.push({ 
+                    body: body, mesh: mesh, 
+                    type: Math.random() > 0.5 ? 0 : 1, // 0 = Asse X, 1 = Asse Z
+                    baseX: x, baseZ: z, 
+                    timeOffset: Math.random() * 100, speed: 0.8 + Math.random()*0.5, 
+                    ampX: 8, ampZ: 8, isPlatform: true 
+                });
+            }
+
+            if(!isFlag && !isBouncer && !isMoving) {
                 const numProps = Math.floor(Math.random() * 3); 
                 for(let i=0; i<numProps; i++) {
                     let prop = createBiomeProp(texIndex);
                     let px = (Math.random() > 0.5 ? 1 : -1) * (w/2 * (0.6 + Math.random()*0.3)); let pz = (Math.random() > 0.5 ? 1 : -1) * (d/2 * (0.6 + Math.random()*0.3));
                     prop.position.set(px, h/2, pz); mesh.add(prop); sceneProps.push(prop); 
                 }
-            } else {
+            } else if(isFlag) {
                 const poleGeo = new THREE.CylinderGeometry(0.15, 0.15, 4); const poleMat = new THREE.MeshStandardMaterial({color: 0xcccccc});
                 const pole = new THREE.Mesh(poleGeo, poleMat); pole.position.set(x + w/2 - 1.5, y + 2, z - d/2 + 1.5); pole.castShadow = true;
                 const flagGeo = new THREE.PlaneGeometry(1.5, 1); const flagMat = new THREE.MeshStandardMaterial({color: 0x2ed573, side: THREE.DoubleSide});
                 const flag = new THREE.Mesh(flagGeo, flagMat); flag.position.set(x + w/2 - 2.25, y + 3.5, z - d/2 + 1.5); flag.castShadow = true;
-                scene.add(pole); scene.add(flag); 
-                meshRef.flagMeshes.push(pole, flag);
+                scene.add(pole); scene.add(flag); meshRef.flagMeshes.push(pole, flag);
 
-                const struct = createCheckpointStructure(texIndex);
-                struct.position.set(x - w/4, y, z + d/4); scene.add(struct); meshRef.flagMeshes.push(struct);
+                const struct = createCheckpointStructure(texIndex); struct.position.set(x - w/4, y, z + d/4); scene.add(struct); meshRef.flagMeshes.push(struct);
             }
         }
 
         function generateMorePlatforms(count) {
             for(let i = 1; i <= count; i++) {
                 platformIndex++; let angle = platformIndex * 0.9;
-                
-                let currentBiome = Math.max(0, Math.min(14, Math.floor(genCurrentY / 70))); 
-                let texIndex = currentBiome;
-                
+                let currentBiome = Math.max(0, Math.min(14, Math.floor(genCurrentY / 70))); let texIndex = currentBiome;
                 let distMultiplier = 1 + (currentBiome * 0.05); let sizeMultiplier = Math.max(0.4, 1 - (currentBiome * 0.04)); 
                 let distance = (6 + Math.random() * 5) * distMultiplier; 
                 
@@ -875,16 +936,24 @@
                 
                 if(genCurrentY >= nextTargetCheckpoint && genCurrentY < 1000) {
                     w = 20; d = 20; 
-                    createPlatform(genCurrentX, genCurrentY, genCurrentZ, w, 1.5, d, texIndex, true); 
+                    createPlatform(genCurrentX, genCurrentY, genCurrentZ, w, 1.5, d, texIndex, true, false, false); 
                     checkpoints.push({ y: nextTargetCheckpoint, pos: { x: genCurrentX, y: genCurrentY, z: genCurrentZ }, reached: false });
                     nextTargetCheckpoint += 70;
                 } else if (genCurrentY < 1000) {
+                    // Logica Meccaniche Speciali
+                    let rand = Math.random();
+                    let isBouncer = rand > 0.90; // 10% Trampolino
+                    let isMoving = currentBiome >= 1 && rand < 0.15; // 15% Piattaforma Mobile (dopo il prato)
+                    
                     let hasObstacle = false, spawnRed = false, spawnBlack = false;
-                    if(currentBiome >= 1) {
-                        let rand = Math.random(); spawnRed = rand > 0.8; spawnBlack = rand > 0.5 && rand <= 0.8; hasObstacle = spawnRed || spawnBlack;
+                    if(currentBiome >= 1 && !isBouncer && !isMoving) {
+                        let randObs = Math.random(); spawnRed = randObs > 0.85; spawnBlack = randObs > 0.6 && randObs <= 0.85; hasObstacle = spawnRed || spawnBlack;
                     }
+                    
                     if(hasObstacle) { w = Math.max(w, 8 * sizeMultiplier) + 4; d = Math.max(d, 8 * sizeMultiplier) + 4; }
-                    createPlatform(genCurrentX, genCurrentY, genCurrentZ, w, 1, d, texIndex);
+                    
+                    // Creiamo la piattaforma base
+                    createPlatform(genCurrentX, genCurrentY, genCurrentZ, w, 1, d, texIndex, false, isBouncer, isMoving);
                     
                     if(hasObstacle) {
                         let obsW = spawnBlack ? w * 0.45 : w * 0.3; let obsH = spawnBlack ? 2.5 : 1.0; let obsD = spawnBlack ? d * 0.45 : d * 0.3;
@@ -896,7 +965,7 @@
                         else mat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 });
                         
                         world.addBody(body); let mesh = new THREE.Mesh(new THREE.BoxGeometry(obsW, obsH, obsD), mat); mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh);
-                        movingObstacles.push({ body, mesh, type: Math.floor(Math.random() * 3), baseX: genCurrentX, baseZ: genCurrentZ, timeOffset: Math.random() * 100, speed: spawnRed ? 1.0 : 1.8, ampX: w * 0.35, ampZ: d * 0.35 });
+                        movingObstacles.push({ body, mesh, type: Math.floor(Math.random() * 3), baseX: genCurrentX, baseZ: genCurrentZ, timeOffset: Math.random() * 100, speed: spawnRed ? 1.0 : 1.8, ampX: w * 0.35, ampZ: d * 0.35, isPlatform: false });
                     }
                 }
                 highestPlatformY = genCurrentY;
@@ -909,9 +978,13 @@
             for(let o of movingObstacles) { scene.remove(o.mesh); world.removeBody(o.body); }
             platforms.length = 0; movingObstacles.length = 0; sceneProps.length = 0;
             
-            genCurrentX = 0; genCurrentY = 0; genCurrentZ = 0; platformIndex = 0; highestPlatformY = 0; highestScore = 0; document.getElementById('score').innerText = '0';
+            genCurrentX = 0; genCurrentY = 0; genCurrentZ = 0; platformIndex = 0; highestPlatformY = 0; highestScore = 0; displayedScore = 0;
+            document.getElementById('score').innerText = '0';
             checkpoints = []; lastCheckpoint = { x: 0, y: 5, z: 0 }; nextTargetCheckpoint = 70; document.getElementById('cp-score').innerText = '0';
-            currentVisualBiome = 0;
+            currentVisualBiome = 0; currentBiomeNotified = -1;
+            document.getElementById('progress-bar').style.width = '0%'; document.getElementById('progress-pct').innerText = '0';
+            document.getElementById('biome-toast').classList.add('hidden');
+            dashCooldown = 0; jumpBufferTimer = 0; coyoteTimer = 0; screenShakeIntensity = 0; biomeToastTimer = 0;
             
             createPlatform(0, 0, 0, 25, 2, 25, 0); generateMorePlatforms(40);
             
@@ -927,96 +1000,65 @@
         document.getElementById('console-input').addEventListener('keydown', (e) => {
             if(e.key === 'Enter') {
                 const val = e.target.value.trim();
-                if(val === '/Fine') {
+                const closeConsole = () => {
                     document.getElementById('dev-console').classList.add('hidden');
-                    triggerEnding();
-                } else {
-                    document.getElementById('dev-console').classList.add('hidden');
-                    if(gameState === 'console') {
-                        gameState = lastGameState;
-                        if(gameState === 'playing') try { document.body.requestPointerLock(); } catch(err){}
-                    }
-                }
+                    if(gameState === 'console') { gameState = lastGameState; if(gameState === 'playing') try { document.body.requestPointerLock(); } catch(err){} }
+                };
+                if(val.toLowerCase() === '/fine') { closeConsole(); triggerEnding(); } 
+                else if(val.toLowerCase() === '/fly') { world.gravity.set(0, -5, 0); closeConsole(); } 
+                else if(val.toLowerCase() === '/nofly') { world.gravity.set(0, -35, 0); closeConsole(); } 
+                else if(val.startsWith('/speed ')) { let s = parseFloat(val.split(' ')[1]); if(!isNaN(s)) { window._speedMult = s; } closeConsole(); } 
+                else if(val.startsWith('/biome ')) { let b = parseInt(val.split(' ')[1]); if(!isNaN(b) && b >= 0 && b <= 14) { sphereBody.position.set(genCurrentX, b * 70 + 5, genCurrentZ); sphereBody.velocity.set(0,0,0); } closeConsole(); } 
+                else if(val.toLowerCase() === '/reset') { closeConsole(); fullGameReset(); startGame(); } 
+                else if(val.toLowerCase() === '/help') { e.target.value = '  /fine | /fly | /nofly | /speed N | /biome N | /reset'; return; } 
+                else { closeConsole(); }
             }
         });
 
         /* ==========================================================================
            SEZIONE 10: GESTIONE CONTROLLER E TASTIERA
            ========================================================================== */
-        const keys = { w: false, a: false, s: false, d: false, space: false };
+        const keys = { w: false, a: false, s: false, d: false, space: false, shift: false };
         
         document.addEventListener('keydown', (e) => {
             if (e.key === '\\' && !isMobile) {
                 e.preventDefault();
-                const consoleEl = document.getElementById('dev-console');
-                const inputEl = document.getElementById('console-input');
-                if (gameState !== 'console') {
-                    lastGameState = gameState; 
-                    gameState = 'console';
-                    consoleEl.classList.remove('hidden');
-                    try { document.exitPointerLock(); } catch(err){}
-                    inputEl.value = '';
-                    setTimeout(() => inputEl.focus(), 100);
-                } else {
-                    gameState = lastGameState;
-                    consoleEl.classList.add('hidden');
-                    if(gameState === 'playing') try { document.body.requestPointerLock(); } catch(err){}
-                }
+                const consoleEl = document.getElementById('dev-console'); const inputEl = document.getElementById('console-input');
+                if (gameState !== 'console') { lastGameState = gameState; gameState = 'console'; consoleEl.classList.remove('hidden'); try { document.exitPointerLock(); } catch(err){} inputEl.value = ''; setTimeout(() => inputEl.focus(), 100); } 
+                else { gameState = lastGameState; consoleEl.classList.add('hidden'); if(gameState === 'playing') try { document.body.requestPointerLock(); } catch(err){} }
                 return;
             }
-
-            if (gameState === 'console') {
-                if (e.key === 'Escape') {
-                    gameState = lastGameState;
-                    document.getElementById('dev-console').classList.add('hidden');
-                    if(gameState === 'playing') try { document.body.requestPointerLock(); } catch(err){}
-                }
-                return; 
-            }
+            if (gameState === 'console') { if (e.key === 'Escape') { gameState = lastGameState; document.getElementById('dev-console').classList.add('hidden'); if(gameState === 'playing') try { document.body.requestPointerLock(); } catch(err){} } return; }
 
             const key = e.key.toLowerCase(); if(keys.hasOwnProperty(key)) keys[key] = true;
-            if(e.code === 'Space') keys.space = true;
+            if(e.code === 'Space') keys.space = true; if(e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = true;
             if(e.code === 'KeyH' && gameState === 'playing' && difficulty === 'normal') triggerRespawn();
-            if(e.code === 'Escape') {
-                if (gameState === 'credits') returnToMenuFromCredits();
-                else if (gameState === 'playing') openPauseMenu(); 
-            }
+            if(e.code === 'Escape') { if (gameState === 'credits') returnToMenuFromCredits(); else if (gameState === 'playing') openPauseMenu(); }
         });
         
         document.addEventListener('keyup', (e) => {
             const key = e.key.toLowerCase(); if(keys.hasOwnProperty(key)) keys[key] = false;
-            if(e.code === 'Space') keys.space = false;
+            if(e.code === 'Space') keys.space = false; if(e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = false;
         });
 
         let lastMouseX = null, lastMouseY = null, isMouseDown = false;
 
         document.addEventListener('mousedown', (e) => { 
             if(!isMobile && e.button === 0) isMouseDown = true; 
-            if(gameState === 'playing' && !isMobile && document.pointerLockElement !== document.body) {
-                try { document.body.requestPointerLock(); } catch(err) {}
-            }
+            if(gameState === 'playing' && !isMobile && document.pointerLockElement !== document.body) { try { document.body.requestPointerLock(); } catch(err) {} }
         });
         document.addEventListener('mouseup', (e) => { if(!isMobile && e.button === 0) isMouseDown = false; });
         document.addEventListener('mouseleave', () => { isMouseDown = false; });
 
         document.addEventListener('mousemove', (e) => {
             if((gameState !== 'playing' && gameState !== 'skins') || isMobile) return;
-            
             let isLocked = document.pointerLockElement === document.body;
             let movX = e.movementX, movY = e.movementY;
-            
-            if (movX === undefined || (movX === 0 && movY === 0)) {
-                movX = (lastMouseX !== null) ? e.clientX - lastMouseX : 0;
-                movY = (lastMouseY !== null) ? e.clientY - lastMouseY : 0;
-            }
-            
-            lastMouseX = e.clientX; lastMouseY = e.clientY;
-            movX = isNaN(movX) ? 0 : movX; movY = isNaN(movY) ? 0 : movY;
+            if (movX === undefined || (movX === 0 && movY === 0)) { movX = (lastMouseX !== null) ? e.clientX - lastMouseX : 0; movY = (lastMouseY !== null) ? e.clientY - lastMouseY : 0; }
+            lastMouseX = e.clientX; lastMouseY = e.clientY; movX = isNaN(movX) ? 0 : movX; movY = isNaN(movY) ? 0 : movY;
 
             if (!isLocked && !isMouseDown) return;
-
-            camYaw -= movX * 0.003; camPitch += movY * 0.003; 
-            camPitch = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, camPitch));
+            camYaw -= movX * 0.003; camPitch += movY * 0.003; camPitch = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, camPitch));
         });
 
         document.addEventListener('wheel', (e) => {
@@ -1026,6 +1068,7 @@
 
         window.addEventListener("gamepadconnected", (e) => { document.getElementById("gamepad-status").classList.remove("hidden"); });
 
+        let canJump = false, hitDeathZone = false;
         function processGamepad() {
             let gp = navigator.getGamepads()[0];
             if (!gp) return { x: 0, y: 0, active: false };
@@ -1039,16 +1082,9 @@
             let A = gp.buttons[0].pressed, Y = gp.buttons[3].pressed, Start = gp.buttons[9] ? gp.buttons[9].pressed : false;
             let D_Up = gp.buttons[12].pressed, D_Down = gp.buttons[13].pressed, D_Left = gp.buttons[14].pressed, D_Right = gp.buttons[15].pressed;
 
-            if (Start && !lastGpButtons[9]) {
-                if (gameState === 'playing') openPauseMenu();
-                else if (gameState === 'paused') document.getElementById('btn-resume').click();
-                else if (gameState === 'credits') returnToMenuFromCredits();
-            }
+            if (Start && !lastGpButtons[9]) { if (gameState === 'playing') openPauseMenu(); else if (gameState === 'paused') document.getElementById('btn-resume').click(); else if (gameState === 'credits') returnToMenuFromCredits(); }
             if (Y && !lastGpButtons[3] && gameState === 'playing' && difficulty === 'normal') triggerRespawn();
-            if (A && !lastGpButtons[0]) {
-                if (gameState === 'playing') keys.space = true;
-                else if (gameState === 'credits') returnToMenuFromCredits();
-            }
+            if (A && !lastGpButtons[0]) { if (gameState === 'playing') keys.space = true; else if (gameState === 'credits') returnToMenuFromCredits(); }
             if (!A && lastGpButtons[0] && gameState === 'playing') keys.space = false;
 
             if (gameState !== 'playing' && gameState !== 'credits' && gameState !== 'console') {
@@ -1085,45 +1121,70 @@
             return { x: moveX, y: moveY, active: (moveX !== 0 || moveY !== 0) };
         }
 
-        let canJump = false, hitDeathZone = false;
         world.addEventListener("postStep", () => {
-            canJump = false;
+            let onGround = false;
             for(let i = 0; i < world.contacts.length; i++) {
                 let c = world.contacts[i];
                 if(c.bi.id === sphereBody.id || c.bj.id === sphereBody.id) {
                     let otherBody = c.bi.id === sphereBody.id ? c.bj : c.bi;
+                    
                     if(otherBody.isDeathObstacle) hitDeathZone = true; 
+                    
                     let normal = c.ni; if(c.bi.id === sphereBody.id) normal.negate(normal);
-                    if(normal.y > 0.5) canJump = true;
+                    
+                    // MECCANICA TRAMPOLINO (Bouncer)
+                    if(otherBody.isBouncer && normal.y > 0.5) {
+                        sphereBody.velocity.y = 45; // Super Salto!
+                        AudioEngine.playBounce();
+                        screenShakeIntensity = 0.4;
+                        onGround = false;
+                        continue; // Salta logica terreno normale
+                    }
+
+                    if(normal.y > 0.5) onGround = true;
                 }
             }
+            if(onGround) { coyoteTimer = COYOTE_FRAMES; } else if(coyoteTimer > 0) { coyoteTimer--; }
+            canJump = coyoteTimer > 0;
+            
+            let velY = sphereBody.velocity.y;
+            if(!wasOnGround && onGround && lastVelY < -10) { screenShakeIntensity = Math.min(0.8, Math.abs(lastVelY) * 0.04); }
+            wasOnGround = onGround; lastVelY = velY;
         });
 
         /* ==========================================================================
-           SEZIONE 11: LOOP DI AGGIORNAMENTO FISICA E TELECAMERA
+           SEZIONE 11: LOOP DI AGGIORNAMENTO FISICA
            ========================================================================== */
         const torqueAmount = 80, forceAmount = 150, maxVelocity = 25;    
 
         function updatePhysics() {
             world.step(1/60);
             
-            // FIX DI EMERGENZA: Previene crash se Cannon.js genera collisioni con coordinate corrotte (NaN)
             if (isNaN(sphereBody.position.x) || isNaN(sphereBody.position.y) || isNaN(sphereBody.position.z)) {
                 sphereBody.position.set(lastCheckpoint.x, lastCheckpoint.y + 4, lastCheckpoint.z);
-                sphereBody.velocity.set(0,0,0);
-                sphereBody.angularVelocity.set(0,0,0);
-                sphereBody.torque.set(0,0,0);
-                sphereBody.force.set(0,0,0);
+                sphereBody.velocity.set(0,0,0); sphereBody.angularVelocity.set(0,0,0); sphereBody.torque.set(0,0,0); sphereBody.force.set(0,0,0);
             }
             
             let gpData = processGamepad();
             let time = performance.now() * 0.002;
             
+            if(dashCooldown > 0) dashCooldown--;
+            if(jumpBufferTimer > 0) jumpBufferTimer--;
+            if(screenShakeIntensity > 0) screenShakeIntensity *= 0.75;
+
+            // Aggiornamento Piattaforme Mobili e Ostacoli
             for(let obs of movingObstacles) {
                 let s = obs.speed || 1, aX = obs.ampX || 3.5, aZ = obs.ampZ || 3.5;
-                if(obs.type === 0) obs.body.velocity.x = ((obs.baseX + Math.sin(time * s + obs.timeOffset) * aX) - obs.body.position.x) * 10;
-                else if(obs.type === 1) obs.body.velocity.z = ((obs.baseZ + Math.cos(time * s + obs.timeOffset) * aZ) - obs.body.position.z) * 10;
-                else if(obs.type === 2) obs.body.angularVelocity.set(0, 2 * s, 0); 
+                if(obs.isPlatform) {
+                    // Piattaforme che si muovono orizzontalmente
+                    if(obs.type === 0) obs.body.velocity.x = ((obs.baseX + Math.sin(time * s + obs.timeOffset) * aX) - obs.body.position.x) * 10;
+                    else if(obs.type === 1) obs.body.velocity.z = ((obs.baseZ + Math.cos(time * s + obs.timeOffset) * aZ) - obs.body.position.z) * 10;
+                } else {
+                    // Ostacoli Rossi/Neri (movimento veloce)
+                    if(obs.type === 0) obs.body.velocity.x = ((obs.baseX + Math.sin(time * s + obs.timeOffset) * aX) - obs.body.position.x) * 10;
+                    else if(obs.type === 1) obs.body.velocity.z = ((obs.baseZ + Math.cos(time * s + obs.timeOffset) * aZ) - obs.body.position.z) * 10;
+                    else if(obs.type === 2) obs.body.angularVelocity.set(0, 2 * s, 0); 
+                }
                 obs.mesh.position.copy(obs.body.position); obs.mesh.quaternion.copy(obs.body.quaternion);
             }
             
@@ -1163,7 +1224,21 @@
                     sphereBody.torque.z += -moveX * torqueAmount * inputStrength * mobileSpeedFactor;
                     sphereBody.applyForce(new CANNON.Vec3(moveX * forceAmount * inputStrength * mobileSpeedFactor, 0, moveZ * forceAmount * inputStrength * mobileSpeedFactor), sphereBody.position);
                 }
-                if(keys.space && canJump) { sphereBody.velocity.y = 22; AudioEngine.playJump(); canJump = false; keys.space = false; }
+
+                if(keys.space) jumpBufferTimer = JUMP_BUFFER_FRAMES;
+                
+                if(jumpBufferTimer > 0 && canJump) { 
+                    sphereBody.velocity.y = 22; 
+                    AudioEngine.playJump(); 
+                    canJump = false; coyoteTimer = 0; jumpBufferTimer = 0; keys.space = false; 
+                }
+                
+                if(keys.shift && dashCooldown === 0 && (moveX !== 0 || moveZ !== 0)) {
+                    let dashLen = Math.sqrt(moveX*moveX + moveZ*moveZ); let dX = moveX/dashLen, dZ = moveZ/dashLen;
+                    sphereBody.velocity.x += dX * DASH_FORCE; sphereBody.velocity.z += dZ * DASH_FORCE;
+                    dashCooldown = DASH_COOLDOWN; keys.shift = false;
+                    AudioEngine.playJump(); screenShakeIntensity = 0.15;
+                }
             }
 
             const speed = Math.sqrt(sphereBody.velocity.x**2 + sphereBody.velocity.z**2);
@@ -1173,22 +1248,18 @@
 
             sphereMesh.position.copy(sphereBody.position); sphereMesh.quaternion.copy(sphereBody.quaternion);
             
-            if (gameState === 'skins') {
-                sphereMesh.rotation.y += 0.01; sphereMesh.rotation.x += 0.005;
-            }
+            if (gameState === 'skins') { sphereMesh.rotation.y += 0.01; sphereMesh.rotation.x += 0.005; }
+            if(gameState === 'playing') { document.getElementById('speed-val').innerText = Math.round(speed); }
         }
 
         /* ==========================================================================
-           SEZIONE 12: LOOP DI ANIMAZIONE PRINCIPALE E CONDIZIONI DI VITTORIA
+           SEZIONE 12: LOOP DI ANIMAZIONE PRINCIPALE E TELECAMERA
            ========================================================================== */
         function updateCamera() {
             let lookTarget = sphereMesh.position.clone();
-            if (isNaN(lookTarget.x) || isNaN(lookTarget.y) || isNaN(lookTarget.z)) {
-                lookTarget.set(lastCheckpoint.x, lastCheckpoint.y, lastCheckpoint.z);
-            }
+            if (isNaN(lookTarget.x) || isNaN(lookTarget.y) || isNaN(lookTarget.z)) { lookTarget.set(lastCheckpoint.x, lastCheckpoint.y, lastCheckpoint.z); }
             if (gameState === 'skins') lookTarget.y -= 1.0; 
 
-            // FIX: Assicuriamo coordinate sempre valide alla telecamera anche se c'è un frame di latenza della fisica
             let safeX = isNaN(sphereMesh.position.x) ? lastCheckpoint.x : sphereMesh.position.x;
             let safeY = isNaN(sphereMesh.position.y) ? lastCheckpoint.y : sphereMesh.position.y;
             let safeZ = isNaN(sphereMesh.position.z) ? lastCheckpoint.z : sphereMesh.position.z;
@@ -1200,14 +1271,16 @@
             camera.position.x += (targetX - camera.position.x) * 0.3; 
             camera.position.y += (targetY - camera.position.y) * 0.3;
             camera.position.z += (targetZ - camera.position.z) * 0.3;
+            
+            if(screenShakeIntensity > 0.01) {
+                camera.position.x += (Math.random()-0.5) * screenShakeIntensity;
+                camera.position.y += (Math.random()-0.5) * screenShakeIntensity;
+            }
+            
             camera.lookAt(lookTarget);
             
-            // Calcolo Bioma protetto da valori incalcolabili
-            let rawBiome = safeY / 70;
-            let currBiome = 0;
-            if (!isNaN(rawBiome) && isFinite(rawBiome)) {
-                currBiome = Math.floor(rawBiome);
-            }
+            let rawBiome = safeY / 70; let currBiome = 0;
+            if (!isNaN(rawBiome) && isFinite(rawBiome)) currBiome = Math.floor(rawBiome);
             currBiome = Math.max(0, Math.min(14, currBiome));
             
             let targetColor = new THREE.Color(biomeDefs[currBiome].sky);
@@ -1226,8 +1299,6 @@
                 if(positions[i+1] > safeY + 40) positions[i+1] = safeY - 40;
                 if(positions[i] < safeX - 75) positions[i] = safeX + 75;
                 if(positions[i] > safeX + 75) positions[i] = safeX - 75;
-                
-                // FIX: Riposizionamento particelle sull'asse Z (Profondità)
                 if(positions[i+2] < safeZ - 75) positions[i+2] = safeZ + 75;
                 if(positions[i+2] > safeZ + 75) positions[i+2] = safeZ - 75;
             }
@@ -1236,78 +1307,48 @@
 
             if (gameState === 'playing' && currBiome !== currentVisualBiome) {
                 currentVisualBiome = currBiome; MusicEngine.playMood(currBiome);
+                
+                const toast = document.getElementById('biome-toast');
+                document.getElementById('biome-toast-text').innerText = biomeNames[currBiome] || '🌍 Nuovo Bioma';
+                toast.classList.remove('hidden'); toast.style.opacity = '1'; biomeToastTimer = 180; 
+            }
+            
+            if(biomeToastTimer > 0) {
+                biomeToastTimer--;
+                if(biomeToastTimer <= 40) document.getElementById('biome-toast').style.opacity = (biomeToastTimer / 40).toFixed(2);
+                if(biomeToastTimer === 0) document.getElementById('biome-toast').classList.add('hidden');
             }
 
-            dirLight.position.set(safeX + 40, safeY + 60, safeZ + 40);
-            dirLight.target = sphereMesh;
-        }
-
-        function triggerEnding() {
-            gameState = 'credits';
-            if(!isMobile) { try { document.exitPointerLock(); } catch(e){} }
-            document.getElementById('ui-layer').classList.add('hidden'); document.getElementById('mobile-controls').classList.add('hidden');
-            const creditsScreen = document.getElementById('credits-screen'); creditsScreen.classList.remove('hidden');
-            
-            const creditsText = document.getElementById('credits-text');
-            creditsText.classList.remove('animate-credits');
-            void creditsText.offsetWidth; 
-            creditsText.classList.add('animate-credits');
-
-            const blocks = document.querySelectorAll('.credit-block');
-            blocks.forEach(b => b.classList.remove('visible'));
-            
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if(entry.isIntersecting) {
-                        entry.target.classList.add('visible');
-                    }
-                });
-            }, { threshold: 0.3 }); 
-
-            blocks.forEach(block => observer.observe(block));
-
-            MusicEngine.playMood('credits'); 
-        }
-
-        function returnToMenuFromCredits() {
-            document.getElementById('credits-screen').classList.add('hidden'); document.getElementById('credits-text').classList.remove('animate-credits');
-            fullGameReset(); gameState = 'menu'; document.getElementById('main-menu').classList.remove('hidden'); MusicEngine.playMood('menu');
-        }
-
-        function triggerRespawn() {
-            AudioEngine.playDeath();
-            if(difficulty === 'normal') {
-                sphereBody.position.set(lastCheckpoint.x, lastCheckpoint.y + 4, lastCheckpoint.z);
-                sphereBody.velocity.set(0,0,0); sphereBody.angularVelocity.set(0,0,0); sphereBody.torque.set(0,0,0);
-                sphereBody.force.set(0,0,0); 
-                camYaw = Math.PI; highestScore = Math.floor(lastCheckpoint.y); document.getElementById('score').innerText = highestScore;
-            } else {
-                gameState = 'gameover';
-                document.getElementById('ui-layer').classList.add('hidden'); document.getElementById('mobile-controls').classList.add('hidden');
-                document.getElementById('gameover').classList.remove('hidden'); document.getElementById('final-score').innerText = highestScore;
-                if(!isMobile) { try { document.exitPointerLock(); } catch(e){} }
-            }
+            dirLight.position.set(safeX + 40, safeY + 60, safeZ + 40); dirLight.target = sphereMesh;
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            if (gameState !== 'console') {
-                updatePhysics(); 
-                updateCamera();
-            }
+            if (gameState !== 'console') { updatePhysics(); updateCamera(); }
 
             if(gameState === 'playing') {
                 if (isRTX && typeof cubeCamera !== 'undefined') {
-                    sphereMesh.visible = false; 
-                    cubeCamera.position.copy(sphereMesh.position); cubeCamera.update(renderer, scene);
-                    sphereMesh.visible = true;
+                    sphereMesh.visible = false; cubeCamera.position.copy(sphereMesh.position); cubeCamera.update(renderer, scene); sphereMesh.visible = true;
                 }
 
                 if(hitDeathZone) { hitDeathZone = false; triggerRespawn(); }
 
                 let currentHeight = Math.floor(isNaN(sphereMesh.position.y) ? lastCheckpoint.y : sphereMesh.position.y);
                 if(currentHeight > highestScore) { 
-                    highestScore = currentHeight; document.getElementById('score').innerText = highestScore; 
+                    highestScore = currentHeight;
+                    displayedScore += Math.ceil((highestScore - displayedScore) * 0.15 + 0.5);
+                    if(displayedScore > highestScore) displayedScore = highestScore;
+                    document.getElementById('score').innerText = displayedScore;
+                    
+                    const pct = Math.min(100, Math.round(highestScore / 10));
+                    document.getElementById('progress-bar').style.width = pct + '%';
+                    document.getElementById('progress-pct').innerText = pct;
+                    
+                    if(highestScore > bestScore) {
+                        bestScore = highestScore; localStorage.setItem('onlyball_best', bestScore);
+                        document.getElementById('best-score-val').innerText = bestScore; document.getElementById('menu-best-val').innerText = bestScore;
+                    }
+                    
                     if(highestScore >= 1000) triggerEnding();
                 }
 
@@ -1318,6 +1359,14 @@
                         if(!cp.reached && sphereMesh.position.y >= cp.y - 1) { 
                             cp.reached = true; lastCheckpoint = cp.pos; AudioEngine.playCheckpoint(); document.getElementById('cp-score').innerText = cp.y;
                         }
+                    }
+                }
+
+                if(isMobile) {
+                    const dashBtn = document.getElementById('dash-btn');
+                    if(dashBtn) {
+                        let alpha = dashCooldown > 0 ? 0.35 + 0.45 * (1 - dashCooldown/DASH_COOLDOWN) : 1;
+                        dashBtn.style.opacity = alpha.toFixed(2);
                     }
                 }
 
