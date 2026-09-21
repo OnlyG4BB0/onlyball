@@ -1594,7 +1594,7 @@
             scene.add(mesh);
             const ref = { mesh, body, flagMeshes: [], topY: body.topY, moving: null }; platforms.push(ref); platformMeshes.push(mesh);
 
-            if (moving) { const o = { body, mesh, kind: 'sway', dirX: moving.dirX, dirZ: moving.dirZ, amp: moving.amp, speed: moving.speed, baseX: x, baseZ: z, timeOffset: rng() * 100, isPlatform: true }; movingObstacles.push(o); ref.moving = o; }
+            if (moving) { const o = { body, mesh, kind: 'sway', dirX: moving.dirX, dirZ: moving.dirZ, amp: moving.amp, speed: moving.speed, baseX: x, baseZ: z, baseY: y, timeOffset: rng() * 100, isPlatform: true }; movingObstacles.push(o); ref.moving = o; }
 
             if (landmark) { const lm = createLandmark(biome); lm.position.set(x, y + h / 2, z); scene.add(lm); ref.flagMeshes.push(lm); landmarks.push(lm); }
             else if (!flag && !bouncer && !moving && !noProps) {
@@ -1615,16 +1615,52 @@
             }
             return ref;
         }
-        function createObstacle(px, py, pz, w, d, deadly, biome) {
-            const obsW = deadly ? w * 0.28 : w * 0.4, obsH = deadly ? 1.0 : 2.4, obsD = deadly ? d * 0.28 : d * 0.4;
-            const body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC }); body.addShape(new CANNON.Box(new CANNON.Vec3(obsW / 2, obsH / 2, obsD / 2))); body.position.set(px, py + obsH / 2 + 0.5, pz);
+        // Ostacolo su piattaforma: lascia sempre una corsia di almeno LANE (pallina r=0.8) anche all'estremo del movimento
+        const OBS_LANE = 3.2;
+        function createObstacle(px, py, pz, platW, platD, deadly, biome, extra = {}) {
+            if (deadly && !MODE().hazards) deadly = false;
+            const zen = !!MODE().zen;
+            const scale = zen ? 0.78 : 1;
+            let obsW = Math.min((deadly ? 2.35 : 3.05) * scale, platW * 0.34);
+            let obsD = Math.min((deadly ? 2.35 : 3.05) * scale, platD * 0.34);
+            obsW = Math.min(obsW, Math.max(1.1, platW - OBS_LANE));
+            obsD = Math.min(obsD, Math.max(1.1, platD - OBS_LANE));
+            const obsH = deadly ? 1.05 : (zen ? 1.7 : 2.15);
+            const body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC }); body.addShape(new CANNON.Box(new CANNON.Vec3(obsW / 2, obsH / 2, obsD / 2)));
+            const by = py + obsH / 2 + 0.5; body.position.set(px, by, pz);
             if (deadly) body.isDeathObstacle = true; world.addBody(body);
             const geo = new THREE.BoxGeometry(obsW, obsH, obsD); scaleBoxUVs(geo, obsW, obsH, obsD);
             const mesh = new THREE.Mesh(geo, deadly ? hazardMaterial : blockerMaterial); mesh.castShadow = true; mesh.receiveShadow = true;
             mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMaterial(deadly ? 0xffb9cb : 0xffb830))); scene.add(mesh);
-            const kind = rng() < 0.3 ? 'spin' : 'sway', a = rng() * Math.PI * 2;
-            const o = { body, mesh, kind, dirX: Math.cos(a), dirZ: Math.sin(a), amp: Math.min(w, d) * 0.3, speed: deadly ? 0.8 : 1.15, baseX: px, baseZ: pz, timeOffset: rng() * 100, isPlatform: false, deadly };
+            const kinds = extra.kind ? [extra.kind] : (zen ? ['sway', 'spin'] : (biome >= 5 ? ['sway', 'spin', 'bob', 'sweep', 'orbit'] : biome >= 3 ? ['sway', 'spin', 'bob', 'sweep'] : biome >= 2 ? ['sway', 'spin', 'bob'] : ['sway', 'spin']));
+            const kind = kinds[Math.floor(rng() * kinds.length)];
+            const a = extra.dirX != null ? Math.atan2(extra.dirZ, extra.dirX) : rng() * Math.PI * 2;
+            const dirX = extra.dirX != null ? extra.dirX : Math.cos(a), dirZ = extra.dirZ != null ? extra.dirZ : Math.sin(a);
+            const maxAmp = Math.max(0.35, Math.min(platW, platD) / 2 - Math.max(obsW, obsD) / 2 - OBS_LANE);
+            const wantAmp = extra.amp != null ? extra.amp : Math.min(platW, platD) * (kind === 'sweep' || kind === 'orbit' ? 0.26 : 0.18);
+            const amp = Math.min(wantAmp, maxAmp);
+            const speed = (extra.speed != null ? extra.speed : (deadly ? 0.68 : 1.02) * (1 + Math.min(0.25, (biome || 0) * 0.02))) * (zen ? 0.62 : 1);
+            const o = { body, mesh, kind, dirX, dirZ, amp, ampY: extra.ampY != null ? extra.ampY : (0.55 + rng() * 0.7), speed, baseX: px, baseZ: pz, baseY: by, timeOffset: rng() * 100, isPlatform: false, deadly, obsW, obsD };
             movingObstacles.push(o); return o;
+        }
+        function obstacleChance(D, b) {
+            if (gen.sinceCheckpoint === 0 && gen.lastPattern === 'checkpoint') return 0;
+            let c = 0.40 + D.t * 0.48;
+            if (b === 0) c *= 0.88;
+            if (gen.sinceCheckpoint === 1 && gen.lastPattern !== '') c *= 0.55;
+            if (gen.lastPattern === 'rest') c *= 0.4;
+            if (MODE().zen) c *= 0.42;
+            return c;
+        }
+        function decoratePlat(p, w, d, D, b, opts = {}) {
+            if (!p || !p.body || opts.skip || opts.flag || opts.landmark || opts.bouncer) return;
+            if (Math.min(w, d) < 6) return;
+            const chance = obstacleChance(D, b) * (opts.mult || 1);
+            if (rng() > chance) return;
+            const deadly = MODE().hazards && !MODE().zen && b >= 1 && rng() < (0.22 + D.t * 0.48);
+            const ox = (rng() < 0.5 ? 1 : -1) * w * 0.22, oz = (rng() - 0.5) * d * 0.22;
+            const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
+            createObstacle(p.body.position.x + ox, p.body.position.y, p.body.position.z + oz, w, d, deadly, b, { kind: opts.kind, amp: Math.min(1.5, Math.min(w, d) * 0.14), ...across });
         }
         // Rimuove piattaforme e ostacoli molto sotto la vetta raggiunta: meno draw call e broadphase più leggero
         function cullBelow(minY) {
@@ -1640,7 +1676,8 @@
            SEZIONE 11: LEVEL DESIGN — generatore a pattern con curva di difficoltà
            - La difficoltà (gap tra i bordi, dislivello, dimensione) cresce con il bioma e resta sempre entro la portata del salto
              (salto: v=22, g=35 → ~6.9 u di altezza; trampolino: v=45 → ~29 u).
-           - Ogni bioma: checkpoint (grande, con bandiera) → riscaldamento → pattern vari → punto di respiro con landmark → pattern più intensi.
+           - Ogni bioma: checkpoint (grande, con bandiera) → riscaldamento senza ostacoli → pattern vari → punto di respiro con landmark → pattern più intensi.
+           - Ostacoli: densità e letalità crescono con l'altezza; corsia giocabile sempre garantita; Zen = solo blocker lenti.
            ========================================================================== */
         const gen = { angle: 0, prevW: 25, prevD: 25, lastPattern: '', nextRestY: 35, sinceCheckpoint: 0 };
         const extentAlong = (w, d, dx, dz) => Math.min(w / 2 / Math.max(Math.abs(dx), 1e-3), d / 2 / Math.max(Math.abs(dz), 1e-3));
@@ -1654,30 +1691,113 @@
         }
         function plat(w, d, gap, rise, ang, biome, opts) { const p = placeNext(w, d, gap, rise, ang); return createPlatform(p.x, p.y, p.z, w, 1, d, biome, opts); }
         const PATTERN_FNS = {
-            hops(D, b) { const n = 3 + Math.floor(rng() * 3); for (let i = 0; i < n; i++) plat(D.size * rngRange(0.8, 1.2), D.size * rngRange(0.8, 1.2), D.gap * rngRange(0.7, 1.1), D.rise * rngRange(0.8, 1.1), 0.55 + rngRange(-0.15, 0.15), b); return n; },
-            zigzag(D, b) { const n = 4; for (let i = 0; i < n; i++) plat(D.size * 0.9, D.size * 0.9, D.gap * 0.9, D.rise * 0.9, (i % 2 === 0 ? 1.0 : -0.75) + 0.2, b); return n; },
-            stairs(D, b) { const n = 4 + Math.floor(rng() * 3), s = Math.max(4, D.size * 0.6); for (let i = 0; i < n; i++) plat(s, s, Math.max(1, D.gap * 0.55), Math.min(2.4, D.rise * 0.8), 0.28, b, { noProps: true }); return n; },
-            longjump(D, b) { plat(8.5, 8.5, D.gap * 0.7, D.rise * 0.7, 0.5, b, { noProps: true }); plat(D.size + 3, D.size + 3, D.gap + 2.0, 0.8, 0.15, b); return 2; },
-            launch(D, b) { plat(5, 5, D.gap * 0.8, 1.5, 0.5, b, { bouncer: true }); plat(D.size + 4, D.size + 4, 3.5, 14 + D.t * 4, 0.3, b); return 2; },
-            bridge(D, b) { const a = gen.angle + 0.5, px = -Math.sin(a), pz = Math.cos(a); plat(6, 6, D.gap * 0.7, D.rise * 0.8, 0.5, b, { moving: { dirX: px, dirZ: pz, amp: 2.6 + D.t * 1.6, speed: 0.45 + D.t * 0.3 } }); plat(D.size, D.size, 1.2, D.rise * 0.8, 0.3, b); return 2; },
-            gauntlet(D, b) { const w = 12 + D.t * 2; const p = plat(w, w, D.gap * 0.8, D.rise * 0.8, 0.55, b, { noProps: true }); const deadly = MODE().hazards && b >= 2 && rng() < 0.5 + D.t * 0.4; createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w, w, deadly, b); if (b >= 6 && rng() < 0.5) createObstacle(p.body.position.x + (rng() - 0.5) * w * 0.4, p.body.position.y, p.body.position.z + (rng() - 0.5) * w * 0.4, w * 0.6, w * 0.6, MODE().hazards && rng() < 0.5, b); return 1; },
-            split(D, b) {
-                const sx = genCurrentX, sy = genCurrentY, sz = genCurrentZ, sa = gen.angle, sw = gen.prevW, sd = gen.prevD, w = D.size * 0.85;
-                const A = placeNext(w, w, D.gap * 0.8, D.rise * 0.8, 0.5 - 0.75); createPlatform(A.x, A.y, A.z, w, 1, w, b, { noProps: true }); const ax = A.x, az = A.z;
-                genCurrentX = sx; genCurrentY = sy; genCurrentZ = sz; gen.angle = sa; gen.prevW = sw; gen.prevD = sd;
-                const B = placeNext(w, w, D.gap * 0.8, D.rise * 0.8, 0.5 + 0.75); const useBouncer = rng() < 0.4; createPlatform(B.x, B.y, B.z, useBouncer ? 5 : w, 1, useBouncer ? 5 : w, b, { bouncer: useBouncer, noProps: true });
-                genCurrentX = (ax + B.x) / 2; genCurrentZ = (az + B.z) / 2; gen.angle = sa + 0.5; gen.prevW = gen.prevD = w;
-                plat(D.size + 2, D.size + 2, D.gap * 0.5, D.rise * 0.8, 0.3, b); return 3;
+            hops(D, b) {
+                const n = 3 + Math.floor(rng() * 3), afterCp = gen.lastPattern === 'checkpoint';
+                for (let i = 0; i < n; i++) {
+                    const pw = D.size * rngRange(0.8, 1.2), pd = D.size * rngRange(0.8, 1.2);
+                    const p = plat(pw, pd, D.gap * rngRange(0.7, 1.1), D.rise * rngRange(0.8, 1.1), 0.55 + rngRange(-0.15, 0.15), b);
+                    if (afterCp) continue;
+                    if (i > (gen.sinceCheckpoint === 0 ? 1 : 0)) decoratePlat(p, pw, pd, D, b, { mult: 0.95 });
+                }
+                return n;
             },
-            spiral(D, b) { const n = 5; for (let i = 0; i < n; i++) plat(D.size * 0.8, D.size * 0.8, D.gap * 0.75, D.rise * 0.85, 1.05, b); return n; },
+            zigzag(D, b) {
+                const n = 4, pw = D.size * 0.95, pd = D.size * 0.95;
+                for (let i = 0; i < n; i++) {
+                    const p = plat(pw, pd, D.gap * 0.9, D.rise * 0.9, (i % 2 === 0 ? 1.0 : -0.75) + 0.2, b);
+                    if (i % 2 === 1) decoratePlat(p, pw, pd, D, b, { mult: 1.1 });
+                }
+                return n;
+            },
+            stairs(D, b) {
+                const n = 4 + Math.floor(rng() * 3), s = Math.max(5.5, D.size * 0.65);
+                for (let i = 0; i < n; i++) {
+                    const p = plat(s, s, Math.max(1, D.gap * 0.55), Math.min(2.4, D.rise * 0.8), 0.28, b, { noProps: true });
+                    if (i >= n - 2) decoratePlat(p, s, s, D, b, { mult: 0.9, kind: 'spin' });
+                }
+                return n;
+            },
+            longjump(D, b) {
+                plat(8.5, 8.5, D.gap * 0.7, D.rise * 0.7, 0.5, b, { noProps: true });
+                const lw = D.size + 3, land = plat(lw, lw, D.gap + 2.0, 0.8, 0.15, b);
+                decoratePlat(land, lw, lw, D, b, { mult: 1.15 });
+                return 2;
+            },
+            launch(D, b) {
+                plat(5, 5, D.gap * 0.8, 1.5, 0.5, b, { bouncer: true });
+                const lw = D.size + 4, land = plat(lw, lw, 3.5, 14 + D.t * 4, 0.3, b);
+                decoratePlat(land, lw, lw, D, b, { mult: 1.35 });
+                if (b >= 4 && MODE().hazards && rng() < 0.45 + D.t * 0.3) {
+                    const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
+                    createObstacle(land.body.position.x, land.body.position.y, land.body.position.z, lw, lw, true, b, { kind: 'sweep', amp: lw * 0.22, speed: 0.62, ...across });
+                }
+                return 2;
+            },
+            bridge(D, b) {
+                const a = gen.angle + 0.5, px = -Math.sin(a), pz = Math.cos(a);
+                plat(6, 6, D.gap * 0.7, D.rise * 0.8, 0.5, b, { moving: { dirX: px, dirZ: pz, amp: 2.6 + D.t * 1.6, speed: 0.45 + D.t * 0.3 } });
+                const dw = D.size, dest = plat(dw, dw, 1.2, D.rise * 0.8, 0.3, b);
+                decoratePlat(dest, dw, dw, D, b, { mult: 1.2, kind: 'spin' });
+                return 2;
+            },
+            gauntlet(D, b) {
+                const w = 13 + D.t * 3, p = plat(w, w, D.gap * 0.8, D.rise * 0.8, 0.55, b, { noProps: true });
+                const hazards = MODE().hazards, n = 1 + (b >= 2 ? 1 : 0) + (b >= 7 && rng() < 0.65 ? 1 : 0);
+                for (let i = 0; i < n; i++) {
+                    const ang = (i / n) * Math.PI * 2 + rng() * 0.35, r = w * 0.26;
+                    const deadly = hazards && b >= 2 && rng() < 0.42 + D.t * 0.4;
+                    createObstacle(p.body.position.x + Math.cos(ang) * r, p.body.position.y, p.body.position.z + Math.sin(ang) * r, w * 0.72, w * 0.72, deadly, b, { kind: i % 2 ? 'orbit' : 'sway', amp: w * 0.16, speed: 0.7 + D.t * 0.2 });
+                }
+                return 1;
+            },
+            sweepers(D, b) {
+                const w = 15 + D.t * 2, d = 11, p = plat(w, d, D.gap * 0.75, D.rise * 0.8, 0.5, b, { noProps: true });
+                const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
+                const deadly = MODE().hazards && b >= 2 && rng() < 0.55 + D.t * 0.3;
+                createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w, d, deadly, b, { kind: 'sweep', amp: w * 0.24, speed: 0.52 + D.t * 0.22, ...across });
+                if (b >= 5) createObstacle(p.body.position.x + across.dirX * w * 0.18, p.body.position.y, p.body.position.z + across.dirZ * d * 0.18, 6, 6, false, b, { kind: 'spin', amp: 0.5, speed: 1.1 });
+                return 1;
+            },
+            lanes(D, b) {
+                const w = 16 + D.t, d = 12, p = plat(w, d, D.gap * 0.75, D.rise * 0.8, 0.5, b, { noProps: true });
+                const px = p.body.position.x, py = p.body.position.y, pz = p.body.position.z;
+                const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
+                createObstacle(px + across.dirX * w * 0.32, py, pz + across.dirZ * d * 0.1, 5.2, d * 0.5, false, b, { kind: 'spin', amp: 0.4, speed: 0.95 });
+                createObstacle(px - across.dirX * w * 0.32, py, pz - across.dirZ * d * 0.1, 5.2, d * 0.5, false, b, { kind: 'spin', amp: 0.4, speed: 0.95 });
+                if (MODE().hazards && b >= 3 && rng() < 0.5 + D.t * 0.35) createObstacle(px, py, pz, 5.2, 5.2, true, b, { kind: 'bob', amp: 1.1, speed: 0.85 });
+                return 1;
+            },
+            split(D, b) {
+                const sx = genCurrentX, sy = genCurrentY, sz = genCurrentZ, sa = gen.angle, sw = gen.prevW, sd = gen.prevD, w = Math.max(6.5, D.size * 0.9);
+                const A = placeNext(w, w, D.gap * 0.8, D.rise * 0.8, 0.5 - 0.75); const platA = createPlatform(A.x, A.y, A.z, w, 1, w, b, { noProps: true }); const ax = A.x, az = A.z;
+                decoratePlat(platA, w, w, D, b, { mult: 1.25 });
+                genCurrentX = sx; genCurrentY = sy; genCurrentZ = sz; gen.angle = sa; gen.prevW = sw; gen.prevD = sd;
+                const B = placeNext(w, w, D.gap * 0.8, D.rise * 0.8, 0.5 + 0.75); const useBouncer = rng() < 0.45; createPlatform(B.x, B.y, B.z, useBouncer ? 5 : w, 1, useBouncer ? 5 : w, b, { bouncer: useBouncer, noProps: true });
+                genCurrentX = (ax + B.x) / 2; genCurrentZ = (az + B.z) / 2; gen.angle = sa + 0.5; gen.prevW = gen.prevD = w;
+                const mergeW = D.size + 2, merge = plat(mergeW, mergeW, D.gap * 0.5, D.rise * 0.8, 0.3, b);
+                decoratePlat(merge, mergeW, mergeW, D, b, { mult: 0.9 });
+                return 3;
+            },
+            spiral(D, b) {
+                const n = 5, pw = D.size * 0.85;
+                for (let i = 0; i < n; i++) {
+                    const p = plat(pw, pw, D.gap * 0.75, D.rise * 0.85, 1.05, b);
+                    if (i === 2 || i === 4) decoratePlat(p, pw, pw, D, b, { mult: 1.05 });
+                }
+                return n;
+            },
             rest(D, b) { plat(14, 14, D.gap * 0.6, D.rise * 0.7, 0.5, b, { landmark: true }); return 1; }
         };
         function pickPattern(D, b) {
-            const w = { hops: 5, stairs: 3, zigzag: 3 };
-            if (b >= 1) { w.longjump = 2 + D.t * 2; w.bridge = 2; w.gauntlet = 2 + D.t * 2; }
-            if (b >= 2) { w.launch = MODE().lava ? 3 : 2; w.split = 2; }
+            const w = { hops: 5, stairs: 3, zigzag: 3, gauntlet: 2.4 };
+            if (b >= 1) { w.longjump = 2 + D.t * 2; w.bridge = 2; w.gauntlet = 3.2 + D.t * 3; w.lanes = 2.2 + D.t * 1.6; }
+            if (b >= 2) { w.launch = MODE().lava ? 3 : 2; w.split = 2.2; w.sweepers = 2.2 + D.t * 2.2; }
             if (b >= 4) w.spiral = 2;
-            if (b >= 6) { w.hops = 3; w.stairs = 4; }
+            if (b >= 6) { w.hops = 2.4; w.stairs = 3.2; w.gauntlet = 4.2 + D.t * 2; }
+            if (MODE().zen) {
+                w.hops = (w.hops || 5) + 2; w.stairs = (w.stairs || 3) + 1;
+                if (w.gauntlet) w.gauntlet *= 0.4; if (w.sweepers) w.sweepers *= 0.35; if (w.lanes) w.lanes *= 0.5;
+            }
             delete w[gen.lastPattern];
             let total = 0; for (const k in w) total += w[k]; let r = rng() * total;
             for (const k in w) { r -= w[k]; if (r <= 0) return k; } return 'hops';
@@ -2008,7 +2128,21 @@
 
             for (const obs of movingObstacles) {
                 if (obs.kind === 'spin') obs.body.angularVelocity.set(0, 2 * obs.speed, 0);
-                else { const s = Math.sin(time * obs.speed + obs.timeOffset) * obs.amp; obs.body.velocity.x = ((obs.baseX + obs.dirX * s) - obs.body.position.x) * 10; obs.body.velocity.z = ((obs.baseZ + obs.dirZ * s) - obs.body.position.z) * 10; }
+                else if (obs.kind === 'bob') {
+                    const y = (obs.baseY || obs.body.position.y) + Math.sin(time * obs.speed + obs.timeOffset) * (obs.ampY || 0.8);
+                    obs.body.velocity.x = (obs.baseX - obs.body.position.x) * 10;
+                    obs.body.velocity.y = (y - obs.body.position.y) * 10;
+                    obs.body.velocity.z = (obs.baseZ - obs.body.position.z) * 10;
+                } else if (obs.kind === 'orbit') {
+                    const a = time * obs.speed + obs.timeOffset;
+                    const tx = obs.baseX + Math.cos(a) * obs.amp, tz = obs.baseZ + Math.sin(a) * obs.amp;
+                    obs.body.velocity.x = (tx - obs.body.position.x) * 10;
+                    obs.body.velocity.z = (tz - obs.body.position.z) * 10;
+                } else {
+                    const s = Math.sin(time * obs.speed + obs.timeOffset) * obs.amp;
+                    obs.body.velocity.x = ((obs.baseX + obs.dirX * s) - obs.body.position.x) * 10;
+                    obs.body.velocity.z = ((obs.baseZ + obs.dirZ * s) - obs.body.position.z) * 10;
+                }
                 obs.mesh.position.copy(obs.body.position); obs.mesh.quaternion.copy(obs.body.quaternion);
             }
             for (const prop of sceneProps) prop.rotation.y += prop.userData.spin || 0.01;
@@ -2185,7 +2319,54 @@
         window.addEventListener('contextmenu', (e) => { if (gameState === 'playing') e.preventDefault(); });
 
         // Hook di test/anteprima (usati dagli screenshot automatici): non influenzano il gioco
-        window.__ob = { gotoBiome, get state() { return { gameState, biome: currentVisualBiome, height: highestScore, platforms: platforms.length, audio: !!Audio.ctx }; }, Audio, BIOMES, createAudioEngine };
+        function auditPlayable(minY = 240) {
+            let guard = 0;
+            while (genCurrentY < minY + 50 && genCurrentY < 1000 && guard++ < 40) generateMorePlatforms(30);
+            const plats = platforms.map(p => {
+                const he = p.body.shapes[0].halfExtents;
+                return { x: p.body.position.x, y: p.topY, z: p.body.position.z, w: he.x * 2, d: he.z * 2, bouncer: !!p.body.isBouncer, flag: !!(p.body && p.flagMeshes && p.flagMeshes.length > 2) };
+            });
+            const obs = movingObstacles.filter(o => !o.isPlatform).map(o => ({ x: o.baseX, y: o.baseY, z: o.baseZ, deadly: !!o.deadly, kind: o.kind, amp: o.amp || 0, w: o.obsW || 2.4, d: o.obsD || 2.4 }));
+            const sealed = [];
+            for (const o of obs) {
+                let best = null, bestDist = 1e9;
+                for (const p of plats) {
+                    const dist = Math.abs((o.y - 1.2) - p.y) * 2 + Math.hypot(o.x - p.x, o.z - p.z);
+                    if (dist < bestDist) { bestDist = dist; best = p; }
+                }
+                if (!best || bestDist > 18) continue;
+                if ((best.w - o.w) < OBS_LANE && (best.d - o.d) < OBS_LANE) sealed.push({ y: best.y, freeW: best.w - o.w, freeD: best.d - o.d });
+            }
+            const canJump = (a, b) => {
+                const dx = b.x - a.x, dz = b.z - a.z, dist = Math.hypot(dx, dz) || 1e-6, rise = b.y - a.y;
+                const gap = dist - extentAlong(a.w, a.d, dx / dist, dz / dist) - extentAlong(b.w, b.d, dx / dist, dz / dist);
+                if (a.bouncer) return rise <= 30 && gap <= 14 && rise >= -4;
+                return rise <= 5.7 && gap <= 8.5 && rise >= -3;
+            };
+            const n = plats.length, reach = new Array(n).fill(false); reach[0] = true;
+            const q = [0];
+            while (q.length) {
+                const i = q.pop();
+                for (let j = 0; j < n; j++) {
+                    if (reach[j] || i === j) continue;
+                    if (Math.abs(plats[j].y - plats[i].y) > 32) continue;
+                    if (canJump(plats[i], plats[j])) { reach[j] = true; q.push(j); }
+                }
+            }
+            let maxReachY = 0, reached = 0;
+            for (let i = 0; i < n; i++) if (reach[i]) { reached++; maxReachY = Math.max(maxReachY, plats[i].y); }
+            const kinds = {}; for (const o of obs) kinds[o.kind] = (kinds[o.kind] || 0) + 1;
+            const bandYs = [0, 70, 140, 280, 420];
+            const bands = bandYs.map((y0, i) => {
+                const y1 = bandYs[i + 1] || y0 + 160;
+                const pN = plats.filter(p => p.y >= y0 && p.y < y1).length, oN = obs.filter(o => o.y >= y0 && o.y < y1).length;
+                return { y0, y1, platforms: pN, obstacles: oN, ratio: pN ? +(oN / pN).toFixed(2) : 0 };
+            });
+            const restClear = platforms.filter(p => p.flagMeshes.some(m => landmarks.indexOf(m) >= 0)).every(p => !obs.some(o => Math.hypot(o.x - p.body.position.x, o.z - p.body.position.z) < 5 && Math.abs(o.y - p.topY) < 4));
+            const cpClear = checkpoints.every(cp => !obs.some(o => Math.hypot(o.x - cp.pos.x, o.z - cp.pos.z) < 7 && Math.abs(o.y - cp.pos.y) < 3.5));
+            return { mode: modeKey, platforms: plats.length, obstacles: obs.length, lethal: obs.filter(o => o.deadly).length, kinds, sealed: sealed.length, maxReachY, reached, playable: maxReachY >= minY && sealed.length === 0, cpClear, restClear, bands, zenNoLethal: modeKey !== 'zen' || obs.every(o => !o.deadly) };
+        }
+        window.__ob = { gotoBiome, selectMode, startGame, fullGameReset, generateMorePlatforms, auditPlayable, get state() { return { gameState, biome: currentVisualBiome, height: highestScore, platforms: platforms.length, obstacles: movingObstacles.filter(o => !o.isPlatform).length, lethal: movingObstacles.filter(o => o.deadly).length, mode: modeKey, audio: !!Audio.ctx }; }, Audio, BIOMES, createAudioEngine };
 
         renderModeCards(); fullGameReset(); onResize(); animate();
     </script>
