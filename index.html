@@ -1644,11 +1644,11 @@
             movingObstacles.push(o); return o;
         }
         function obstacleChance(D, b) {
-            if (gen.sinceCheckpoint === 0) return 0;
-            let c = 0.30 + D.t * 0.50;
-            if (b === 0) c *= 0.72;
-            if (gen.sinceCheckpoint === 1) c *= 0.42;
-            if (gen.lastPattern === 'rest' || gen.lastPattern === 'checkpoint') c *= 0.35;
+            if (gen.sinceCheckpoint === 0 && gen.lastPattern === 'checkpoint') return 0;
+            let c = 0.40 + D.t * 0.48;
+            if (b === 0) c *= 0.88;
+            if (gen.sinceCheckpoint === 1 && gen.lastPattern !== '') c *= 0.55;
+            if (gen.lastPattern === 'rest') c *= 0.4;
             if (MODE().zen) c *= 0.42;
             return c;
         }
@@ -1692,11 +1692,12 @@
         function plat(w, d, gap, rise, ang, biome, opts) { const p = placeNext(w, d, gap, rise, ang); return createPlatform(p.x, p.y, p.z, w, 1, d, biome, opts); }
         const PATTERN_FNS = {
             hops(D, b) {
-                const n = 3 + Math.floor(rng() * 3), warmup = gen.sinceCheckpoint === 0;
+                const n = 3 + Math.floor(rng() * 3), afterCp = gen.lastPattern === 'checkpoint';
                 for (let i = 0; i < n; i++) {
                     const pw = D.size * rngRange(0.8, 1.2), pd = D.size * rngRange(0.8, 1.2);
                     const p = plat(pw, pd, D.gap * rngRange(0.7, 1.1), D.rise * rngRange(0.8, 1.1), 0.55 + rngRange(-0.15, 0.15), b);
-                    if (!warmup && i > 0) decoratePlat(p, pw, pd, D, b, { mult: 0.85 });
+                    if (afterCp) continue;
+                    if (i > (gen.sinceCheckpoint === 0 ? 1 : 0)) decoratePlat(p, pw, pd, D, b, { mult: 0.95 });
                 }
                 return n;
             },
@@ -1788,7 +1789,7 @@
             rest(D, b) { plat(14, 14, D.gap * 0.6, D.rise * 0.7, 0.5, b, { landmark: true }); return 1; }
         };
         function pickPattern(D, b) {
-            const w = { hops: 5, stairs: 3, zigzag: 3, gauntlet: 1.4 };
+            const w = { hops: 5, stairs: 3, zigzag: 3, gauntlet: 2.4 };
             if (b >= 1) { w.longjump = 2 + D.t * 2; w.bridge = 2; w.gauntlet = 3.2 + D.t * 3; w.lanes = 2.2 + D.t * 1.6; }
             if (b >= 2) { w.launch = MODE().lava ? 3 : 2; w.split = 2.2; w.sweepers = 2.2 + D.t * 2.2; }
             if (b >= 4) w.spiral = 2;
