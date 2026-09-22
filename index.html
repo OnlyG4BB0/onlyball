@@ -269,12 +269,33 @@
         /* ---------- Skin ---------- */
         .skin-picker { display: flex; align-items: center; gap: 10px; width: 100%; }
         .skin-name { flex: 1; text-align: center; font-weight: 700; font-size: clamp(.95rem, 2.8vw, 1.2rem); padding: 12px; border-radius: 16px; background: rgba(255,255,255,.06); border: 1px solid var(--line); }
-        .skin-dots { display: flex; justify-content: center; gap: 6px; }
+        .skin-name.locked { color: var(--muted); }
+        .skin-name small { display: block; margin-top: 4px; font-size: .72rem; font-weight: 600; color: var(--sun-2); }
+        .skin-dots { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
         .skin-dots span { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.25); transition: background .2s, transform .2s; }
         .skin-dots span.on { background: var(--sun); transform: scale(1.3); }
+        .skin-dots span.locked { background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1.5px rgba(255,184,48,.55); }
         #skin-menu { justify-content: flex-end; }
         #skin-menu .panel { max-width: 460px; margin-bottom: calc(6px + var(--safe-b)); }
         @media (min-width: 900px) { #skin-menu { justify-content: center; align-items: flex-end; padding-right: clamp(20px, 6vw, 90px); } }
+
+        /* ---------- Tutorial coach ---------- */
+        #tutorial-coach {
+            position: fixed; left: 50%; bottom: calc(22px + var(--safe-b)); transform: translateX(-50%);
+            z-index: 28; width: min(420px, calc(100% - 28px)); pointer-events: auto;
+            display: flex; flex-direction: column; gap: 10px; align-items: stretch;
+            padding: 14px 16px; border-radius: 20px; background: rgba(12,15,34,.88);
+            border: 1px solid rgba(255,184,48,.45); box-shadow: 0 16px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.06);
+            -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+            animation: popIn .4s cubic-bezier(.2,.9,.3,1.2) both;
+        }
+        body.touch-ui #tutorial-coach { bottom: calc(150px + var(--safe-b)); }
+        #tutorial-coach .t-step { font-size: .66rem; letter-spacing: 2px; text-transform: uppercase; color: var(--sun-2); font-weight: 700; }
+        #tutorial-coach .t-title { margin: 0; font-family: var(--font-display); font-size: clamp(1rem, 3vw, 1.25rem); letter-spacing: .5px; line-height: 1.15; }
+        #tutorial-coach .t-body { margin: 0; color: #e7e2ff; font-size: clamp(.8rem, 2.2vw, .95rem); font-weight: 500; line-height: 1.35; }
+        #tutorial-coach .t-actions { display: flex; gap: 8px; }
+        #tutorial-coach .t-actions .btn { flex: 1; min-height: 42px; font-size: .88rem; }
+        #tutorial-coach kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border-radius: 6px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); border-bottom-width: 3px; font-family: inherit; font-weight: 700; color: var(--sun-2); }
 
         /* ---------- Impostazioni ---------- */
         .setting { display: flex; flex-direction: column; gap: 6px; }
@@ -396,6 +417,8 @@
         <symbol id="i-vibrate" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="18" rx="2"/><path d="M4 8v8M20 8v8M1.5 10v4M22.5 10v4"/></symbol>
         <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
         <symbol id="i-shadow" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><ellipse cx="12" cy="19" rx="7" ry="2" fill="currentColor" fill-opacity=".35"/></symbol>
+        <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.4 13.2 15.6 17.1M15.6 6.9 8.4 10.8"/></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
     </svg>
 
     <!-- CONSOLE SEGRETA -->
@@ -458,6 +481,17 @@
     <div id="flash"></div>
     <div id="rotate-hint" class="chip hidden"><svg class="i"><use href="#i-phone"/></svg> Consiglio: ruota in orizzontale per una visuale più ampia</div>
 
+    <!-- TUTORIAL COACH -->
+    <div id="tutorial-coach" class="hidden" role="dialog" aria-live="polite">
+        <div class="t-step" id="tutorial-step-label">Passo 1 di 3</div>
+        <p class="t-title" id="tutorial-title">Muoviti</p>
+        <p class="t-body" id="tutorial-body">Usa WASD o le frecce per rotolare.</p>
+        <div class="t-actions">
+            <button id="btn-tutorial-skip" class="btn btn-ghost" type="button">Salta guida</button>
+            <button id="btn-tutorial-next" class="btn btn-sun" type="button">Ok, ho capito</button>
+        </div>
+    </div>
+
     <!-- MENU PRINCIPALE -->
     <div id="main-menu" class="screen">
         <div class="menu-bg"></div>
@@ -501,7 +535,7 @@
     <div id="skin-menu" class="screen hidden" style="background: linear-gradient(0deg, rgba(5,7,18,.6), transparent 45%); pointer-events: none;">
         <div class="panel" style="pointer-events: auto;">
             <h2>Scegli la pallina</h2>
-            <p class="sub">Trascina per ruotare l'anteprima</p>
+            <p class="sub">Sali in alto per sbloccarne di nuove</p>
             <div class="skin-picker">
                 <button id="btn-skin-prev" class="icon-btn" aria-label="Precedente"><svg class="i"><use href="#i-left"/></svg></button>
                 <div id="skin-name-display" class="skin-name">Only Ball</div>
@@ -583,6 +617,7 @@
             </div>
             <div class="btn-row">
                 <button id="btn-gameover-restart" class="btn btn-primary"><svg class="i"><use href="#i-restart"/></svg> Riprova</button>
+                <button id="btn-gameover-share" class="btn btn-sun"><svg class="i"><use href="#i-share"/></svg> Condividi</button>
                 <button id="btn-gameover-home" class="btn btn-ghost"><svg class="i"><use href="#i-home"/></svg> Menu</button>
             </div>
         </div>
@@ -735,7 +770,7 @@
             'skins': ['btn-skin-prev', 'btn-skin-next', 'btn-custom-skin', 'btn-close-skin'],
             'paused': ['btn-resume', 'btn-restart', 'btn-settings-pause', 'btn-home'],
             'settings': ['vol-slider', 'music-slider', 'amb-slider', 'mute-toggle', 'sens-slider', 'res-select', 'shadow-toggle', 'vibrate-toggle', 'touch-select', 'btn-close-settings'],
-            'gameover': ['btn-gameover-restart', 'btn-gameover-home']
+            'gameover': ['btn-gameover-restart', 'btn-gameover-share', 'btn-gameover-home']
         };
 
         /* Biomi: palette, cielo, pattern texture, particelle, ambiente sonoro e musica — tutto in un'unica tabella.
@@ -1447,9 +1482,59 @@
             }
         };
         const skinList = [
-            { name: 'Only Ball', key: 'brand' }, { name: 'Pallone da Spiaggia', key: 'beach' }, { name: 'Sinner (Tennis)', key: 'tennis' }, { name: 'Pallavolo', key: 'volley' },
-            { name: 'Pallina da Golf', key: 'golf' }, { name: 'Palla da Basket', key: 'basket' }, { name: 'Palla Numero 8', key: 'eight' }, { name: 'Pallone da Calcio', key: 'soccer' }, { name: 'Piccolo Pianeta', key: 'planet' }
+            { name: 'Only Ball', key: 'brand', unlock: 0 },
+            { name: 'Pallone da Spiaggia', key: 'beach', unlock: 70 },
+            { name: 'Sinner (Tennis)', key: 'tennis', unlock: 140 },
+            { name: 'Pallavolo', key: 'volley', unlock: 210 },
+            { name: 'Pallina da Golf', key: 'golf', unlock: 280 },
+            { name: 'Palla da Basket', key: 'basket', unlock: 350 },
+            { name: 'Palla Numero 8', key: 'eight', unlock: 490 },
+            { name: 'Pallone da Calcio', key: 'soccer', unlock: 630 },
+            { name: 'Piccolo Pianeta', key: 'planet', unlock: 800 }
         ];
+        function getLifetimeBest() {
+            let best = parseInt(localStorage.getItem('onlyball_lifetime') || '0') || 0;
+            Object.keys(MODES).forEach((k) => { best = Math.max(best, getBest(k)); });
+            return best;
+        }
+        function setLifetimeBest(v) {
+            const cur = getLifetimeBest();
+            if (v > cur) localStorage.setItem('onlyball_lifetime', String(v));
+        }
+        function isSkinUnlocked(index) {
+            if (index < 0) return !!customTexture;
+            return getLifetimeBest() >= (skinList[index].unlock || 0);
+        }
+        function firstUnlockedSkinIndex() {
+            for (let i = 0; i < skinList.length; i++) if (isSkinUnlocked(i)) return i;
+            return 0;
+        }
+        let announcedUnlocks = new Set();
+        try { JSON.parse(localStorage.getItem('onlyball_unlock_toast') || '[]').forEach((k) => announcedUnlocks.add(k)); } catch (e) {}
+        function persistAnnouncedUnlocks() { try { localStorage.setItem('onlyball_unlock_toast', JSON.stringify([...announcedUnlocks])); } catch (e) {} }
+        // Evita toast di sblocco a raffica per chi ha già i record
+        skinList.forEach((s) => { if (s.unlock > 0 && getLifetimeBest() >= s.unlock) announcedUnlocks.add(s.key); });
+        persistAnnouncedUnlocks();
+        function checkSkinUnlocks(prevBest, nextBest) {
+            const unlocked = [];
+            skinList.forEach((s) => {
+                if (s.unlock > 0 && prevBest < s.unlock && nextBest >= s.unlock && !announcedUnlocks.has(s.key)) {
+                    announcedUnlocks.add(s.key); unlocked.push(s);
+                }
+            });
+            if (unlocked.length) {
+                persistAnnouncedUnlocks();
+                const s = unlocked[unlocked.length - 1];
+                showEvent(`${icon('palette')} Sbloccata: ${s.name}`, 'gold', 2800);
+                vibrate([18, 40, 18]);
+            }
+            return unlocked;
+        }
+        function noteProgressHeight(h) {
+            const prev = getLifetimeBest();
+            setLifetimeBest(h);
+            if (h > prev) checkSkinUnlocks(prev, h);
+        }
         function skinTextures(key) {
             if (!skinTexCache[key]) { const d = SKINS_DEF[key]; const map = mkTex(d.color()); map.wrapS = map.wrapT = THREE.ClampToEdgeWrapping; const bump = d.bump ? mkTex(d.bump(), false) : null; if (bump) bump.wrapS = bump.wrapT = THREE.ClampToEdgeWrapping; skinTexCache[key] = { map, bump }; }
             return skinTexCache[key];
@@ -1458,6 +1543,7 @@
         let currentSkinIndex = parseInt(localStorage.getItem('onlyball_skin') || '0');
         if (!localStorage.getItem('onlyball_skin_v2')) { if (localStorage.getItem('onlyball_skin') !== null) currentSkinIndex += 1; localStorage.setItem('onlyball_skin_v2', '1'); }
         if (isNaN(currentSkinIndex) || currentSkinIndex < 0 || currentSkinIndex >= skinList.length) currentSkinIndex = 0;
+        if (!isSkinUnlocked(currentSkinIndex)) currentSkinIndex = firstUnlockedSkinIndex();
 
         const radius = 0.8;
         const sphereBody = new CANNON.Body({ mass: 5, material: physicsMaterial, shape: new CANNON.Sphere(radius), angularDamping: 0.9, linearDamping: 0.1 }); world.addBody(sphereBody);
@@ -1471,11 +1557,27 @@
 
         function applySkin(index) {
             const m = sphereMesh.material;
-            if (index === -1 && customTexture) { m.map = customTexture; m.bumpMap = null; m.roughness = isRTX ? 0.1 : 0.5; m.metalness = isRTX ? 0.8 : 0.1; $('skin-name-display').textContent = 'Skin Personale'; }
-            else { const s = skinList[index], d = SKINS_DEF[s.key], t = skinTextures(s.key); m.map = t.map; m.bumpMap = t.bump; m.bumpScale = d.bumpScale || 0.01; m.roughness = isRTX ? Math.max(0.08, d.roughness - 0.2) : d.roughness; m.metalness = isRTX ? Math.min(0.85, d.metalness + 0.3) : d.metalness; $('skin-name-display').textContent = s.name; }
+            const nameEl = $('skin-name-display');
+            if (index === -1 && customTexture) {
+                m.map = customTexture; m.bumpMap = null; m.roughness = isRTX ? 0.1 : 0.5; m.metalness = isRTX ? 0.8 : 0.1;
+                nameEl.classList.remove('locked'); nameEl.innerHTML = 'Skin Personale';
+            } else {
+                const safe = (index >= 0 && index < skinList.length) ? index : 0;
+                const s = skinList[safe], d = SKINS_DEF[s.key], t = skinTextures(s.key), locked = !isSkinUnlocked(safe);
+                m.map = t.map; m.bumpMap = t.bump; m.bumpScale = d.bumpScale || 0.01;
+                m.roughness = isRTX ? Math.max(0.08, d.roughness - 0.2) : d.roughness;
+                m.metalness = isRTX ? Math.min(0.85, d.metalness + 0.3) : d.metalness;
+                nameEl.classList.toggle('locked', locked);
+                nameEl.innerHTML = locked
+                    ? `${icon('lock')} ${s.name}<small>Sblocca a ${s.unlock} m · tuo record ${getLifetimeBest()} m</small>`
+                    : s.name;
+                index = safe;
+            }
             m.color.setHex(0xffffff); m.needsUpdate = true;
-            const dots = $('skin-dots'); dots.innerHTML = skinList.map((_, i) => `<span class="${i === index ? 'on' : ''}"></span>`).join('') + (customTexture ? `<span class="${index === -1 ? 'on' : ''}"></span>` : '');
-            if (index >= 0) localStorage.setItem('onlyball_skin', index);
+            const dots = $('skin-dots');
+            dots.innerHTML = skinList.map((s, i) => `<span class="${i === index ? 'on' : ''} ${isSkinUnlocked(i) ? '' : 'locked'}" title="${s.name}"></span>`).join('')
+                + (customTexture ? `<span class="${index === -1 ? 'on' : ''}"></span>` : '');
+            if (index >= 0 && isSkinUnlocked(index)) localStorage.setItem('onlyball_skin', index);
         }
         applySkin(currentSkinIndex);
 
@@ -1679,7 +1781,7 @@
            - Ogni bioma: checkpoint (grande, con bandiera) → riscaldamento senza ostacoli → pattern vari → punto di respiro con landmark → pattern più intensi.
            - Ostacoli: densità e letalità crescono con l'altezza; corsia giocabile sempre garantita; Zen = solo blocker lenti.
            ========================================================================== */
-        const gen = { angle: 0, prevW: 25, prevD: 25, lastPattern: '', nextRestY: 35, sinceCheckpoint: 0 };
+        const gen = { angle: 0, prevW: 25, prevD: 25, lastPattern: '', nextRestY: 35, sinceCheckpoint: 0, pendingSigLabel: null };
         const extentAlong = (w, d, dx, dz) => Math.min(w / 2 / Math.max(Math.abs(dx), 1e-3), d / 2 / Math.max(Math.abs(dz), 1e-3));
         function difficulty(y) { const b = clamp(Math.floor(y / 70), 0, 14), t = b / 14; return { b, t, gap: 1.2 + 3.2 * t, rise: 2.3 + 1.5 * t, size: 9 - 4 * t }; }
         // Posiziona la piattaforma successiva a partire dall'ultima: `gap` è il vuoto tra i bordi, `rise` il dislivello
@@ -1786,8 +1888,66 @@
                 }
                 return n;
             },
-            rest(D, b) { plat(14, 14, D.gap * 0.6, D.rise * 0.7, 0.5, b, { landmark: true }); return 1; }
+            rest(D, b) { plat(14, 14, D.gap * 0.6, D.rise * 0.7, 0.5, b, { landmark: true }); return 1; },
+            // Pezzi "firmati" ogni ~70 m (dopo il checkpoint): personalità per bioma
+            sigBridge(D, b) {
+                const a = gen.angle + 0.45, px = -Math.sin(a), pz = Math.cos(a);
+                plat(7, 7, D.gap * 0.55, D.rise * 0.7, 0.4, b, { noProps: true, landmark: true });
+                for (let i = 0; i < 3; i++) {
+                    plat(4.2, 4.2, 1.1 + D.t * 0.4, 0.9, 0.22, b, { moving: { dirX: px, dirZ: pz, amp: 2.2 + i * 0.35, speed: 0.42 + D.t * 0.2 }, noProps: true });
+                }
+                const land = plat(D.size + 3, D.size + 3, 1.4, D.rise * 0.85, 0.35, b, { landmark: true });
+                decoratePlat(land, D.size + 3, D.size + 3, D, b, { mult: 1.1, kind: 'spin' });
+                return 5;
+            },
+            sigCanyon(D, b) {
+                plat(9, 9, D.gap * 0.65, D.rise * 0.75, 0.4, b, { noProps: true });
+                plat(5, 5, D.gap * 0.5, 1.2, 0.25, b, { bouncer: true });
+                const lw = D.size + 5, land = plat(lw, lw, 4.2 + D.t * 1.2, 1.0, 0.2, b, { landmark: true });
+                decoratePlat(land, lw, lw, D, b, { mult: 1.2 });
+                return 3;
+            },
+            sigHelix(D, b) {
+                const n = 6, pw = Math.max(5.5, D.size * 0.72);
+                for (let i = 0; i < n; i++) {
+                    const p = plat(pw, pw, D.gap * 0.55, D.rise * 0.78, 1.15, b, { noProps: true, landmark: i === n - 1 });
+                    if (i === n - 1) decoratePlat(p, pw, pw, D, b, { mult: 1.0 });
+                }
+                return n;
+            },
+            sigArena(D, b) {
+                const w = 16 + D.t * 2, p = plat(w, w, D.gap * 0.7, D.rise * 0.8, 0.5, b, { landmark: true, noProps: true });
+                if (MODE().hazards && b >= 1) {
+                    const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
+                    createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w * 0.7, w * 0.7, b >= 3 && rng() < 0.45, b, { kind: 'orbit', amp: w * 0.22, speed: 0.55 + D.t * 0.2 });
+                    if (b >= 5) createObstacle(p.body.position.x + across.dirX * w * 0.15, p.body.position.y, p.body.position.z + across.dirZ * w * 0.15, 5, 5, false, b, { kind: 'spin', amp: 0.4, speed: 1.0 });
+                }
+                plat(D.size, D.size, 1.6, D.rise * 0.75, 0.35, b);
+                return 2;
+            },
+            sigTwin(D, b) {
+                const sx = genCurrentX, sy = genCurrentY, sz = genCurrentZ, sa = gen.angle, sw = gen.prevW, sd = gen.prevD, w = Math.max(7, D.size * 0.95);
+                const A = placeNext(w, w, D.gap * 0.75, D.rise * 0.85, 0.5 - 0.85);
+                const platA = createPlatform(A.x, A.y, A.z, w, 1, w, b, { landmark: true, noProps: true });
+                decoratePlat(platA, w, w, D, b, { mult: 1.15 });
+                genCurrentX = sx; genCurrentY = sy; genCurrentZ = sz; gen.angle = sa; gen.prevW = sw; gen.prevD = sd;
+                const B = placeNext(w, w, D.gap * 0.75, D.rise * 0.85, 0.5 + 0.85);
+                createPlatform(B.x, B.y, B.z, w, 1, w, b, { bouncer: rng() < 0.4, noProps: true });
+                genCurrentX = (A.x + B.x) / 2; genCurrentZ = (A.z + B.z) / 2; gen.angle = sa + 0.5; gen.prevW = gen.prevD = w;
+                const mergeW = D.size + 3, merge = plat(mergeW, mergeW, D.gap * 0.55, D.rise * 0.85, 0.3, b, { landmark: true });
+                decoratePlat(merge, mergeW, mergeW, D, b, { mult: 0.95 });
+                return 3;
+            }
         };
+        const SIG_PATTERNS = [
+            { key: 'sigBridge', label: 'Ponte Sospeso' },
+            { key: 'sigCanyon', label: 'Canyon' },
+            { key: 'sigHelix', label: 'Elica' },
+            { key: 'sigArena', label: 'Arena' },
+            { key: 'sigTwin', label: 'Gemelli' }
+        ];
+        const SIG_LABELS = { sigBridge: 'Ponte Sospeso', sigCanyon: 'Canyon', sigHelix: 'Elica', sigArena: 'Arena', sigTwin: 'Gemelli' };
+        function pickSignature(b) { return SIG_PATTERNS[b % SIG_PATTERNS.length]; }
         function pickPattern(D, b) {
             const w = { hops: 5, stairs: 3, zigzag: 3, gauntlet: 2.4 };
             if (b >= 1) { w.longjump = 2 + D.t * 2; w.bridge = 2; w.gauntlet = 3.2 + D.t * 3; w.lanes = 2.2 + D.t * 1.6; }
@@ -1813,8 +1973,19 @@
                 }
                 if (genCurrentY >= gen.nextRestY) { made += PATTERN_FNS.rest(D, b); gen.nextRestY += 70; gen.lastPattern = 'rest'; continue; }
                 let key;
-                if (gen.sinceCheckpoint === 0) { key = 'hops'; const E = Object.assign({}, D, { gap: D.gap * 0.7, rise: D.rise * 0.85 }); made += PATTERN_FNS.hops(E, b); }
-                else { key = pickPattern(D, b); made += PATTERN_FNS[key](D, b); }
+                if (gen.sinceCheckpoint === 0) {
+                    key = 'hops';
+                    const E = Object.assign({}, D, { gap: D.gap * 0.7, rise: D.rise * 0.85 });
+                    made += PATTERN_FNS.hops(E, b);
+                } else if (gen.sinceCheckpoint === 1) {
+                    const sig = pickSignature(b);
+                    key = sig.key;
+                    made += PATTERN_FNS[key](D, b);
+                    gen.pendingSigLabel = sig.label;
+                } else {
+                    key = pickPattern(D, b);
+                    made += PATTERN_FNS[key](D, b);
+                }
                 gen.lastPattern = key; gen.sinceCheckpoint++;
             }
             highestPlatformY = genCurrentY;
@@ -1843,7 +2014,7 @@
             for (const o of movingObstacles) { scene.remove(o.mesh); world.removeBody(o.body); }
             platforms.length = 0; platformMeshes.length = 0; movingObstacles.length = 0; sceneProps.length = 0; landmarks.length = 0; flags.length = 0; camDistEff = 12;
             genCurrentX = 0; genCurrentY = 0; genCurrentZ = 0; platformIndex = 0; highestPlatformY = 0; highestScore = 0; runPeak = 0; displayedScore = 0;
-            Object.assign(gen, { angle: 0, prevW: 25, prevD: 25, lastPattern: "", nextRestY: 35, sinceCheckpoint: 0 });
+            Object.assign(gen, { angle: 0, prevW: 25, prevD: 25, lastPattern: "", nextRestY: 35, sinceCheckpoint: 0, pendingSigLabel: null });
             $('score').textContent = '0'; checkpoints = []; lastCheckpoint = { x: 0, y: 5, z: 0 }; lastSafePos = { x: 0, y: 2, z: 0 }; nextTargetCheckpoint = 70; $('cp-score').textContent = '0';
             currentVisualBiome = 0; currentBiomeNotified = -1; $('progress-bar').style.width = '0%'; $('progress-pct').textContent = '0'; $('biome-chip').textContent = biomeNames[0]; applyBiomeTheme(0);
             $('biome-toast').classList.add('hidden'); jumpBufferTimer = 0; coyoteTimer = 0; screenShakeIntensity = 0; biomeToastTimer = 0;
@@ -1877,13 +2048,126 @@
             $('mode-chip').innerHTML = modeHTML(m);
             if (touchUI) $('mobile-controls').classList.remove('hidden');
             camYaw = Math.PI; camPitch = 0.3; camDistance = 12;
-            gameState = 'playing'; if (!touchUI) { try { document.body.requestPointerLock(); } catch (e) {} }
+            gameState = 'playing';
+            if (!touchUI && tutorial.done) { try { document.body.requestPointerLock(); } catch (e) {} }
             initAudio(); Audio.setZen(!!m.zen); Audio.music(currentVisualBiome); Audio.ambience(BIOMES[currentVisualBiome].amb); maybeShowRotateHint();
+            beginTutorialIfNeeded();
         }
         $('btn-play').addEventListener('click', () => { AudioEngine.playUI(); startGame(); });
 
+        /* ---------- Tutorial onboarding (prima partita) ---------- */
+        const TUTORIAL_STEPS = [
+            {
+                title: 'Muoviti',
+                desktop: 'Usa <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o le frecce per rotolare sulla piattaforma.',
+                touch: 'Usa il joystick in basso a sinistra per rotolare.'
+            },
+            {
+                title: 'Salta',
+                desktop: 'Premi <kbd>Spazio</kbd> per saltare. Puoi bufferizzare il salto un attimo prima di atterrare.',
+                touch: 'Tocca <b>SALTA</b> per saltare sulla prossima piattaforma.'
+            },
+            {
+                title: 'Coyote time',
+                desktop: 'Puoi ancora saltare per un istante dopo aver lasciato il bordo. Prova a saltare “in ritardo”!',
+                touch: 'Anche dopo aver lasciato il bordo hai un attimo per saltare. Provalo!'
+            }
+        ];
+        const tutorial = {
+            done: localStorage.getItem('onlyball_tutorial_done') === '1',
+            active: false,
+            step: 0,
+            jumps: 0,
+            moved: false
+        };
+        function renderTutorial() {
+            const coach = $('tutorial-coach');
+            if (!tutorial.active) { coach.classList.add('hidden'); return; }
+            const s = TUTORIAL_STEPS[tutorial.step];
+            $('tutorial-step-label').textContent = `Passo ${tutorial.step + 1} di ${TUTORIAL_STEPS.length}`;
+            $('tutorial-title').textContent = s.title;
+            $('tutorial-body').innerHTML = touchUI ? s.touch : s.desktop;
+            $('btn-tutorial-next').textContent = tutorial.step >= TUTORIAL_STEPS.length - 1 ? 'Inizia!' : 'Ok, ho capito';
+            coach.classList.remove('hidden');
+        }
+        function beginTutorialIfNeeded() {
+            if (tutorial.done) { tutorial.active = false; renderTutorial(); return; }
+            tutorial.active = true; tutorial.step = 0; tutorial.jumps = 0; tutorial.moved = false;
+            hintsTimer = 100; $('desktop-hints').classList.add('faded');
+            renderTutorial();
+        }
+        function finishTutorial(skipped = false) {
+            tutorial.active = false; tutorial.done = true;
+            try { localStorage.setItem('onlyball_tutorial_done', '1'); } catch (e) {}
+            renderTutorial();
+            if (!skipped) showEvent(`${icon('flag')} Tutorial completato — alla vetta!`, 'good', 2200);
+            if (gameState === 'playing' && !touchUI) { try { document.body.requestPointerLock(); } catch (e) {} }
+        }
+        function advanceTutorial() {
+            if (!tutorial.active) return;
+            if (tutorial.step < TUTORIAL_STEPS.length - 1) { tutorial.step++; renderTutorial(); AudioEngine.playUI(); }
+            else finishTutorial(false);
+        }
+        function tutorialOnMove() {
+            if (!tutorial.active || tutorial.step !== 0 || tutorial.moved) return;
+            tutorial.moved = true;
+            setTimeout(() => { if (tutorial.active && tutorial.step === 0) advanceTutorial(); }, 700);
+        }
+        function tutorialOnJump() {
+            if (!tutorial.active) return;
+            tutorial.jumps++;
+            if (tutorial.step === 1) advanceTutorial();
+            else if (tutorial.step === 2 && tutorial.jumps >= 3) finishTutorial(false);
+        }
+        $('btn-tutorial-skip').addEventListener('click', (e) => { e.stopPropagation(); AudioEngine.playUIBack(); finishTutorial(true); });
+        $('btn-tutorial-next').addEventListener('click', (e) => { e.stopPropagation(); advanceTutorial(); });
+
+        async function shareRunCard() {
+            const m = MODE();
+            const title = modeKey === 'daily' ? `Sfida del Giorno ${todayKey()}` : m.name;
+            const text = `Ho raggiunto ${runPeak} m in Only Ball — ${title}! 🏀\nGioca anche tu: https://github.com/OnlyG4BB0/onlyball`;
+            const canvas = document.createElement('canvas');
+            canvas.width = 1080; canvas.height = 1080;
+            const ctx = canvas.getContext('2d');
+            const grd = ctx.createLinearGradient(0, 0, 1080, 1080);
+            grd.addColorStop(0, '#0a0d1a'); grd.addColorStop(0.45, '#1a1240'); grd.addColorStop(1, '#3a1028');
+            ctx.fillStyle = grd; ctx.fillRect(0, 0, 1080, 1080);
+            ctx.fillStyle = 'rgba(255,184,48,.18)'; ctx.beginPath(); ctx.arc(820, 220, 260, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,92,77,.16)'; ctx.beginPath(); ctx.arc(180, 900, 300, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff7ee'; ctx.font = '700 42px Fredoka, sans-serif'; ctx.fillText('ONLY BALL', 80, 120);
+            ctx.fillStyle = '#ffb830'; ctx.font = '400 28px Bungee, sans-serif'; ctx.fillText('ULTIMATE EDITION', 80, 168);
+            ctx.fillStyle = '#ffe4a8'; ctx.font = '400 120px Bungee, sans-serif'; ctx.fillText(runPeak + ' m', 80, 420);
+            ctx.fillStyle = '#e7e2ff'; ctx.font = '600 36px Fredoka, sans-serif'; ctx.fillText(title, 80, 500);
+            ctx.fillStyle = 'rgba(255,247,238,.7)'; ctx.font = '500 28px Fredoka, sans-serif';
+            ctx.fillText('Tempo ' + fmtTime(runTime), 80, 560);
+            ctx.fillText('Record ' + Math.max(getBest(modeKey), runPeak) + ' m', 80, 610);
+            ctx.fillStyle = '#37e0b0'; ctx.font = '700 26px Fredoka, sans-serif'; ctx.fillText('by ONLY_G4BB0', 80, 980);
+            const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+            const file = blob ? new File([blob], `onlyball-${runPeak}m.png`, { type: 'image/png' }) : null;
+            try {
+                if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({ title: 'Only Ball', text, files: [file] });
+                    showEvent(`${icon('share')} Condiviso!`, 'good', 1600);
+                    return;
+                }
+                if (navigator.share) {
+                    await navigator.share({ title: 'Only Ball', text });
+                    showEvent(`${icon('share')} Condiviso!`, 'good', 1600);
+                    return;
+                }
+            } catch (e) { if (e && e.name === 'AbortError') return; }
+            try { await navigator.clipboard.writeText(text); } catch (e) {}
+            if (blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = `onlyball-${runPeak}m.png`; a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 2000);
+            }
+            showEvent(`${icon('share')} Immagine salvata · testo copiato`, 'gold', 2200);
+        }
+
         function endRun(reason) {
             gameState = 'gameover'; keys.space = false;
+            tutorial.active = false; renderTutorial();
             $('ui-layer').classList.add('hidden'); $('mobile-controls').classList.add('hidden');
             if (!touchUI) { try { document.exitPointerLock(); } catch (e) {} }
             const m = MODE(); const titles = { fall: ['GAME OVER', 'Sei caduto nel vuoto.'], obstacle: ['GAME OVER', 'Un ostacolo letale ti ha colpito.'], lava: ['BRUCIATO!', 'La lava ti ha raggiunto.'], time: ['TEMPO SCADUTO', 'I 3 minuti sono finiti.'] };
@@ -1892,12 +2176,16 @@
             $('go-mode').innerHTML = modeHTML(m); $('final-score').textContent = runPeak + ' m'; $('go-time').textContent = fmtTime(runTime);
             const prevBest = getBest(modeKey); const isRecord = runPeak > prevBest && runPeak > 0;
             if (isRecord) { setBest(modeKey, runPeak); bestScore = runPeak; setTimeout(() => AudioEngine.playRecord(), 900); }
+            noteProgressHeight(runPeak);
             $('go-best').textContent = Math.max(prevBest, runPeak) + ' m'; $('gameover-record').classList.toggle('hidden', !isRecord);
+            $('btn-gameover-share').classList.toggle('btn-sun', modeKey === 'daily' || isRecord);
             showScreen('gameover'); AudioEngine.playGameOver(); Audio.music('menu'); Audio.ambience(null); Audio.roll(0, false); renderModeCards();
         }
         $('btn-gameover-restart').addEventListener('click', () => { AudioEngine.playUI(); fullGameReset(); startGame(); });
         $('btn-gameover-home').addEventListener('click', () => { AudioEngine.playUIBack(); goHome(); });
+        $('btn-gameover-share').addEventListener('click', () => { AudioEngine.playUI(); shareRunCard(); });
         function goHome() {
+            tutorial.active = false; renderTutorial();
             $('ui-layer').classList.add('hidden'); $('mobile-controls').classList.add('hidden'); fullGameReset(); gameState = 'menu'; showScreen('main-menu'); renderModeCards(); Audio.music('menu'); Audio.ambience(null); Audio.roll(0, false);
             if (!touchUI) { try { document.exitPointerLock(); } catch (e) {} }
         }
@@ -1906,7 +2194,14 @@
            SEZIONE 13: MENU, IMPOSTAZIONI E PAUSA
            ========================================================================== */
         $('btn-open-skins').addEventListener('click', () => { AudioEngine.playUI(); gameState = 'skins'; showScreen('skin-menu'); camDistance = 5; camPitch = 0.15; Audio.music('skins'); });
-        $('btn-close-skin').addEventListener('click', () => { AudioEngine.playUI(); gameState = 'menu'; showScreen('main-menu'); camDistance = 12; camPitch = 0.3; Audio.music('menu'); });
+        $('btn-close-skin').addEventListener('click', () => {
+            AudioEngine.playUI();
+            if (currentSkinIndex >= 0 && !isSkinUnlocked(currentSkinIndex)) {
+                currentSkinIndex = firstUnlockedSkinIndex();
+                applySkin(currentSkinIndex);
+            }
+            gameState = 'menu'; showScreen('main-menu'); camDistance = 12; camPitch = 0.3; Audio.music('menu');
+        });
 
         function loadSettingsUI() {
             $('vol-slider').value = settings.sfx; $('music-slider').value = settings.music; $('amb-slider').value = settings.amb; $('mute-toggle').checked = !settings.mute; $('sens-slider').value = settings.sens; $('res-select').value = settings.quality;
@@ -1930,6 +2225,7 @@
         $('mute-toggle').addEventListener('change', (e) => { settings.mute = !e.target.checked; Audio.applyVolumes(); saveSettings(); });
 
         function openPauseMenu() {
+            tutorial.active = false; renderTutorial();
             gameState = 'paused'; if (!touchUI) { try { document.exitPointerLock(); } catch (e) {} }
             $('pause-mode').innerHTML = modeHTML(MODE()); $('pause-alt').textContent = highestScore + ' m'; $('pause-time').textContent = fmtTime(runTime);
             keys.space = false; joystickData = { x: 0, y: 0, active: false }; showScreen('pause-menu'); Audio.roll(0, false);
@@ -1980,6 +2276,7 @@
             $('ui-layer').classList.add('hidden'); $('mobile-controls').classList.add('hidden');
             sphereBody.type = CANNON.Body.STATIC; sphereBody.velocity.set(0, 0, 0); sphereBody.angularVelocity.set(0, 0, 0);
             const prevBest = getBest(modeKey); if (runPeak > prevBest) { setBest(modeKey, runPeak); bestScore = runPeak; }
+            noteProgressHeight(runPeak);
             $('credits-stats').textContent = `${MODE().name} · Tempo: ${fmtTime(runTime)}`;
             const cs = $('credits-screen'); cs.classList.remove('hidden'); cs.classList.add('fade-in-overlay');
             const ct = $('credits-text'); ct.classList.remove('animate-credits'); void ct.offsetWidth; ct.classList.add('animate-credits');
@@ -2164,9 +2461,15 @@
                     if (!joystickData.active && !gpData.active) { const len = Math.sqrt(moveX * moveX + moveZ * moveZ); moveX /= len; moveZ /= len; }
                     sphereBody.torque.x += moveZ * torqueAmount * inputStrength * speedFactor; sphereBody.torque.z += -moveX * torqueAmount * inputStrength * speedFactor;
                     sphereBody.applyForce(new CANNON.Vec3(moveX * forceAmount * inputStrength * speedFactor, 0, moveZ * forceAmount * inputStrength * speedFactor), sphereBody.position);
+                    tutorialOnMove();
                 }
                 if (keys.space) jumpBufferTimer = JUMP_BUFFER_FRAMES;
-                if (jumpBufferTimer > 0 && canJump) { sphereBody.velocity.y = 22; AudioEngine.playJump(); ballSquash.y = 1.3; ballSquash.x = 0.85; spawnPuffs(sphereBody.position, 5, 0xffffff, 3); vibrate(8); canJump = false; coyoteTimer = 0; jumpBufferTimer = 0; keys.space = false; }
+                if (jumpBufferTimer > 0 && canJump) {
+                    sphereBody.velocity.y = 22; AudioEngine.playJump(); ballSquash.y = 1.3; ballSquash.x = 0.85;
+                    spawnPuffs(sphereBody.position, 5, 0xffffff, 3); vibrate(8);
+                    canJump = false; coyoteTimer = 0; jumpBufferTimer = 0; keys.space = false;
+                    tutorialOnJump();
+                }
             }
             const speed = Math.sqrt(sphereBody.velocity.x ** 2 + sphereBody.velocity.z ** 2);
             if (speed > maxVelocity) { const ratio = maxVelocity / speed; sphereBody.velocity.x *= ratio; sphereBody.velocity.z *= ratio; }
@@ -2286,6 +2589,7 @@
                         if (!recordAnnounced && bestScore > 0) { recordAnnounced = true; showEvent(`${icon('trophy')} Nuovo record personale!`, 'gold', 2200); AudioEngine.playRecord(); vibrate([20, 40, 20]); }
                         bestScore = runPeak; setBest(modeKey, bestScore); $('best-score-val').textContent = bestScore; $('menu-best-val').textContent = bestScore;
                     }
+                    noteProgressHeight(runPeak);
                     if (highestScore >= 1000) { triggerEnding(); return; }
                 }
                 if (ballGroup.position.y > highestPlatformY - 100) generateMorePlatforms(20);
@@ -2293,7 +2597,14 @@
 
                 if (m.checkpoints) {
                     for (const cp of checkpoints) {
-                        if (!cp.reached && ballGroup.position.y >= cp.y - 1) { cp.reached = true; lastCheckpoint = cp.pos; AudioEngine.playCheckpoint(); flashScreen('good'); $('cp-score').textContent = cp.y; showEvent(`${icon('flag')} Checkpoint ${cp.y} m`, 'good'); vibrate([15, 30, 15]); }
+                        if (!cp.reached && ballGroup.position.y >= cp.y - 1) {
+                            cp.reached = true; lastCheckpoint = cp.pos; AudioEngine.playCheckpoint(); flashScreen('good');
+                            $('cp-score').textContent = cp.y;
+                            const sigMsg = gen.pendingSigLabel ? ` · avanti: ${gen.pendingSigLabel}` : '';
+                            showEvent(`${icon('flag')} Checkpoint ${cp.y} m${sigMsg}`, 'good');
+                            gen.pendingSigLabel = null;
+                            vibrate([15, 30, 15]);
+                        }
                     }
                 }
                 const fallLimit = highestScore > 20 ? highestScore - 30 : -20;
@@ -2366,7 +2677,7 @@
             const cpClear = checkpoints.every(cp => !obs.some(o => Math.hypot(o.x - cp.pos.x, o.z - cp.pos.z) < 7 && Math.abs(o.y - cp.pos.y) < 3.5));
             return { mode: modeKey, platforms: plats.length, obstacles: obs.length, lethal: obs.filter(o => o.deadly).length, kinds, sealed: sealed.length, maxReachY, reached, playable: maxReachY >= minY && sealed.length === 0, cpClear, restClear, bands, zenNoLethal: modeKey !== 'zen' || obs.every(o => !o.deadly) };
         }
-        window.__ob = { gotoBiome, selectMode, startGame, fullGameReset, generateMorePlatforms, auditPlayable, get state() { return { gameState, biome: currentVisualBiome, height: highestScore, platforms: platforms.length, obstacles: movingObstacles.filter(o => !o.isPlatform).length, lethal: movingObstacles.filter(o => o.deadly).length, mode: modeKey, audio: !!Audio.ctx }; }, Audio, BIOMES, createAudioEngine };
+        window.__ob = { gotoBiome, selectMode, startGame, fullGameReset, generateMorePlatforms, auditPlayable, endRun, shareRunCard, get state() { return { gameState, biome: currentVisualBiome, height: highestScore, platforms: platforms.length, obstacles: movingObstacles.filter(o => !o.isPlatform).length, lethal: movingObstacles.filter(o => o.deadly).length, mode: modeKey, audio: !!Audio.ctx, tutorial: tutorial.active ? tutorial.step : null }; }, Audio, BIOMES, createAudioEngine, SIG_PATTERNS };
 
         renderModeCards(); fullGameReset(); onResize(); animate();
     </script>
