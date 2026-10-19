@@ -3153,7 +3153,8 @@
             });
 
             const playerRuns = loadPlayerLb();
-            const bestOverall = playerRuns.reduce((mx, r) => Math.max(mx, r.peak || 0), progressPeak || 0);
+            const savedMax = Object.keys(MODES).reduce((m, k) => Math.max(m, getBest(k)), bestScore || 0);
+            const bestOverall = playerRuns.reduce((mx, r) => Math.max(mx, r.peak || 0), savedMax);
             if ($('lb-best-peak')) $('lb-best-peak').textContent = bestOverall + ' m';
 
             let combined = lbOnlyMe ? [...playerRuns] : [...CHAMPION_ENTRIES, ...playerRuns];
@@ -3195,13 +3196,13 @@
             AudioEngine.playUI();
             if (gameState === 'playing') openPauseMenu();
             if (defaultFilter) lbFilter = defaultFilter;
-            renderLeaderboard();
-            $('leaderboard-modal').classList.remove('hidden');
+            if ($('leaderboard-modal')) $('leaderboard-modal').classList.remove('hidden');
+            try { renderLeaderboard(); } catch (err) { console.error(err); }
         }
         function closeLeaderboard() {
             AudioEngine.playUIBack();
             if ($('lb-player-name')) setPlayerName($('lb-player-name').value);
-            $('leaderboard-modal').classList.add('hidden');
+            if ($('leaderboard-modal')) $('leaderboard-modal').classList.add('hidden');
         }
         if ($('btn-open-leaderboard')) $('btn-open-leaderboard').addEventListener('click', () => openLeaderboard('all'));
         if ($('btn-gameover-lb')) $('btn-gameover-lb').addEventListener('click', () => openLeaderboard(modeKey));
