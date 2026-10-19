@@ -1294,143 +1294,408 @@
 
         // Pattern per bioma. Ogni funzione riceve la definizione bioma e restituisce { maps, normalStrength, rough:[base,range], metal, emissiveIntensity }
         const S = 256;
+        // Helper Voronoi periodico per rocce, ghiaccio, basalto, cristalli e piastrelle
+        function makeVoronoi(seed, count = 16) {
+            const r = makeRng(seed), pts = [];
+            for (let i = 0; i < count; i++) pts.push([r(), r(), r()]);
+            return (u, v) => {
+                let d1 = 9, d2 = 9, id = 0, val = 0;
+                for (let i = 0; i < count; i++) {
+                    const px = pts[i][0], py = pts[i][1];
+                    for (let ox = -1; ox <= 1; ox++) for (let oy = -1; oy <= 1; oy++) {
+                        const dx = u - px - ox, dy = v - py - oy, d = dx * dx + dy * dy;
+                        if (d < d1) { d2 = d1; d1 = d; id = i; val = pts[i][2]; } else if (d < d2) d2 = d;
+                    }
+                }
+                const s1 = Math.sqrt(d1), s2 = Math.sqrt(d2);
+                return { d1: s1, edge: s2 - s1, id, val };
+            };
+        }
         const PATTERNS = {
             grass(b) {
-                const n = makeNoise2D(11), n2 = makeNoise2D(12), g1 = hexRGB(b.c1), g2 = hexRGB(b.c2), dirt = hexRGB('#7a5230'), r = makeRng(5);
-                const maps = pixelMaps(S, (u, v) => { const f = fbm2(n, u, v, 5), d = fbm2(n2, u, v, 3), isDirt = d < 0.38; let c = mixRGB(g1, g2, f); if (isDirt) c = mixRGB(c, dirt, 0.75); return { c, h: isDirt ? 0.3 + f * 0.1 : 0.5 + f * 0.5 }; });
-                const cc = maps.color.getContext('2d'); for (let i = 0; i < 70; i++) { cc.fillStyle = ['#fff7ee', '#ffd166', '#ff8ac4', '#ffffff'][Math.floor(r() * 4)]; cc.beginPath(); cc.arc(r() * S, r() * S, 1.6 + r() * 1.4, 0, 7); cc.fill(); }
-                return { maps, normalStrength: 1.6, rough: [0.92, 0.1], metal: 0 };
+                const n = makeNoise2D(11), n2 = makeNoise2D(12), vor = makeVoronoi(13, 14), g1 = hexRGB(b.c1), g2 = hexRGB(b.c2), gDark = hexRGB('#167a3e'), dirt = hexRGB('#6e4726'), stone = [148, 156, 166], r = makeRng(5);
+                const maps = pixelMaps(S, (u, v) => {
+                    const f = fbm2(n, u, v, 5), d = fbm2(n2, u, v, 3), blades = n((u * 8) % 1, (v * 8) % 1);
+                    const vc = vor(u, v), isStone = vc.d1 < 0.055 && d < 0.45, isDirt = d < 0.36;
+                    let c = mixRGB(mixRGB(gDark, g1, f), g2, blades * 0.75);
+                    let h = 0.48 + f * 0.32 + blades * 0.2;
+                    if (isDirt) { const dt = smooth01(0.36 - d, 0, 0.08); c = mixRGB(c, dirt, dt * 0.82); h = lerp(h, 0.24 + f * 0.12, dt); }
+                    if (isStone) { const st = smooth01(0.055 - vc.d1, 0, 0.018); c = mixRGB(c, mixRGB(stone, [195, 202, 210], vc.val), st); h = lerp(h, 0.72 + vc.val * 0.15, st); }
+                    return { c, h };
+                });
+                const cc = maps.color.getContext('2d'), hc = maps.height.getContext('2d');
+                // Ciuffi di trifoglio e fiorellini con petali e bottone centrale
+                for (let i = 0; i < 65; i++) {
+                    const fx = r() * S, fy = r() * S, rad = 1.8 + r() * 1.6;
+                    const pCol = ['#fff7ee', '#ffd166', '#ff8ac4', '#a8e6ff'][Math.floor(r() * 4)];
+                    cc.fillStyle = 'rgba(15,65,30,.35)'; cc.beginPath(); cc.arc(fx + 1, fy + 1, rad + 1.2, 0, 7); cc.fill();
+                    cc.fillStyle = pCol;
+                    for (let p = 0; p < 5; p++) { const a = p * 1.256; cc.beginPath(); cc.arc(fx + Math.cos(a) * rad * 0.7, fy + Math.sin(a) * rad * 0.7, rad * 0.65, 0, 7); cc.fill(); }
+                    cc.fillStyle = '#ffb830'; cc.beginPath(); cc.arc(fx, fy, rad * 0.48, 0, 7); cc.fill();
+                    hc.fillStyle = '#d8d8d8'; hc.beginPath(); hc.arc(fx, fy, rad, 0, 7); hc.fill();
+                }
+                return { maps, normalStrength: 2.1, rough: [0.88, 0.14], metal: 0.02 };
             },
             sand(b) {
-                const n = makeNoise2D(21), s1 = hexRGB(b.c2), s2 = hexRGB(shade(b.c1, -0.08));
-                const maps = pixelMaps(S, (u, v) => { const w = Math.sin((v + fbm2(n, u, v, 3) * 0.12) * Math.PI * 2 * 7) * 0.5 + 0.5, f = fbm2(n, u * 3 % 1, v * 3 % 1, 2); const c = mixRGB(mixRGB(s1, s2, w * 0.7), [255, 255, 255], f * 0.1); return { c, h: 0.35 + w * 0.5 + f * 0.1 }; });
-                addWear(maps, 22, 0.35); return { maps, normalStrength: 1.4, rough: [0.9, 0.08], metal: 0 };
+                const n = makeNoise2D(21), n2 = makeNoise2D(23), vor = makeVoronoi(24, 10), s1 = hexRGB(b.c2), s2 = hexRGB(shade(b.c1, -0.1)), sCrest = [255, 244, 210];
+                const maps = pixelMaps(S, (u, v) => {
+                    const warp = fbm2(n, u, v, 3) * 0.16 + fbm2(n2, (u * 2) % 1, (v * 2) % 1, 2) * 0.05;
+                    const phase = (v + warp) * Math.PI * 2 * 7;
+                    const w = Math.pow(Math.sin(phase) * 0.5 + 0.5, 1.35);
+                    const crest = smooth01(w, 0.78, 0.98);
+                    const grain = n2((u * 12) % 1, (v * 12) % 1);
+                    const vc = vor(u, v), pebble = smooth01(0.042 - vc.d1, 0, 0.015) * (vc.val > 0.65 ? 1 : 0);
+                    let c = mixRGB(mixRGB(s2, s1, w), sCrest, crest * 0.55 + grain * 0.08);
+                    if (pebble > 0) c = mixRGB(c, [185, 138, 86], pebble * 0.85);
+                    return { c, h: 0.28 + w * 0.52 + crest * 0.1 + grain * 0.06 + pebble * 0.2 };
+                });
+                addWear(maps, 22, 0.35); return { maps, normalStrength: 1.9, rough: [0.84, 0.12], metal: 0.03 };
             },
             ice(b) {
-                const n = makeNoise2D(31), i1 = hexRGB('#dff6ff'), i2 = hexRGB(b.c2), r = makeRng(32);
-                const maps = pixelMaps(S, (u, v) => { const f = fbm2(n, u, v, 4); return { c: mixRGB(i1, i2, f * 0.8), h: 0.7 + f * 0.25 }; });
+                const n = makeNoise2D(31), vor = makeVoronoi(33, 20), i1 = hexRGB('#e8faff'), i2 = hexRGB(b.c2), deep = hexRGB('#0c4a8a'), r = makeRng(32);
+                const maps = pixelMaps(S, (u, v) => {
+                    const f = fbm2(n, u, v, 4), vc = vor(u, v);
+                    const seam = 1 - smooth01(vc.edge, 0.006, 0.028);
+                    const facet = mixRGB(mixRGB(deep, i2, 0.35 + vc.val * 0.65), i1, f * 0.75);
+                    const c = mixRGB(facet, [240, 252, 255], seam * 0.85);
+                    return { c, h: 0.72 + vc.val * 0.16 + f * 0.12 - seam * 0.35, e: mixRGB([0, 0, 0], [112, 214, 255], seam * 0.25 + vc.val * 0.08) };
+                });
                 const cc = maps.color.getContext('2d'), hc = maps.height.getContext('2d');
-                for (let i = 0; i < 9; i++) { let x = r() * S, y = r() * S; cc.strokeStyle = 'rgba(30,90,160,.55)'; hc.strokeStyle = '#000'; cc.lineWidth = hc.lineWidth = 1.2; cc.beginPath(); hc.beginPath(); cc.moveTo(x, y); hc.moveTo(x, y); for (let k = 0; k < 6; k++) { x += (r() - 0.5) * 60; y += (r() - 0.5) * 60; cc.lineTo(x, y); hc.lineTo(x, y); } cc.stroke(); hc.stroke(); }
-                return { maps, normalStrength: 1.2, rough: [0.16, 0.14], metal: 0.05 };
+                for (let i = 0; i < 12; i++) {
+                    let x = r() * S, y = r() * S; cc.strokeStyle = 'rgba(220,248,255,.7)'; hc.strokeStyle = '#181818'; cc.lineWidth = hc.lineWidth = 1.3;
+                    cc.beginPath(); hc.beginPath(); cc.moveTo(x, y); hc.moveTo(x, y);
+                    for (let k = 0; k < 6; k++) { x += (r() - 0.5) * 52; y += (r() - 0.5) * 52; cc.lineTo(x, y); hc.lineTo(x, y); }
+                    cc.stroke(); hc.stroke();
+                }
+                return { maps, normalStrength: 1.85, rough: [0.12, 0.16], metal: 0.12, emissiveIntensity: 0.35 };
             },
             basalt(b) {
-                const n = makeNoise2D(41), rock1 = hexRGB('#2a2a30'), rock2 = hexRGB('#4a4650'), lava = hexRGB('#ff6a1a'), lava2 = hexRGB('#ffd23f');
+                const n = makeNoise2D(41), vor = makeVoronoi(43, 18), rock1 = hexRGB('#1c1b22'), rock2 = hexRGB('#3d3846'), lava = hexRGB('#ff4d12'), lava2 = hexRGB('#ffe047');
                 const maps = pixelMaps(S, (u, v) => {
-                    const gx = (u * 4) % 1, gy = (v * 4) % 1, dx = Math.min(gx, 1 - gx), dy = Math.min(gy, 1 - gy), edge = Math.min(dx, dy) * 4, f = fbm2(n, u, v, 4);
-                    const crack = smooth01(edge, 0.05, 0.14); const glow = 1 - crack;
-                    const c = mixRGB(mixRGB(lava, lava2, f), mixRGB(rock1, rock2, f), crack); return { c, h: 0.25 + crack * 0.6 + f * 0.15, e: glow > 0.02 ? mixRGB([0, 0, 0], mixRGB(lava, lava2, f), glow * (0.7 + 0.3 * f)) : [0, 0, 0] };
+                    const vc = vor(u, v), f = fbm2(n, u, v, 4);
+                    const edge = vc.edge + (f - 0.5) * 0.025;
+                    const rockMask = smooth01(edge, 0.018, 0.055);
+                    const rimHeat = (1 - smooth01(edge, 0.04, 0.11)) * rockMask;
+                    const glow = 1 - rockMask;
+                    const lavaCol = mixRGB(lava, lava2, smooth01(glow * (0.6 + f * 0.5), 0.2, 0.9));
+                    const rockCol = mixRGB(mixRGB(rock1, rock2, f * 0.7 + vc.val * 0.3), [255, 95, 25], rimHeat * 0.65);
+                    const c = mixRGB(lavaCol, rockCol, rockMask);
+                    const e = (glow > 0.01 || rimHeat > 0.05) ? mixRGB([0, 0, 0], lavaCol, Math.max(glow, rimHeat * 0.55)) : [0, 0, 0];
+                    return { c, h: 0.15 + rockMask * (0.62 + vc.val * 0.15 + f * 0.1), e };
                 });
-                addWear(maps, 42, 0.6); return { maps, normalStrength: 2.4, rough: [0.85, 0.1], metal: 0.05, emissiveIntensity: 1.2 };
+                addWear(maps, 42, 0.55); return { maps, normalStrength: 2.8, rough: [0.82, 0.15], metal: 0.08, emissiveIntensity: 1.35 };
             },
             neon(b) {
-                const base = hexRGB('#160c26'), line = hexRGB(b.accent), line2 = hexRGB('#7c3aed');
+                const base = hexRGB('#100820'), base2 = hexRGB('#1c1036'), line = hexRGB(b.accent), line2 = hexRGB('#38b6ff');
                 const maps = pixelMaps(S, (u, v) => {
-                    const gx = (u * 4) % 1, gy = (v * 4) % 1, dx = Math.min(gx, 1 - gx), dy = Math.min(gy, 1 - gy), d = Math.min(dx, dy) * 4, l = 1 - smooth01(d, 0.02, 0.06), glow = 1 - smooth01(d, 0.06, 0.3);
-                    const lc = (Math.floor(u * 4) + Math.floor(v * 4)) % 2 ? line : line2; const c = mixRGB(mixRGB(base, lc, glow * 0.25), lc, l); return { c, h: 0.6 - l * 0.35, e: mixRGB([0, 0, 0], lc, l * 0.95 + glow * 0.12) };
+                    const gx = (u * 4) % 1, gy = (v * 4) % 1, dx = Math.min(gx, 1 - gx), dy = Math.min(gy, 1 - gy);
+                    const d = Math.min(dx, dy) * 4, corner = Math.hypot(dx, dy) * 4;
+                    const subX = Math.abs(((u * 16) % 1) - 0.5), subY = Math.abs(((v * 16) % 1) - 0.5), sub = 1 - smooth01(Math.min(subX, subY), 0.0, 0.08);
+                    const l = 1 - smooth01(d, 0.02, 0.065), glow = 1 - smooth01(d, 0.06, 0.32), node = 1 - smooth01(corner, 0.08, 0.16);
+                    const cell = (Math.floor(u * 4) + Math.floor(v * 4)) % 2;
+                    const lc = cell ? line : line2;
+                    let c = mixRGB(base, base2, sub * 0.45);
+                    c = mixRGB(mixRGB(c, lc, glow * 0.32), lc, Math.max(l, node * 0.9));
+                    if (node > 0.5) c = mixRGB(c, [255, 255, 255], (node - 0.5) * 1.4);
+                    return { c, h: 0.65 - l * 0.38 + sub * 0.06 + node * 0.2, e: mixRGB([0, 0, 0], lc, Math.max(l, node) * 0.98 + glow * 0.16 + sub * 0.04) };
                 });
-                return { maps, normalStrength: 1.2, rough: [0.3, 0.1], metal: 0.3, emissiveIntensity: 0.9 };
+                return { maps, normalStrength: 1.7, rough: [0.22, 0.12], metal: 0.42, emissiveIntensity: 1.05 };
             },
             candy(b) {
-                const p1 = hexRGB(b.c1), p2 = hexRGB('#fff5fa'), r = makeRng(51);
-                const maps = pixelMaps(S, (u, v) => { const s = Math.sin((u + v) * Math.PI * 2 * 4), band = smooth01(s, -0.1, 0.1); const c = mixRGB(p1, p2, band); return { c, h: 0.55 + s * 0.12 }; });
-                const cc = maps.color.getContext('2d'), hc = maps.height.getContext('2d'); for (let i = 0; i < 26; i++) { const x = r() * S, y = r() * S, rad = 3 + r() * 5; cc.fillStyle = ['#ffd166', '#38b6ff', '#37e0b0', '#ffffff'][Math.floor(r() * 4)]; cc.beginPath(); cc.arc(x, y, rad, 0, 7); cc.fill(); hc.fillStyle = '#fff'; hc.beginPath(); hc.arc(x, y, rad, 0, 7); hc.fill(); }
-                return { maps, normalStrength: 1.4, rough: [0.18, 0.1], metal: 0.05 };
+                const p1 = hexRGB(b.c1), p2 = hexRGB('#fff5fa'), p3 = hexRGB('#ffd166'), r = makeRng(51);
+                const maps = pixelMaps(S, (u, v) => {
+                    const wave = Math.sin((u * 2 + v * 2 + Math.sin(u * Math.PI * 2) * 0.08) * Math.PI * 2 * 2);
+                    const band = smooth01(wave, -0.15, 0.15);
+                    const pin = 1 - smooth01(Math.abs(wave), 0.0, 0.12);
+                    let c = mixRGB(mixRGB(p1, p2, band), p3, pin * 0.35);
+                    return { c, h: 0.54 + wave * 0.15 };
+                });
+                const cc = maps.color.getContext('2d'), hc = maps.height.getContext('2d');
+                // Confetti e zuccherini colorati a capsula 3D
+                for (let i = 0; i < 42; i++) {
+                    const x = 14 + r() * (S - 28), y = 14 + r() * (S - 28), len = 5 + r() * 7, rad = 2.4 + r() * 1.8, ang = r() * Math.PI;
+                    const col = ['#ffd166', '#38b6ff', '#37e0b0', '#ff5c4d', '#8a5cff', '#ffffff'][Math.floor(r() * 6)];
+                    cc.save(); cc.translate(x, y); cc.rotate(ang);
+                    cc.strokeStyle = 'rgba(80,10,45,.28)'; cc.lineWidth = rad * 2 + 1.5; cc.lineCap = 'round'; cc.beginPath(); cc.moveTo(-len / 2, 1.5); cc.lineTo(len / 2, 1.5); cc.stroke();
+                    cc.strokeStyle = col; cc.lineWidth = rad * 2; cc.beginPath(); cc.moveTo(-len / 2, 0); cc.lineTo(len / 2, 0); cc.stroke();
+                    cc.strokeStyle = 'rgba(255,255,255,.55)'; cc.lineWidth = rad * 0.7; cc.beginPath(); cc.moveTo(-len * 0.35, -rad * 0.35); cc.lineTo(len * 0.35, -rad * 0.35); cc.stroke();
+                    cc.restore();
+                    hc.save(); hc.translate(x, y); hc.rotate(ang); hc.strokeStyle = '#ffffff'; hc.lineWidth = rad * 2; hc.lineCap = 'round'; hc.beginPath(); hc.moveTo(-len / 2, 0); hc.lineTo(len / 2, 0); hc.stroke(); hc.restore();
+                }
+                return { maps, normalStrength: 1.75, rough: [0.15, 0.1], metal: 0.06 };
             },
             toxic(b) {
-                const n = makeNoise2D(61), dark = hexRGB('#232c17'), yel = hexRGB(b.c1), r = makeRng(62);
-                const maps = pixelMaps(S, (u, v) => { const f = fbm2(n, u, v, 4), inBand = Math.abs(v - 0.5) < 0.16, chev = inBand && (Math.sin((u * 6 + Math.abs(v - 0.5) * 4) * Math.PI * 2) > 0); const c = chev ? mixRGB(yel, [0, 0, 0], f * 0.2) : mixRGB(dark, [60, 80, 30], f); return { c, h: 0.45 + f * 0.2 + (chev ? 0.1 : 0), e: chev ? mixRGB([0, 0, 0], yel, 0.15) : [0, 0, 0] }; });
-                const cc = maps.color.getContext('2d'), hc = maps.height.getContext('2d'); for (let i = 0; i < 30; i++) { const x = r() * S, y = r() * S; if (Math.abs(y - S / 2) < S * 0.16) continue; const rad = 2 + r() * 6; cc.fillStyle = 'rgba(198,255,61,.45)'; cc.beginPath(); cc.arc(x, y, rad, 0, 7); cc.fill(); cc.fillStyle = 'rgba(255,255,255,.5)'; cc.beginPath(); cc.arc(x - rad * 0.3, y - rad * 0.3, rad * 0.3, 0, 7); cc.fill(); hc.fillStyle = '#fff'; hc.beginPath(); hc.arc(x, y, rad, 0, 7); hc.fill(); }
-                addWear(maps, 63, 0.7); return { maps, normalStrength: 1.8, rough: [0.55, 0.2], metal: 0.15, emissiveIntensity: 0.6 };
+                const n = makeNoise2D(61), dark = hexRGB('#1d2414'), grate = hexRGB('#333d24'), yel = hexRGB(b.c1), acid = hexRGB('#c6ff3d'), r = makeRng(62);
+                const maps = pixelMaps(S, (u, v) => {
+                    const f = fbm2(n, u, v, 4), inBand = Math.abs(v - 0.5) < 0.16;
+                    const chev = inBand && (Math.sin((u * 6 + Math.abs(v - 0.5) * 4) * Math.PI * 2) > 0);
+                    const pool = !inBand && f > 0.62;
+                    const grid = ((Math.floor(u * 24) + Math.floor(v * 24)) % 2) * 0.15;
+                    let c = chev ? mixRGB(yel, [20, 25, 10], f * 0.25) : pool ? mixRGB(yel, acid, (f - 0.62) * 2.6) : mixRGB(dark, grate, f * 0.7 + grid);
+                    const e = pool ? mixRGB([0, 0, 0], acid, 0.45 + (f - 0.62) * 1.4) : chev ? mixRGB([0, 0, 0], yel, 0.18) : [0, 0, 0];
+                    return { c, h: pool ? 0.32 : 0.48 + f * 0.2 + (chev ? 0.14 : grid * 0.4), e };
+                });
+                const cc = maps.color.getContext('2d'), hc = maps.height.getContext('2d'), ec = maps.emissive.getContext('2d');
+                for (let i = 0; i < 36; i++) {
+                    const x = r() * S, y = r() * S; if (Math.abs(y - S / 2) < S * 0.16) continue;
+                    const rad = 2.2 + r() * 6.5;
+                    cc.fillStyle = 'rgba(198,255,61,.55)'; cc.beginPath(); cc.arc(x, y, rad, 0, 7); cc.fill();
+                    cc.fillStyle = 'rgba(255,255,255,.65)'; cc.beginPath(); cc.arc(x - rad * 0.3, y - rad * 0.3, rad * 0.32, 0, 7); cc.fill();
+                    hc.fillStyle = '#fff'; hc.beginPath(); hc.arc(x, y, rad, 0, 7); hc.fill();
+                    ec.fillStyle = 'rgba(198,255,61,.45)'; ec.beginPath(); ec.arc(x, y, rad * 0.85, 0, 7); ec.fill();
+                }
+                addWear(maps, 63, 0.65); return { maps, normalStrength: 2.1, rough: [0.45, 0.25], metal: 0.22, emissiveIntensity: 0.75 };
             },
             waves(b) {
-                const n = makeNoise2D(71), deep = hexRGB(shade(b.c1, -0.12)), light = hexRGB(b.c2), foam = [235, 250, 255];
-                const maps = pixelMaps(S, (u, v) => { const w = Math.sin((v * 6 + Math.sin(u * Math.PI * 2 * 2) * 0.12) * Math.PI * 2), f = fbm2(n, u, v, 3), crest = smooth01(w, 0.75, 0.95); let c = mixRGB(mixRGB(deep, light, (w * 0.5 + 0.5) * 0.7 + f * 0.2), foam, crest * 0.8); return { c, h: 0.45 + w * 0.2 + f * 0.1 }; });
-                return { maps, normalStrength: 1.6, rough: [0.22, 0.12], metal: 0.1 };
+                const n = makeNoise2D(71), vor = makeVoronoi(72, 16), deep = hexRGB('#054a85'), mid = hexRGB(b.c1), light = hexRGB(b.c2), foam = [238, 252, 255];
+                const maps = pixelMaps(S, (u, v) => {
+                    const f = fbm2(n, u, v, 3), vc = vor((u + f * 0.08) % 1, (v + f * 0.08) % 1);
+                    const caustic = 1 - smooth01(vc.edge, 0.008, 0.045);
+                    const w = Math.sin((v * 5 + Math.sin(u * Math.PI * 2 * 2) * 0.14 + f * 0.2) * Math.PI * 2);
+                    const crest = smooth01(w, 0.72, 0.96);
+                    let c = mixRGB(deep, mid, w * 0.5 + 0.5);
+                    c = mixRGB(c, light, caustic * 0.65 + f * 0.2);
+                    c = mixRGB(c, foam, crest * 0.82);
+                    return { c, h: 0.42 + w * 0.22 + caustic * 0.18 + crest * 0.12, e: mixRGB([0, 0, 0], [77, 210, 255], caustic * 0.28 + crest * 0.15) };
+                });
+                return { maps, normalStrength: 1.9, rough: [0.16, 0.14], metal: 0.12, emissiveIntensity: 0.45 };
             },
             solar(b) {
-                const o1 = hexRGB(b.c1), o2 = hexRGB(b.c2), core = [255, 250, 210];
-                const maps = pixelMaps(S, (u, v) => { const dx = u - 0.5, dy = v - 0.5, a = Math.atan2(dy, dx), d = Math.sqrt(dx * dx + dy * dy) * 2, ray = Math.sin(a * 12) * 0.5 + 0.5, disc = 1 - smooth01(d, 0.18, 0.26); const c = mixRGB(mixRGB(o1, o2, ray), core, disc); return { c, h: 0.5 + ray * 0.15 + disc * 0.3, e: mixRGB([0, 0, 0], core, disc * 0.6 + ray * 0.05) }; });
-                addWear(maps, 82, 0.3); return { maps, normalStrength: 1.2, rough: [0.4, 0.15], metal: 0.25, emissiveIntensity: 0.5 };
+                const n = makeNoise2D(81), o1 = hexRGB(b.c1), o2 = hexRGB(b.c2), core = [255, 252, 220], bronze = hexRGB('#8c5308');
+                const maps = pixelMaps(S, (u, v) => {
+                    const dx = u - 0.5, dy = v - 0.5, a = Math.atan2(dy, dx), d = Math.sqrt(dx * dx + dy * dy) * 2;
+                    const f = fbm2(n, u, v, 3);
+                    const ray = Math.sin(a * 16 + Math.sin(d * 8) * 0.35) * 0.5 + 0.5;
+                    const ring1 = 1 - smooth01(Math.abs(d - 0.42), 0.01, 0.04);
+                    const ring2 = 1 - smooth01(Math.abs(d - 0.76), 0.01, 0.045);
+                    const disc = 1 - smooth01(d, 0.16, 0.25);
+                    let c = mixRGB(mixRGB(o1, o2, ray * 0.8 + f * 0.2), bronze, (1 - ray) * 0.25);
+                    c = mixRGB(c, core, Math.max(disc, (ring1 + ring2) * 0.75));
+                    return { c, h: 0.45 + ray * 0.18 + (ring1 + ring2) * 0.22 + disc * 0.3, e: mixRGB([0, 0, 0], core, disc * 0.75 + (ring1 + ring2) * 0.35 + ray * 0.06) };
+                });
+                addWear(maps, 82, 0.25); return { maps, normalStrength: 1.75, rough: [0.3, 0.16], metal: 0.38, emissiveIntensity: 0.6 };
             },
             circuit(b) {
-                const base = hexRGB('#0a1c22'), trace = hexRGB(b.c1), r = makeRng(91);
-                const maps = pixelMaps(S, (u, v) => ({ c: mixRGB(base, [20, 60, 70], ((Math.floor(u * 32) + Math.floor(v * 32)) % 2) * 0.25), h: 0.5 }));
-                const cc = maps.color.getContext('2d'), hc = maps.height.getContext('2d'), ec = maps.emissive || (() => { const [c] = mkCanvas(S, S); maps.emissive = c; return c; })(), ectx = ec.getContext('2d');
-                ectx.fillStyle = '#000'; ectx.fillRect(0, 0, S, S);
-                for (let i = 0; i < 22; i++) { let x = Math.floor(r() * 16) * 16, y = Math.floor(r() * 16) * 16; [cc, hc, ectx].forEach((c, k) => { c.strokeStyle = k === 0 ? rgbStr(trace) : k === 1 ? '#fff' : rgbStr(trace, 0.8); c.lineWidth = 3; c.lineCap = 'round'; c.beginPath(); c.moveTo(x, y); }); for (let k = 0; k < 4; k++) { if (r() > 0.5) x = (x + (r() > 0.5 ? 1 : -1) * 16 * (1 + Math.floor(r() * 3)) + S) % S; else y = (y + (r() > 0.5 ? 1 : -1) * 16 * (1 + Math.floor(r() * 3)) + S) % S; [cc, hc, ectx].forEach(c => c.lineTo(x, y)); } [cc, hc, ectx].forEach(c => c.stroke()); [cc, hc, ectx].forEach((c, k) => { c.fillStyle = k === 0 ? '#e8fffd' : k === 1 ? '#fff' : '#ffffff'; c.fillRect(x - 3.5, y - 3.5, 7, 7); }); }
-                return { maps, normalStrength: 1.6, rough: [0.35, 0.15], metal: 0.45, emissiveIntensity: 0.8 };
+                const base = hexRGB('#07151b'), sub = hexRGB('#102b34'), trace = hexRGB(b.c1), gold = [255, 209, 102], r = makeRng(91);
+                const maps = pixelMaps(S, (u, v) => {
+                    const grid = ((Math.floor(u * 32) + Math.floor(v * 32)) % 2) * 0.22;
+                    const border = Math.min(Math.min(u, 1 - u), Math.min(v, 1 - v));
+                    const frame = 1 - smooth01(border, 0.02, 0.05);
+                    return { c: mixRGB(mixRGB(base, sub, grid), trace, frame * 0.35), h: 0.48 + frame * 0.18 };
+                });
+                const cc = maps.color.getContext('2d'), hc = maps.height.getContext('2d'), [ec, ectx] = mkCanvas(S, S);
+                maps.emissive = ec; ectx.fillStyle = '#000'; ectx.fillRect(0, 0, S, S);
+                // Microchip integrati
+                for (let ic = 0; ic < 4; ic++) {
+                    const cx = 36 + (ic % 2) * 128, cy = 36 + Math.floor(ic / 2) * 128, cw = 36, ch = 36;
+                    cc.fillStyle = '#d4af37'; hc.fillStyle = '#c8c8c8';
+                    for (let p = 4; p < cw; p += 8) { cc.fillRect(cx + p - 1, cy - 5, 3, cw + 10); cc.fillRect(cx - 5, cy + p - 1, cw + 10, 3); hc.fillRect(cx + p - 1, cy - 5, 3, cw + 10); hc.fillRect(cx - 5, cy + p - 1, cw + 10, 3); }
+                    cc.fillStyle = '#0c1820'; cc.fillRect(cx, cy, cw, ch); cc.strokeStyle = rgbStr(trace, 0.7); cc.lineWidth = 1.5; cc.strokeRect(cx, cy, cw, ch);
+                    hc.fillStyle = '#e8e8e8'; hc.fillRect(cx, cy, cw, ch);
+                    ectx.strokeStyle = rgbStr(trace, 0.55); ectx.lineWidth = 1.5; ectx.strokeRect(cx + 4, cy + 4, cw - 8, ch - 8);
+                }
+                // Piste luminose e piazzole dorate
+                for (let i = 0; i < 28; i++) {
+                    let x = Math.floor(r() * 16) * 16, y = Math.floor(r() * 16) * 16;
+                    const isGold = i % 5 === 0, tCol = isGold ? rgbStr(gold) : rgbStr(trace);
+                    [cc, hc, ectx].forEach((c, k) => { c.strokeStyle = k === 0 ? tCol : k === 1 ? '#fff' : (isGold ? rgbStr(gold, 0.65) : rgbStr(trace, 0.9)); c.lineWidth = isGold ? 2.2 : 3; c.lineCap = 'round'; c.beginPath(); c.moveTo(x, y); });
+                    for (let k = 0; k < 4; k++) {
+                        if (r() > 0.5) x = (x + (r() > 0.5 ? 1 : -1) * 16 * (1 + Math.floor(r() * 3)) + S) % S;
+                        else y = (y + (r() > 0.5 ? 1 : -1) * 16 * (1 + Math.floor(r() * 3)) + S) % S;
+                        [cc, hc, ectx].forEach(c => c.lineTo(x, y));
+                    }
+                    [cc, hc, ectx].forEach(c => c.stroke());
+                    [cc, hc, ectx].forEach((c, k) => { c.fillStyle = k === 0 ? '#e8fffd' : '#ffffff'; c.beginPath(); c.arc(x, y, 4, 0, 7); c.fill(); });
+                }
+                return { maps, normalStrength: 2.0, rough: [0.28, 0.16], metal: 0.52, emissiveIntensity: 0.95 };
             },
             blood(b) {
-                const n = makeNoise2D(101), s1 = hexRGB('#3a0d12'), s2 = hexRGB('#7a1b22'), r = makeRng(102);
-                const maps = pixelMaps(S, (u, v) => { const f = fbm2(n, u, v, 5); return { c: mixRGB(s1, s2, f), h: 0.5 + f * 0.4 }; });
-                const cc = maps.color.getContext('2d'), hc = maps.height.getContext('2d');
-                for (let i = 0; i < 12; i++) { let x = r() * S, y = r() * S; cc.strokeStyle = 'rgba(10,0,0,.7)'; hc.strokeStyle = '#000'; cc.lineWidth = hc.lineWidth = 1.5; cc.beginPath(); hc.beginPath(); cc.moveTo(x, y); hc.moveTo(x, y); for (let k = 0; k < 5; k++) { x += (r() - 0.5) * 50; y += (r() - 0.5) * 50; cc.lineTo(x, y); hc.lineTo(x, y); } cc.stroke(); hc.stroke(); }
-                for (let i = 0; i < 10; i++) { const x = r() * S, y = r() * S * 0.7, l = 20 + r() * 60; const g = cc.createLinearGradient(x, y, x, y + l); g.addColorStop(0, 'rgba(214,48,49,.9)'); g.addColorStop(1, 'rgba(214,48,49,0)'); cc.fillStyle = g; cc.fillRect(x - 2, y, 4, l); cc.fillStyle = 'rgba(255,118,117,.9)'; cc.beginPath(); cc.arc(x, y + l * 0.95, 3, 0, 7); cc.fill(); }
-                return { maps, normalStrength: 2.0, rough: [0.55, 0.3], metal: 0.05 };
+                const n = makeNoise2D(101), vor = makeVoronoi(103, 15), s1 = hexRGB('#2a070b'), s2 = hexRGB('#6e141b'), veinCol = hexRGB('#ff2e43'), r = makeRng(102);
+                const maps = pixelMaps(S, (u, v) => {
+                    const f = fbm2(n, u, v, 5), vc = vor(u, v);
+                    const vein = 1 - smooth01(vc.edge + (f - 0.5) * 0.02, 0.008, 0.036);
+                    const c = mixRGB(mixRGB(s1, s2, f * 0.8 + vc.val * 0.2), veinCol, vein * 0.85);
+                    return { c, h: 0.45 + f * 0.38 - vein * 0.22, e: mixRGB([0, 0, 0], veinCol, vein * 0.55) };
+                });
+                const cc = maps.color.getContext('2d');
+                for (let i = 0; i < 10; i++) {
+                    const x = r() * S, y = r() * S * 0.7, l = 20 + r() * 60;
+                    const g = cc.createLinearGradient(x, y, x, y + l); g.addColorStop(0, 'rgba(255,46,67,.85)'); g.addColorStop(1, 'rgba(214,48,49,0)');
+                    cc.fillStyle = g; cc.fillRect(x - 2, y, 4, l); cc.fillStyle = 'rgba(255,130,130,.9)'; cc.beginPath(); cc.arc(x, y + l * 0.95, 3, 0, 7); cc.fill();
+                }
+                return { maps, normalStrength: 2.3, rough: [0.38, 0.28], metal: 0.1, emissiveIntensity: 0.65 };
             },
             cloud(b) {
-                const n = makeNoise2D(111), w1 = [250, 252, 255], w2 = hexRGB(b.c2);
-                const maps = pixelMaps(S, (u, v) => { const f = fbm2(n, u, v, 5); return { c: mixRGB(w2, w1, smooth01(f, 0.3, 0.7)), h: 0.4 + f * 0.6 }; });
-                return { maps, normalStrength: 1.6, rough: [1.0, 0.0], metal: 0 };
+                const n = makeNoise2D(111), vor = makeVoronoi(112, 12), w1 = [253, 254, 255], w2 = hexRGB('#b8d4f2'), gold = [255, 236, 185];
+                const maps = pixelMaps(S, (u, v) => {
+                    const f = fbm2(n, u, v, 5), vc = vor(u, v);
+                    const puff = clamp(1 - vc.d1 * 2.2 + f * 0.35, 0, 1);
+                    const rim = 1 - smooth01(Math.abs(puff - 0.65), 0.0, 0.12);
+                    let c = mixRGB(w2, w1, smooth01(puff, 0.2, 0.78));
+                    c = mixRGB(c, gold, rim * 0.25);
+                    return { c, h: 0.35 + puff * 0.62 };
+                });
+                return { maps, normalStrength: 1.8, rough: [0.92, 0.08], metal: 0.0 };
             },
             hull(b) {
-                const n = makeNoise2D(121), m1 = hexRGB(b.c1), m2 = hexRGB(b.c2), r = makeRng(122);
-                const maps = pixelMaps(S, (u, v) => { const gx = (u * 2) % 1, gy = (v * 2) % 1, dx = Math.min(gx, 1 - gx), dy = Math.min(gy, 1 - gy), seam = 1 - smooth01(Math.min(dx, dy) * 2, 0.02, 0.05), f = fbm2(n, u, v, 3); const plate = Math.floor(u * 2) + Math.floor(v * 2) * 2; return { c: mixRGB(mixRGB(m1, m2, (plate % 3) * 0.2 + f * 0.25), [0, 0, 0], seam * 0.7), h: 0.6 - seam * 0.4 + f * 0.05 }; });
+                const n = makeNoise2D(121), m1 = hexRGB(b.c1), m2 = hexRGB(b.c2), glow = hexRGB('#7fb2ff'), r = makeRng(122);
+                const maps = pixelMaps(S, (u, v) => {
+                    const gx = (u * 2) % 1, gy = (v * 2) % 1, dx = Math.min(gx, 1 - gx), dy = Math.min(gy, 1 - gy);
+                    const seam = 1 - smooth01(Math.min(dx, dy) * 2, 0.02, 0.055), bevel = 1 - smooth01(Math.min(dx, dy) * 2, 0.055, 0.12);
+                    const f = fbm2(n, u, v, 3), plate = Math.floor(u * 2) + Math.floor(v * 2) * 2;
+                    let c = mixRGB(m1, m2, (plate % 3) * 0.22 + f * 0.25);
+                    c = mixRGB(c, [185, 210, 245], bevel * 0.25);
+                    c = mixRGB(c, [8, 14, 28], seam * 0.8);
+                    return { c, h: 0.62 + bevel * 0.12 - seam * 0.45 + f * 0.05, e: seam > 0.65 ? mixRGB([0, 0, 0], glow, (seam - 0.65) * 1.2) : [0, 0, 0] };
+                });
                 const cc = maps.color.getContext('2d'), hc = maps.height.getContext('2d');
-                for (let px = 0; px < 2; px++) for (let py = 0; py < 2; py++) for (let k = 0; k < 10; k++) { const t = k / 10, side = k % 4, ox = px * 128, oy = py * 128; let x, y; const pad = 10, span = 128 - pad * 2; if (k < 4) { x = ox + pad + (k % 2) * span; y = oy + pad + Math.floor(k / 2) * span; } else { x = ox + pad + ((k - 4) % 3 + 1) * span / 4; y = oy + pad + (k > 6 ? span : 0); } cc.fillStyle = '#9fb2d8'; cc.beginPath(); cc.arc(x, y, 3, 0, 7); cc.fill(); cc.fillStyle = 'rgba(0,0,0,.4)'; cc.beginPath(); cc.arc(x + 1, y + 1, 2, 0, 7); cc.fill(); hc.fillStyle = '#fff'; hc.beginPath(); hc.arc(x, y, 3, 0, 7); hc.fill(); }
-                addWear(maps, 123, 0.5); return { maps, normalStrength: 2.2, rough: [0.45, 0.2], metal: 0.6 };
+                for (let px = 0; px < 2; px++) for (let py = 0; py < 2; py++) for (let k = 0; k < 10; k++) {
+                    const ox = px * 128, oy = py * 128, pad = 11, span = 128 - pad * 2;
+                    const x = k < 4 ? ox + pad + (k % 2) * span : ox + pad + ((k - 4) % 3 + 1) * span / 4;
+                    const y = k < 4 ? oy + pad + Math.floor(k / 2) * span : oy + pad + (k > 6 ? span : 0);
+                    cc.fillStyle = 'rgba(0,0,0,.45)'; cc.beginPath(); cc.arc(x + 1, y + 1, 3.2, 0, 7); cc.fill();
+                    cc.fillStyle = '#b8ccf0'; cc.beginPath(); cc.arc(x, y, 2.8, 0, 7); cc.fill();
+                    hc.fillStyle = '#fff'; hc.beginPath(); hc.arc(x, y, 3, 0, 7); hc.fill();
+                }
+                addWear(maps, 123, 0.45); return { maps, normalStrength: 2.4, rough: [0.38, 0.2], metal: 0.68, emissiveIntensity: 0.45 };
             },
             crystal(b) {
-                const r = makeRng(131), pts = []; for (let i = 0; i < 18; i++) pts.push([r(), r()]);
-                const c1 = hexRGB(b.c1), c2 = hexRGB(b.c2), bright = [245, 230, 255];
+                const vor = makeVoronoi(131, 22), n = makeNoise2D(132), c1 = hexRGB(b.c1), c2 = hexRGB(b.c2), bright = [250, 235, 255], cyan = [160, 240, 255];
                 const maps = pixelMaps(S, (u, v) => {
-                    let best = 9, second = 9, id = 0;
-                    for (let i = 0; i < pts.length; i++) for (let ox = -1; ox <= 1; ox++) for (let oy = -1; oy <= 1; oy++) { const dx = u - pts[i][0] - ox, dy = v - pts[i][1] - oy, d = dx * dx + dy * dy; if (d < best) { second = best; best = d; id = i; } else if (d < second) second = d; }
-                    const edge = Math.sqrt(second) - Math.sqrt(best), lum = ((id * 37) % 10) / 10, e = 1 - smooth01(edge, 0.01, 0.035);
-                    return { c: mixRGB(mixRGB(c1, c2, lum), bright, e * 0.7), h: 0.3 + lum * 0.6 - e * 0.2, e: mixRGB([0, 0, 0], c2, e * 0.35 + 0.05) };
+                    const vc = vor(u, v), f = fbm2(n, u, v, 3);
+                    const lum = ((vc.id * 37) % 10) / 10;
+                    const e = 1 - smooth01(vc.edge, 0.008, 0.036);
+                    let c = mixRGB(mixRGB(c1, c2, lum * 0.8 + f * 0.2), cyan, (vc.id % 3 === 0 ? 0.22 : 0));
+                    c = mixRGB(c, bright, e * 0.82);
+                    return { c, h: 0.28 + lum * 0.58 - e * 0.22, e: mixRGB([0, 0, 0], mixRGB(c2, bright, 0.5), e * 0.5 + lum * 0.08) };
                 });
-                return { maps, normalStrength: 2.2, rough: [0.14, 0.12], metal: 0.2, emissiveIntensity: 0.5 };
+                return { maps, normalStrength: 2.5, rough: [0.1, 0.12], metal: 0.28, emissiveIntensity: 0.65 };
             },
             marble(b) {
-                const n = makeNoise2D(141), n2 = makeNoise2D(142), white = [252, 248, 240], grey = [214, 206, 196], gold = hexRGB(b.c1);
-                const maps = pixelMaps(S, (u, v) => { const f = fbm2(n, u, v, 5), vein = 1 - smooth01(Math.abs(fbm2(n2, u, v, 4) - 0.5), 0.005, 0.03); const c = mixRGB(mixRGB(white, grey, f * 0.6), gold, vein * 0.9); return { c, h: 0.6 + f * 0.15 - vein * 0.1, e: mixRGB([0, 0, 0], gold, vein * 0.25) }; });
-                return { maps, normalStrength: 0.9, rough: [0.2, 0.15], metal: 0.15, emissiveIntensity: 0.6 };
+                const n = makeNoise2D(141), n2 = makeNoise2D(142), white = [253, 250, 244], grey = [212, 204, 194], gold = hexRGB(b.c1), goldBright = [255, 232, 145];
+                const maps = pixelMaps(S, (u, v) => {
+                    const f = fbm2(n, u, v, 5), w = fbm2(n2, (u + f * 0.2) % 1, (v + f * 0.2) % 1, 4);
+                    const vein = 1 - smooth01(Math.abs(w - 0.5), 0.004, 0.026);
+                    const gx = (u * 2) % 1, gy = (v * 2) % 1, border = Math.min(Math.min(gx, 1 - gx), Math.min(gy, 1 - gy));
+                    const inlay = 1 - smooth01(Math.abs(border - 0.06), 0.004, 0.016);
+                    const goldMask = Math.max(vein * 0.9, inlay);
+                    const c = mixRGB(mixRGB(white, grey, f * 0.55), mixRGB(gold, goldBright, inlay), goldMask);
+                    return { c, h: 0.64 + f * 0.12 - vein * 0.08 + inlay * 0.12, e: mixRGB([0, 0, 0], goldBright, goldMask * 0.35) };
+                });
+                return { maps, normalStrength: 1.2, rough: [0.14, 0.14], metal: 0.24, emissiveIntensity: 0.65 };
             },
             bouncer() {
-                const g1 = hexRGB('#1fa36a'), g2 = hexRGB('#5ef0a6'), r = makeRng(151);
-                const maps = pixelMaps(S, (u, v) => { const dx = u - 0.5, dy = v - 0.5, d = Math.sqrt(dx * dx + dy * dy) * 2, ring = Math.sin(d * Math.PI * 2 * 3.5) * 0.5 + 0.5, chev = Math.abs(dx) < 0.22 && v > 0.15 && v < 0.85 && Math.abs(Math.abs(dx) * 1.6 - (0.85 - v) % 0.35) < 0.05; const c = chev ? [230, 255, 240] : mixRGB(g1, g2, ring); return { c, h: 0.5 + ring * 0.3 + (chev ? 0.2 : 0), e: mixRGB([0, 0, 0], chev ? [230, 255, 240] : g2, chev ? 0.9 : ring * 0.35) }; });
-                return { maps, normalStrength: 1.6, rough: [0.35, 0.1], metal: 0.1, emissiveIntensity: 0.7 };
+                const g1 = hexRGB('#127a4d'), g2 = hexRGB('#48f5a7'), white = [235, 255, 245];
+                const maps = pixelMaps(S, (u, v) => {
+                    const dx = u - 0.5, dy = v - 0.5, d = Math.sqrt(dx * dx + dy * dy) * 2;
+                    const ring = Math.sin(d * Math.PI * 2 * 4) * 0.5 + 0.5;
+                    const chev = Math.abs(dx) < 0.24 && v > 0.14 && v < 0.86 && Math.abs(Math.abs(dx) * 1.5 - (0.86 - v) % 0.32) < 0.055;
+                    const rim = 1 - smooth01(Math.abs(d - 0.84), 0.015, 0.05);
+                    const hi = chev || rim > 0.5;
+                    const c = hi ? white : mixRGB(g1, g2, ring);
+                    return { c, h: 0.48 + ring * 0.28 + (hi ? 0.24 : 0), e: mixRGB([0, 0, 0], hi ? white : g2, hi ? 0.95 : ring * 0.42) };
+                });
+                return { maps, normalStrength: 2.0, rough: [0.25, 0.12], metal: 0.18, emissiveIntensity: 0.85 };
             }
         };
         function smooth01(x, a, b) { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
 
-        // Texture dei fianchi: strati orizzontali, gradiente scuro verso il basso, usura
+        // Texture dei fianchi su misura per ogni bioma: ciglio erboso, glassa colante, ghiaccioli, fasce neon, fregi dorati, ecc.
         function createSideMaps(b) {
-            const n = makeNoise2D(hashString(b.name) % 1000 + 200), base = hexRGB(shade(b.c1, -0.2)), dark = hexRGB(shade(b.c1, -0.38)), light = hexRGB(shade(b.c2, -0.05));
-            const maps = pixelMaps(128, (u, v) => { const f = fbm2(n, u, v, 3), strata = Math.sin(v * Math.PI * 2 * 5 + f * 2) * 0.5 + 0.5, s = smooth01(strata, 0.8, 0.95); let c = mixRGB(mixRGB(base, dark, v * 0.8), light, (1 - v) * 0.25 * (v < 0.1 ? 1 : 0)); c = mixRGB(c, [0, 0, 0], s * 0.35 + f * 0.15); return { c, h: 0.55 - s * 0.3 + f * 0.1 }; });
-            addWear(maps, 7, 0.5); return maps;
+            const n = makeNoise2D(hashString(b.name) % 1000 + 200), pat = b.pattern || '';
+            const topCol = hexRGB(b.c1), topCol2 = hexRGB(b.c2), acc = hexRGB(b.accent || b.c2);
+            const base = hexRGB(shade(b.c1, -0.22)), dark = hexRGB(shade(b.c1, -0.42));
+            const maps = pixelMaps(128, (u, v) => {
+                const f = fbm2(n, u, v, 3);
+                // v=0 in alto (sotto il bordo superiore), v=1 in basso
+                if (pat === 'grass') {
+                    const lip = 0.22 + Math.sin(u * Math.PI * 2 * 7 + f * 3) * 0.07;
+                    if (v < lip) return { c: mixRGB(topCol, topCol2, f), h: 0.72 + f * 0.2 };
+                    const soil = mixRGB([118, 76, 40], [72, 44, 22], v * 0.85 + f * 0.2);
+                    return { c: soil, h: 0.38 + f * 0.22 };
+                }
+                if (pat === 'candy') {
+                    const drip = 0.26 + Math.pow(Math.sin(u * Math.PI * 2 * 5) * 0.5 + 0.5, 2) * 0.22;
+                    if (v < drip) return { c: [255, 245, 250], h: 0.78 };
+                    const wafer = ((Math.floor(u * 16) + Math.floor(v * 8)) % 2) * 0.14;
+                    return { c: mixRGB(topCol, [245, 196, 120], 0.55 + wafer), h: 0.45 + wafer };
+                }
+                if (pat === 'ice') {
+                    const spike = 0.18 + Math.pow(Math.sin(u * Math.PI * 2 * 9 + f * 2) * 0.5 + 0.5, 2.5) * 0.28;
+                    if (v < spike) return { c: [232, 250, 255], h: 0.82 };
+                    return { c: mixRGB(topCol2, dark, v * 0.75), h: 0.5 + f * 0.2 };
+                }
+                if (pat === 'neon' || pat === 'circuit' || pat === 'hull') {
+                    const strip = Math.abs(v - 0.5) < 0.1;
+                    const seg = Math.sin(u * Math.PI * 2 * 8) > -0.3;
+                    if (strip && seg) return { c: acc, h: 0.75, e: mixRGB([0, 0, 0], acc, 0.85) };
+                    const chassis = mixRGB([18, 22, 38], [38, 48, 72], f * 0.6);
+                    return { c: chassis, h: 0.52 };
+                }
+                if (pat === 'marble' || pat === 'solar') {
+                    const trim = v < 0.16 || v > 0.84;
+                    const flute = Math.sin(u * Math.PI * 2 * 12) * 0.5 + 0.5;
+                    if (trim) return { c: [255, 215, 95], h: 0.78 };
+                    return { c: mixRGB([242, 236, 224], [198, 188, 172], flute * 0.5), h: 0.45 + flute * 0.25 };
+                }
+                const strata = Math.sin(v * Math.PI * 2 * 5 + f * 2) * 0.5 + 0.5, s = smooth01(strata, 0.8, 0.95);
+                let c = mixRGB(mixRGB(base, dark, v * 0.8), topCol2, (1 - v) * 0.3 * (v < 0.14 ? 1 : 0));
+                c = mixRGB(c, [0, 0, 0], s * 0.35 + f * 0.15);
+                return { c, h: 0.55 - s * 0.3 + f * 0.12 };
+            });
+            addWear(maps, 7, 0.4); return maps;
         }
         function buildMaterial(pat, sideMaps, isRTX) {
             const map = mkTex(pat.maps.color), normalMap = mkTex(normalFromHeight(pat.maps.height, pat.normalStrength), false), roughnessMap = mkTex(roughnessFromHeight(pat.maps.height, pat.rough[0], pat.rough[1]), false);
-            const opts = { map, normalMap, normalScale: new THREE.Vector2(0.9, 0.9), roughnessMap, roughness: 1, metalness: pat.metal };
+            const opts = { map, normalMap, normalScale: new THREE.Vector2(1.05, 1.05), roughnessMap, roughness: 1, metalness: pat.metal };
             if (pat.maps.emissive) { opts.emissiveMap = mkTex(pat.maps.emissive); opts.emissive = new THREE.Color(0xffffff); opts.emissiveIntensity = pat.emissiveIntensity || 0.6; }
             const top = new THREE.MeshStandardMaterial(opts); top.userData.baseMetal = pat.metal; top.userData.baseRough = pat.rough[0];
-            const side = new THREE.MeshStandardMaterial({ map: mkTex(sideMaps.color), normalMap: mkTex(normalFromHeight(sideMaps.height, 1.8), false), normalScale: new THREE.Vector2(0.8, 0.8), roughness: 0.85, metalness: 0.05 });
+            const sideOpts = { map: mkTex(sideMaps.color), normalMap: mkTex(normalFromHeight(sideMaps.height, 2.0), false), normalScale: new THREE.Vector2(0.9, 0.9), roughness: 0.78, metalness: 0.08 };
+            if (sideMaps.emissive) { sideOpts.emissiveMap = mkTex(sideMaps.emissive); sideOpts.emissive = new THREE.Color(0xffffff); sideOpts.emissiveIntensity = 0.7; }
+            const side = new THREE.MeshStandardMaterial(sideOpts);
             return { top, side };
         }
         const biomeMaterials = BIOMES.map(b => buildMaterial(PATTERNS[b.pattern](b), createSideMaps(b), false));
-        const bouncerMaterial = buildMaterial(PATTERNS.bouncer(), createSideMaps({ name: 'bouncer', c1: '#1fa36a', c2: '#5ef0a6' }), false);
-        const bottomMaterial = new THREE.MeshStandardMaterial({ color: 0x141a2e, roughness: 0.95 });
-        // Ostacoli: strisce pericolo (letale) e metallo spazzolato con banda a chevron (mobile)
-        const hazardTex = (() => { const [c, g] = mkCanvas(256, 256); g.fillStyle = '#8f0f24'; g.fillRect(0, 0, 256, 256); g.fillStyle = '#ff2e63'; for (let i = -256; i < 512; i += 64) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 32, 0); g.lineTo(i + 32 + 256, 256); g.lineTo(i + 256, 256); g.closePath(); g.fill(); } g.globalAlpha = 0.12; const r = makeRng(3); for (let i = 0; i < 1500; i++) { g.fillStyle = r() > 0.5 ? '#fff' : '#000'; g.fillRect(r() * 256, r() * 256, 2, 2); } return mkTex(c); })();
-        const hazardMaterial = new THREE.MeshStandardMaterial({ map: hazardTex, emissive: 0xff1a3c, emissiveMap: hazardTex, emissiveIntensity: 0.7, roughness: 0.35, metalness: 0.3 });
-        const blockerTex = (() => { const [c, g] = mkCanvas(256, 256); const r = makeRng(4); g.fillStyle = '#1a1f2e'; g.fillRect(0, 0, 256, 256); g.globalAlpha = 0.25; for (let i = 0; i < 400; i++) { g.strokeStyle = r() > 0.5 ? '#3b4460' : '#0a0d18'; g.beginPath(); const y = r() * 256; g.moveTo(0, y); g.lineTo(256, y + (r() - 0.5) * 3); g.stroke(); } g.globalAlpha = 1; g.fillStyle = '#0a0d18'; g.fillRect(0, 104, 256, 48); g.fillStyle = '#ffb830'; for (let i = -64; i < 320; i += 64) { g.beginPath(); g.moveTo(i, 104); g.lineTo(i + 24, 104); g.lineTo(i + 48, 152); g.lineTo(i + 24, 152); g.closePath(); g.fill(); } return mkTex(c); })();
-        const blockerMaterial = new THREE.MeshStandardMaterial({ map: blockerTex, roughness: 0.3, metalness: 0.85 });
+        const bouncerMaterial = buildMaterial(PATTERNS.bouncer(), createSideMaps({ name: 'bouncer', pattern: 'neon', c1: '#1fa36a', c2: '#5ef0a6', accent: '#5ef0a6' }), false);
+        const bottomMaterial = new THREE.MeshStandardMaterial({ color: 0x12172a, roughness: 0.88, metalness: 0.15 });
+
+        // Materiali PBR completi (colore + normal map + emissive) per gli ostacoli letali e i respingenti mobili
+        const hazardMaterial = (() => {
+            const maps = pixelMaps(256, (u, v) => {
+                const b = Math.min(Math.min(u, 1 - u), Math.min(v, 1 - v));
+                const frame = b < 0.09;
+                const stripe = Math.sin((u + v) * Math.PI * 2 * 4) > 0;
+                const core = Math.hypot(u - 0.5, v - 0.5) < 0.22;
+                if (core) return { c: [255, 220, 230], h: 0.85, e: [255, 90, 130] };
+                if (frame) return { c: [36, 14, 24], h: 0.78, e: [90, 10, 30] };
+                return { c: stripe ? [255, 38, 88] : [92, 10, 26], h: stripe ? 0.62 : 0.35, e: stripe ? [255, 28, 78] : [35, 0, 10] };
+            });
+            return new THREE.MeshStandardMaterial({
+                map: mkTex(maps.color), normalMap: mkTex(normalFromHeight(maps.height, 2.2), false), normalScale: new THREE.Vector2(1, 1),
+                emissive: 0xffffff, emissiveMap: mkTex(maps.emissive), emissiveIntensity: 0.9, roughness: 0.28, metalness: 0.35
+            });
+        })();
+        const blockerMaterial = (() => {
+            const n = makeNoise2D(99);
+            const maps = pixelMaps(256, (u, v) => {
+                const b = Math.min(Math.min(u, 1 - u), Math.min(v, 1 - v)), frame = b < 0.08;
+                const inBand = Math.abs(v - 0.5) < 0.18;
+                const chev = inBand && Math.sin((u * 5 + Math.abs(v - 0.5) * 3.5) * Math.PI * 2) > 0;
+                const brush = n((u * 2) % 1, (v * 32) % 1) * 0.15;
+                if (inBand) return { c: chev ? [255, 188, 42] : [20, 24, 38], h: chev ? 0.68 : 0.38, e: chev ? [90, 58, 0] : [0, 0, 0] };
+                const base = frame ? [68, 78, 106] : [38, 45, 66];
+                return { c: mixRGB(base, [140, 155, 190], brush), h: frame ? 0.76 : 0.5 + brush, e: [0, 0, 0] };
+            });
+            return new THREE.MeshStandardMaterial({
+                map: mkTex(maps.color), normalMap: mkTex(normalFromHeight(maps.height, 2.0), false), normalScale: new THREE.Vector2(0.9, 0.9),
+                emissive: 0xffffff, emissiveMap: mkTex(maps.emissive), emissiveIntensity: 0.45, roughness: 0.28, metalness: 0.82
+            });
+        })();
         const edgeMaterialCache = {};
-        const edgeMaterial = (hex) => edgeMaterialCache[hex] || (edgeMaterialCache[hex] = new THREE.LineBasicMaterial({ color: hex, transparent: true, opacity: 0.55 }));
+        const edgeMaterial = (hex) => edgeMaterialCache[hex] || (edgeMaterialCache[hex] = new THREE.LineBasicMaterial({ color: hex, transparent: true, opacity: 0.62 }));
 
         /* ==========================================================================
-           SEZIONE 9: PALLINA E SKIN (texture con cuciture, bump map, dettagli)
+           SEZIONE 9: PALLINA, SKIN ED EFFETTI DI ATTERRAGGIO (texture PBR, rilievi, mirino)
            ========================================================================== */
         const skinTexCache = {};
         function skinCanvas(w = 512, h = 256) { return mkCanvas(w, h); }
@@ -1439,46 +1704,59 @@
         const SKINS_DEF = {
             brand: {
                 color() { const [c, g] = skinCanvas(); const grd = g.createLinearGradient(0, 0, 0, 256); grd.addColorStop(0, '#ffe08a'); grd.addColorStop(0.45, '#ffb830'); grd.addColorStop(1, '#ff5c4d'); g.fillStyle = grd; g.fillRect(0, 0, 512, 256);
-                    g.fillStyle = '#fff7ee'; g.fillRect(0, 96, 512, 30); g.fillStyle = '#c73a2f'; g.fillRect(0, 150, 512, 12); g.fillStyle = '#38b6ff'; g.fillRect(0, 166, 512, 5);
-                    g.fillStyle = '#ff5c4d'; g.beginPath(); g.arc(128, 111, 12, 0, 7); g.fill(); g.beginPath(); g.arc(384, 111, 12, 0, 7); g.fill(); g.fillStyle = '#fff7ee'; g.beginPath(); g.arc(128, 111, 5, 0, 7); g.fill(); g.beginPath(); g.arc(384, 111, 5, 0, 7); g.fill();
+                    g.fillStyle = '#fff7ee'; g.fillRect(0, 96, 512, 30); g.fillStyle = '#c73a2f'; g.fillRect(0, 150, 512, 12); g.fillStyle = '#38b6ff'; g.fillRect(0, 166, 512, 6);
+                    g.fillStyle = '#ff5c4d'; g.beginPath(); g.arc(128, 111, 13, 0, 7); g.fill(); g.beginPath(); g.arc(384, 111, 13, 0, 7); g.fill(); g.fillStyle = '#fff7ee'; g.beginPath(); g.arc(128, 111, 5.5, 0, 7); g.fill(); g.beginPath(); g.arc(384, 111, 5.5, 0, 7); g.fill();
                     speckle(g, 512, 256, 1200, 0.05, 1); return c; },
-                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); g.fillStyle = '#a0a0a0'; g.fillRect(0, 96, 512, 30); g.fillStyle = '#606060'; g.fillRect(0, 150, 512, 12); return c; }, roughness: 0.32, metalness: 0.15, bumpScale: 0.012
+                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); g.fillStyle = '#b0b0b0'; g.fillRect(0, 96, 512, 30); g.fillStyle = '#505050'; g.fillRect(0, 150, 512, 12); return c; }, roughness: 0.28, metalness: 0.18, bumpScale: 0.015
             },
             beach: {
                 color() { const [c, g] = skinCanvas(); const cols = ['#ff3b3b', '#fff7ee', '#2f6bff', '#fff7ee', '#ffd400', '#fff7ee']; cols.forEach((col, i) => { const x = i * (512 / 6); const grd = g.createLinearGradient(x, 0, x + 512 / 6, 0); grd.addColorStop(0, shade(col, -0.06)); grd.addColorStop(0.5, col); grd.addColorStop(1, shade(col, -0.08)); g.fillStyle = grd; g.fillRect(x, 0, 512 / 6 + 1, 256); });
-                    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 2; for (let i = 0; i <= 6; i++) { g.beginPath(); g.moveTo(i * 512 / 6, 0); g.lineTo(i * 512 / 6, 256); g.stroke(); }
+                    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 2.5; for (let i = 0; i <= 6; i++) { g.beginPath(); g.moveTo(i * 512 / 6, 0); g.lineTo(i * 512 / 6, 256); g.stroke(); }
                     g.fillStyle = '#fff7ee'; g.fillRect(0, 0, 512, 16); g.fillRect(0, 240, 512, 16); g.fillStyle = '#e8e0d8'; g.fillRect(0, 14, 512, 3); g.fillRect(0, 239, 512, 3); speckle(g, 512, 256, 600, 0.04, 2); return c; },
-                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); g.strokeStyle = '#404040'; g.lineWidth = 3; for (let i = 0; i <= 6; i++) { g.beginPath(); g.moveTo(i * 512 / 6, 0); g.lineTo(i * 512 / 6, 256); g.stroke(); } return c; }, roughness: 0.2, metalness: 0.1, bumpScale: 0.01
+                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); g.strokeStyle = '#383838'; g.lineWidth = 3.5; for (let i = 0; i <= 6; i++) { g.beginPath(); g.moveTo(i * 512 / 6, 0); g.lineTo(i * 512 / 6, 256); g.stroke(); } return c; }, roughness: 0.18, metalness: 0.1, bumpScale: 0.012
             },
             tennis: {
                 color() { const [c, g] = skinCanvas(); g.fillStyle = '#d4f23a'; g.fillRect(0, 0, 512, 256); speckle(g, 512, 256, 9000, 0.12, 3); const p = () => { g.beginPath(); g.arc(128, 128, 110, -Math.PI / 2, Math.PI / 2); g.moveTo(384 + 110, 128); g.arc(384, 128, 110, Math.PI / 2, 3 * Math.PI / 2); }; g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 18; p(); g.stroke(); g.strokeStyle = '#fff7ee'; g.lineWidth = 12; p(); g.stroke(); return c; },
-                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); speckle(g, 512, 256, 12000, 0.35, 4); g.strokeStyle = '#b0b0b0'; g.lineWidth = 12; g.beginPath(); g.arc(128, 128, 110, -Math.PI / 2, Math.PI / 2); g.moveTo(384 + 110, 128); g.arc(384, 128, 110, Math.PI / 2, 3 * Math.PI / 2); g.stroke(); return c; }, roughness: 0.95, metalness: 0, bumpScale: 0.02
+                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); speckle(g, 512, 256, 12000, 0.35, 4); g.strokeStyle = '#b0b0b0'; g.lineWidth = 12; g.beginPath(); g.arc(128, 128, 110, -Math.PI / 2, Math.PI / 2); g.moveTo(384 + 110, 128); g.arc(384, 128, 110, Math.PI / 2, 3 * Math.PI / 2); g.stroke(); return c; }, roughness: 0.92, metalness: 0, bumpScale: 0.024
             },
             volley: {
                 color() { const [c, g] = skinCanvas(); ['#fff7ee', '#ffb830', '#38b6ff'].forEach((col, i) => { g.fillStyle = col; g.fillRect(i * 171, 0, 172, 256); }); for (let i = 0; i < 3; i++) { const x = i * 171; seamLine(g, () => { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 256); }, '#1a1a2e', 4); } seamLine(g, () => { g.beginPath(); g.moveTo(0, 85); g.bezierCurveTo(128, 60, 384, 110, 512, 85); }, '#1a1a2e', 3); seamLine(g, () => { g.beginPath(); g.moveTo(0, 170); g.bezierCurveTo(128, 195, 384, 145, 512, 170); }, '#1a1a2e', 3); speckle(g, 512, 256, 800, 0.05, 5); return c; },
-                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); g.strokeStyle = '#404040'; g.lineWidth = 4; for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(i * 171, 0); g.lineTo(i * 171, 256); g.stroke(); } g.beginPath(); g.moveTo(0, 85); g.bezierCurveTo(128, 60, 384, 110, 512, 85); g.stroke(); g.beginPath(); g.moveTo(0, 170); g.bezierCurveTo(128, 195, 384, 145, 512, 170); g.stroke(); return c; }, roughness: 0.45, metalness: 0.05, bumpScale: 0.012
+                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); g.strokeStyle = '#404040'; g.lineWidth = 4; for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(i * 171, 0); g.lineTo(i * 171, 256); g.stroke(); } g.beginPath(); g.moveTo(0, 85); g.bezierCurveTo(128, 60, 384, 110, 512, 85); g.stroke(); g.beginPath(); g.moveTo(0, 170); g.bezierCurveTo(128, 195, 384, 145, 512, 170); g.stroke(); return c; }, roughness: 0.42, metalness: 0.05, bumpScale: 0.014
             },
             golf: {
                 color() { const [c, g] = skinCanvas(); g.fillStyle = '#fbfbf7'; g.fillRect(0, 0, 512, 256); for (let j = 0; j < 8; j++) for (let i = 0; i < 16; i++) { const x = i * 32 + (j % 2) * 16 + 16, y = j * 32 + 16; const grd = g.createRadialGradient(x - 3, y - 3, 1, x, y, 11); grd.addColorStop(0, '#d8d8d0'); grd.addColorStop(1, '#f4f4ee'); g.fillStyle = grd; g.beginPath(); g.arc(x, y, 11, 0, 7); g.fill(); } g.fillStyle = '#ff5c4d'; g.font = 'bold 22px Bungee, Arial Black, sans-serif'; g.textAlign = 'center'; g.fillText('ONLY', 256, 136); return c; },
-                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#909090'; g.fillRect(0, 0, 512, 256); for (let j = 0; j < 8; j++) for (let i = 0; i < 16; i++) { const x = i * 32 + (j % 2) * 16 + 16, y = j * 32 + 16; const grd = g.createRadialGradient(x, y, 0, x, y, 11); grd.addColorStop(0, '#202020'); grd.addColorStop(1, '#909090'); g.fillStyle = grd; g.beginPath(); g.arc(x, y, 11, 0, 7); g.fill(); } return c; }, roughness: 0.75, metalness: 0.05, bumpScale: 0.03
+                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#909090'; g.fillRect(0, 0, 512, 256); for (let j = 0; j < 8; j++) for (let i = 0; i < 16; i++) { const x = i * 32 + (j % 2) * 16 + 16, y = j * 32 + 16; const grd = g.createRadialGradient(x, y, 0, x, y, 11); grd.addColorStop(0, '#202020'); grd.addColorStop(1, '#909090'); g.fillStyle = grd; g.beginPath(); g.arc(x, y, 11, 0, 7); g.fill(); } return c; }, roughness: 0.65, metalness: 0.08, bumpScale: 0.032
             },
             basket: {
                 color() { const [c, g] = skinCanvas(); const grd = g.createLinearGradient(0, 0, 0, 256); grd.addColorStop(0, '#f28c3a'); grd.addColorStop(0.5, '#e06a1e'); grd.addColorStop(1, '#c9571a'); g.fillStyle = grd; g.fillRect(0, 0, 512, 256); speckle(g, 512, 256, 14000, 0.14, 6); const seams = () => { g.beginPath(); g.moveTo(0, 128); g.lineTo(512, 128); g.moveTo(256, 0); g.lineTo(256, 256); g.moveTo(0, 0); g.lineTo(0, 256); g.moveTo(0 + 90, 128); g.arc(0, 128, 90, -Math.PI / 2, Math.PI / 2); g.moveTo(512 - 90, 128); g.arc(512, 128, 90, Math.PI / 2, 3 * Math.PI / 2); }; g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 10; seams(); g.stroke(); g.strokeStyle = '#1a1a1a'; g.lineWidth = 6; seams(); g.stroke(); return c; },
-                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); speckle(g, 512, 256, 16000, 0.4, 7); g.strokeStyle = '#303030'; g.lineWidth = 6; g.beginPath(); g.moveTo(0, 128); g.lineTo(512, 128); g.moveTo(256, 0); g.lineTo(256, 256); g.moveTo(90, 128); g.arc(0, 128, 90, -Math.PI / 2, Math.PI / 2); g.moveTo(512 - 90, 128); g.arc(512, 128, 90, Math.PI / 2, 3 * Math.PI / 2); g.stroke(); return c; }, roughness: 0.8, metalness: 0.05, bumpScale: 0.02
+                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); speckle(g, 512, 256, 16000, 0.4, 7); g.strokeStyle = '#303030'; g.lineWidth = 6; g.beginPath(); g.moveTo(0, 128); g.lineTo(512, 128); g.moveTo(256, 0); g.lineTo(256, 256); g.moveTo(90, 128); g.arc(0, 128, 90, -Math.PI / 2, Math.PI / 2); g.moveTo(512 - 90, 128); g.arc(512, 128, 90, Math.PI / 2, 3 * Math.PI / 2); g.stroke(); return c; }, roughness: 0.78, metalness: 0.05, bumpScale: 0.022
             },
             eight: {
                 color() { const [c, g] = skinCanvas(); g.fillStyle = '#0c0c12'; g.fillRect(0, 0, 512, 256); speckle(g, 512, 256, 900, 0.05, 8); g.fillStyle = '#fff7ee'; g.beginPath(); g.arc(256, 128, 62, 0, 7); g.fill(); g.fillStyle = '#e8e0d8'; g.beginPath(); g.arc(256, 128, 62, 0, 7); g.lineWidth = 3; g.strokeStyle = '#bdb4aa'; g.stroke(); g.fillStyle = '#0c0c12'; g.font = 'bold 82px Bungee, Arial Black, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('8', 256, 134); return c; },
                 bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); speckle(g, 512, 256, 600, 0.15, 9); return c; }, roughness: 0.08, metalness: 0.55, bumpScale: 0.004
             },
+            magma: {
+                color() { const vor = makeVoronoi(181, 18), n = makeNoise2D(182); return pixelMaps(256, (u, v) => { const vc = vor(u, v), f = fbm2(n, u, v, 4), crack = 1 - smooth01(vc.edge, 0.012, 0.048); return { c: mixRGB([26, 22, 30], [255, 110, 20], crack), h: 0.7 - crack * 0.45 }; }).color; },
+                bump() { const vor = makeVoronoi(181, 18); return pixelMaps(256, (u, v) => { const vc = vor(u, v), crack = 1 - smooth01(vc.edge, 0.012, 0.048); return { c: [128, 128, 128], h: 0.75 - crack * 0.5 }; }).height; },
+                roughness: 0.55, metalness: 0.25, bumpScale: 0.026
+            },
             soccer: {
                 color() { const [c, g] = skinCanvas(); g.fillStyle = '#fbfbf7'; g.fillRect(0, 0, 512, 256); const centers = [[256, 128], [128, 64], [384, 64], [128, 192], [384, 192], [0, 128], [512, 128], [256, 0], [256, 256]]; const pent = (cx, cy, r) => { g.beginPath(); for (let i = 0; i < 5; i++) { const a = (Math.PI * 2 / 5) * i - Math.PI / 2; if (i === 0) g.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a)); else g.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a)); } g.closePath(); };
                     centers.forEach(([x, y]) => { const grd = g.createRadialGradient(x - 10, y - 10, 5, x, y, 40); grd.addColorStop(0, '#2a2a34'); grd.addColorStop(1, '#0c0c12'); g.fillStyle = grd; pent(x, y, 38); g.fill(); });
                     g.strokeStyle = '#8c8c86'; g.lineWidth = 2.5; centers.forEach(([x, y]) => { pent(x, y, 38); g.stroke(); for (let i = 0; i < 5; i++) { const a = (Math.PI * 2 / 5) * i - Math.PI / 2; g.beginPath(); g.moveTo(x + 38 * Math.cos(a), y + 38 * Math.sin(a)); g.lineTo(x + 70 * Math.cos(a), y + 70 * Math.sin(a)); g.stroke(); } }); speckle(g, 512, 256, 700, 0.05, 10); return c; },
-                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); const centers = [[256, 128], [128, 64], [384, 64], [128, 192], [384, 192], [0, 128], [512, 128], [256, 0], [256, 256]]; g.strokeStyle = '#404040'; g.lineWidth = 3; centers.forEach(([x, y]) => { g.beginPath(); for (let i = 0; i < 5; i++) { const a = (Math.PI * 2 / 5) * i - Math.PI / 2; if (i === 0) g.moveTo(x + 38 * Math.cos(a), y + 38 * Math.sin(a)); else g.lineTo(x + 38 * Math.cos(a), y + 38 * Math.sin(a)); } g.closePath(); g.stroke(); for (let i = 0; i < 5; i++) { const a = (Math.PI * 2 / 5) * i - Math.PI / 2; g.beginPath(); g.moveTo(x + 38 * Math.cos(a), y + 38 * Math.sin(a)); g.lineTo(x + 70 * Math.cos(a), y + 70 * Math.sin(a)); g.stroke(); } }); return c; }, roughness: 0.6, metalness: 0.05, bumpScale: 0.012
+                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); const centers = [[256, 128], [128, 64], [384, 64], [128, 192], [384, 192], [0, 128], [512, 128], [256, 0], [256, 256]]; g.strokeStyle = '#404040'; g.lineWidth = 3; centers.forEach(([x, y]) => { g.beginPath(); for (let i = 0; i < 5; i++) { const a = (Math.PI * 2 / 5) * i - Math.PI / 2; if (i === 0) g.moveTo(x + 38 * Math.cos(a), y + 38 * Math.sin(a)); else g.lineTo(x + 38 * Math.cos(a), y + 38 * Math.sin(a)); } g.closePath(); g.stroke(); for (let i = 0; i < 5; i++) { const a = (Math.PI * 2 / 5) * i - Math.PI / 2; g.beginPath(); g.moveTo(x + 38 * Math.cos(a), y + 38 * Math.sin(a)); g.lineTo(x + 70 * Math.cos(a), y + 70 * Math.sin(a)); g.stroke(); } }); return c; }, roughness: 0.55, metalness: 0.05, bumpScale: 0.014
+            },
+            cyber: {
+                color() { const [c, g] = skinCanvas(); g.fillStyle = '#090d1e'; g.fillRect(0, 0, 512, 256); g.strokeStyle = '#2ef2e6'; g.lineWidth = 5; for (let y = 32; y < 256; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(512, y); g.stroke(); } g.strokeStyle = '#ff4fd8'; g.lineWidth = 4; for (let x = 64; x < 512; x += 128) { g.beginPath(); g.arc(x, 128, 42, 0, Math.PI * 2); g.stroke(); } return c; },
+                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#707070'; g.fillRect(0, 0, 512, 256); g.strokeStyle = '#ffffff'; g.lineWidth = 5; for (let y = 32; y < 256; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(512, y); g.stroke(); } return c; }, roughness: 0.16, metalness: 0.65, bumpScale: 0.015
             },
             planet: {
                 color() { const n = makeNoise2D(171), n2 = makeNoise2D(172); const m = pixelMaps(256, (u, v) => { const f = fbm2(n, u, v, 5), land = f > 0.52, cl = fbm2(n2, (u + 0.1) % 1, v, 4); let c = land ? mixRGB([46, 160, 90], [120, 100, 60], (f - 0.52) * 6) : mixRGB([20, 70, 160], [40, 130, 220], f * 2); c = mixRGB(c, [255, 255, 255], smooth01(cl, 0.55, 0.75) * 0.9); const polar = Math.abs(v - 0.5) > 0.42 ? 1 : 0; c = mixRGB(c, [245, 250, 255], polar * 0.9); return { c, h: land ? 0.7 : 0.4 }; }); return m.color; },
                 bump() { const n = makeNoise2D(171); return pixelMaps(256, (u, v) => { const f = fbm2(n, u, v, 5); return { c: [128, 128, 128], h: f > 0.52 ? 0.75 : 0.4 }; }).height; }, roughness: 0.55, metalness: 0.05, bumpScale: 0.02
+            },
+            galaxy: {
+                color() { const n = makeNoise2D(191), r = makeRng(192); const [c, g] = skinCanvas(); const m = pixelMaps(256, (u, v) => { const f = fbm2(n, u, v, 5); return { c: mixRGB(mixRGB([12, 8, 34], [110, 42, 195], f), [255, 190, 90], Math.pow(f, 3)), h: 0.5 }; }); g.drawImage(m.color, 0, 0, 512, 256); for (let i = 0; i < 180; i++) { g.fillStyle = i % 5 === 0 ? '#ffd166' : '#ffffff'; g.beginPath(); g.arc(r() * 512, r() * 256, 0.8 + r() * 1.8, 0, 7); g.fill(); } return c; },
+                bump() { const [c, g] = skinCanvas(); g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 256); return c; }, roughness: 0.14, metalness: 0.45, bumpScale: 0.005
             }
         };
         const skinList = [
@@ -1489,8 +1767,11 @@
             { name: 'Pallina da Golf', key: 'golf', unlock: 280 },
             { name: 'Palla da Basket', key: 'basket', unlock: 350 },
             { name: 'Palla Numero 8', key: 'eight', unlock: 490 },
+            { name: 'Nucleo Magma', key: 'magma', unlock: 560 },
             { name: 'Pallone da Calcio', key: 'soccer', unlock: 630 },
-            { name: 'Piccolo Pianeta', key: 'planet', unlock: 800 }
+            { name: 'Cyber Neon', key: 'cyber', unlock: 720 },
+            { name: 'Piccolo Pianeta', key: 'planet', unlock: 800 },
+            { name: 'Galassia', key: 'galaxy', unlock: 920 }
         ];
         function getLifetimeBest() {
             let best = parseInt(localStorage.getItem('onlyball_lifetime') || '0') || 0;
@@ -1555,6 +1836,16 @@
         const ballLight = new THREE.PointLight(0xffe0b0, 0.6, 14); ballGroup.add(ballLight);
         const ballSquash = { x: 1, y: 1 };
 
+        // Indicatore dinamico di atterraggio proiettato sulla piattaforma sottostante (aiuta la precisione nei salti 3D)
+        const landingShadow = new THREE.Group();
+        landingShadow.userData.noShadow = true;
+        const shadowDisc = new THREE.Mesh(new THREE.CircleGeometry(radius * 0.95, 32), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.42, depthWrite: false }));
+        shadowDisc.rotation.x = -Math.PI / 2; shadowDisc.userData.noShadow = true;
+        const shadowRing = new THREE.Mesh(new THREE.RingGeometry(radius * 0.98, radius * 1.18, 36), new THREE.MeshBasicMaterial({ color: 0x37e0b0, transparent: true, opacity: 0.65, side: THREE.DoubleSide, depthWrite: false }));
+        shadowRing.rotation.x = -Math.PI / 2; shadowRing.position.y = 0.01; shadowRing.userData.noShadow = true;
+        landingShadow.add(shadowDisc, shadowRing); landingShadow.visible = false; scene.add(landingShadow);
+        const downRay = new THREE.Raycaster(), downVec = new THREE.Vector3(0, -1, 0);
+
         function applySkin(index) {
             const m = sphereMesh.material;
             const nameEl = $('skin-name-display');
@@ -1591,42 +1882,115 @@
         $('btn-skin-next').addEventListener('click', () => { AudioEngine.playUI(); currentSkinIndex = currentSkinIndex === -1 ? 0 : (currentSkinIndex + 1) % skinList.length; applySkin(currentSkinIndex); });
 
         /* ==========================================================================
-           SEZIONE 10: OGGETTI DI SCENA, LANDMARK E PIATTAFORME
+           SEZIONE 10: OGGETTI DI SCENA, LANDMARK, PIATTAFORME E OSTACOLI CON TELEGRAPH
            ========================================================================== */
         const propMat = (o) => new THREE.MeshStandardMaterial(o);
+        const propRng = makeRng(777);
         function createBiomeProp(biome) {
             const group = new THREE.Group();
-            if (biome === 0 || biome === 5) {
-                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.26, 1.1, 7), propMat({ color: 0x7a4b24, roughness: 0.9 })); trunk.position.y = 0.55; trunk.castShadow = true;
-                const leaves = new THREE.Mesh(new THREE.ConeGeometry(0.85, 2, 7), propMat({ color: biome === 5 ? 0xff69b4 : 0x2ed573, flatShading: true, roughness: 0.8 })); leaves.position.y = 1.6; leaves.castShadow = true;
-                const leaves2 = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.4, 7), propMat({ color: biome === 5 ? 0xffa5d2 : 0x7bed9f, flatShading: true, roughness: 0.8 })); leaves2.position.y = 2.3; leaves2.castShadow = true;
-                group.add(trunk, leaves, leaves2);
-            } else if (biome === 1 || biome === 8) {
-                const col = biome === 8 ? 0xf1c40f : 0x2ecc71;
-                const main = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 2, 9), propMat({ color: col, roughness: 0.7 })); main.position.y = 1; main.castShadow = true;
-                const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.9, 8), propMat({ color: col, roughness: 0.7 })); arm.position.set(0.45, 1.3, 0); arm.rotation.z = Math.PI / 4; arm.castShadow = true;
-                const flower = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), propMat({ color: biome === 8 ? 0xffffff : 0xff6fb5 })); flower.position.y = 2.1; group.add(main, arm, flower);
-            } else if (biome === 2 || biome === 7 || biome === 13) {
-                const cm = propMat({ color: biome === 13 ? 0xd6a2e8 : 0x9df2ff, transparent: true, opacity: 0.85, metalness: 0.5, roughness: 0.1, emissive: biome === 13 ? 0x5a2d7a : 0x0a5a70, emissiveIntensity: 0.5 });
-                const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.5, 5), cm); crystal.position.y = 1.25; crystal.castShadow = true;
-                const crystal2 = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.4, 5), cm); crystal2.position.set(0.5, 0.7, 0.2); crystal2.rotation.z = -0.4; crystal2.castShadow = true; group.add(crystal, crystal2);
-            } else if (biome === 3 || biome === 10) {
-                const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8), propMat({ color: 0x24222a, emissive: biome === 10 ? 0x8b0000 : 0xff3300, emissiveIntensity: 0.4, roughness: 0.9, flatShading: true })); rock.position.y = 0.8; rock.rotation.set(rng(), rng(), 0); rock.castShadow = true; group.add(rock);
-            } else if (biome === 4 || biome === 9) {
-                const ring = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.08, 10, 30), new THREE.MeshBasicMaterial({ color: biome === 9 ? 0x2ef2e6 : 0xff4fd8 })); ring.position.y = 1.1; ring.rotation.x = Math.PI / 2;
-                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.1, 6), propMat({ color: 0x1a1f2e, metalness: 0.8, roughness: 0.3 })); pole.position.y = 0.55; group.add(ring, pole); group.userData.spin = 0.02;
+            if (biome === 0) {
+                // Prato: pino stilizzato a 3 palchi + funghetto rosso alla base
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 1.15, 7), propMat({ color: 0x7a4b24, roughness: 0.9 })); trunk.position.y = 0.57;
+                const l1 = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.5, 7), propMat({ color: 0x1fa855, flatShading: true, roughness: 0.8 })); l1.position.y = 1.45;
+                const l2 = new THREE.Mesh(new THREE.ConeGeometry(0.68, 1.3, 7), propMat({ color: 0x2ed573, flatShading: true, roughness: 0.8 })); l2.position.y = 2.1;
+                const l3 = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.95, 7), propMat({ color: 0x7bed9f, flatShading: true, roughness: 0.8 })); l3.position.y = 2.65;
+                const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.28, 6), propMat({ color: 0xfff7ee })); stem.position.set(0.45, 0.14, 0.2);
+                const cap = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2), propMat({ color: 0xff4757, roughness: 0.5 })); cap.position.set(0.45, 0.26, 0.2);
+                group.add(trunk, l1, l2, l3, stem, cap);
+            } else if (biome === 1) {
+                // Deserto: cactus saguaro a due braccia con fiore + roccia sabbiosa
+                const cm = propMat({ color: 0x2ecc71, roughness: 0.72 });
+                const main = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.32, 2.1, 9), cm); main.position.y = 1.05;
+                const arm1 = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.85, 8), cm); arm1.position.set(0.42, 1.35, 0); arm1.rotation.z = Math.PI / 4;
+                const arm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.75, 8), cm); arm2.position.set(-0.38, 1.05, 0); arm2.rotation.z = -Math.PI / 4;
+                const flower = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), propMat({ color: 0xff6fb5, emissive: 0x661133, emissiveIntensity: 0.3 })); flower.position.y = 2.16;
+                const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.32), propMat({ color: 0xd49b54, flatShading: true, roughness: 0.9 })); rock.position.set(-0.45, 0.2, 0.3);
+                group.add(main, arm1, arm2, flower, rock);
+            } else if (biome === 2) {
+                // Ghiaccio: tripla guglia glaciale traslucida
+                const cm = propMat({ color: 0x9df2ff, transparent: true, opacity: 0.86, metalness: 0.45, roughness: 0.08, emissive: 0x0a5a70, emissiveIntensity: 0.5 });
+                const c1 = new THREE.Mesh(new THREE.ConeGeometry(0.48, 2.5, 6), cm); c1.position.y = 1.25;
+                const c2 = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.55, 6), cm); c2.position.set(0.48, 0.75, 0.2); c2.rotation.z = -0.35;
+                const c3 = new THREE.Mesh(new THREE.ConeGeometry(0.26, 1.2, 6), cm); c3.position.set(-0.4, 0.58, -0.18); c3.rotation.z = 0.32;
+                group.add(c1, c2, c3);
+            } else if (biome === 3) {
+                // Vulcano: camino basaltico con nucleo di magma incandescente
+                const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.85, 1.35, 8), propMat({ color: 0x24222a, roughness: 0.92, flatShading: true })); cone.position.y = 0.67;
+                const core = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 10), propMat({ color: 0xff6a1a, emissive: 0xff3b00, emissiveIntensity: 1.2, roughness: 0.3 })); core.position.y = 1.32;
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(0.52, 0.06, 6, 18), new THREE.MeshBasicMaterial({ color: 0xffb830 })); ring.rotation.x = Math.PI / 2; ring.position.y = 1.65;
+                group.add(cone, core, ring); group.userData.spin = 0.015;
+            } else if (biome === 4) {
+                // Neon: doppio anello olografico rotante su piedistallo
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 1.1, 8), propMat({ color: 0x1a1f2e, metalness: 0.85, roughness: 0.25 })); pole.position.y = 0.55;
+                const r1 = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.07, 10, 28), new THREE.MeshBasicMaterial({ color: 0xff4fd8 })); r1.position.y = 1.25;
+                const r2 = new THREE.Mesh(new THREE.TorusGeometry(0.52, 0.05, 8, 24), new THREE.MeshBasicMaterial({ color: 0x38b6ff })); r2.position.y = 1.25; r2.rotation.y = Math.PI / 2;
+                group.add(pole, r1, r2); group.userData.spin = 0.025;
+            } else if (biome === 5) {
+                // Caramella: lecca-lecca girello gigante + gommina zuccherata
+                const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.4, 8), propMat({ color: 0xfff7ee, roughness: 0.3 })); stick.position.y = 0.7;
+                const candy = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.68, 0.22, 24), propMat({ color: 0xff6fb5, roughness: 0.18 })); candy.position.y = 1.65; candy.rotation.x = Math.PI / 2;
+                const swirl = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.08, 8, 24), propMat({ color: 0xfff7ee, roughness: 0.2 })); swirl.position.set(0, 1.65, 0.12);
+                const gum = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.65), propMat({ color: 0x37e0b0, roughness: 0.2 })); gum.position.set(0.45, 0.12, 0.25);
+                group.add(stick, candy, swirl, gum); group.userData.spin = 0.015;
             } else if (biome === 6) {
-                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 1.2, 12), propMat({ color: 0x3f4a1e, roughness: 0.6, metalness: 0.3 })); barrel.position.y = 0.6; barrel.castShadow = true;
-                const band = new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.47, 0.25, 12), propMat({ color: 0xc6ff3d, emissive: 0x88b000, emissiveIntensity: 0.4 })); band.position.y = 0.6; group.add(barrel, band);
+                // Tossico: fusto radioattivo con pozza acida luminosa
+                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 1.25, 14), propMat({ color: 0x35401a, roughness: 0.55, metalness: 0.35 })); barrel.position.y = 0.62;
+                const band = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.28, 14), propMat({ color: 0xc6ff3d, emissive: 0x88b000, emissiveIntensity: 0.65 })); band.position.y = 0.62;
+                const puddle = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.8, 0.05, 16), propMat({ color: 0xc6ff3d, emissive: 0x77b300, emissiveIntensity: 0.8, roughness: 0.15 })); puddle.position.set(0.2, 0.03, 0.15);
+                group.add(barrel, band, puddle);
+            } else if (biome === 7) {
+                // Oceano Profondo: corallo abissale bioluminescente + perla
+                const branchMat = propMat({ color: 0x4dd2ff, emissive: 0x0984e3, emissiveIntensity: 0.55, roughness: 0.35 });
+                const b1 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.22, 1.7, 8), branchMat); b1.position.y = 0.85; b1.rotation.z = 0.12;
+                const b2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 1.1, 7), branchMat); b2.position.set(0.32, 1.1, 0); b2.rotation.z = -0.55;
+                const b3 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 0.95, 7), branchMat); b3.position.set(-0.28, 0.9, 0.15); b3.rotation.z = 0.6;
+                const pearl = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), propMat({ color: 0xfff7ee, emissive: 0x74b9ff, emissiveIntensity: 0.5, roughness: 0.1, metalness: 0.3 })); pearl.position.set(0.35, 0.22, -0.25);
+                group.add(b1, b2, b3, pearl);
+            } else if (biome === 8) {
+                // Solare: obelisco dorato con aureola solare sospesa
+                const ob = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.36, 1.9, 4), propMat({ color: 0xf39c12, metalness: 0.75, roughness: 0.22 })); ob.position.y = 0.95; ob.rotation.y = Math.PI / 4;
+                const sun = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 12), propMat({ color: 0xfff7ee, emissive: 0xffb830, emissiveIntensity: 1.1 })); sun.position.y = 2.25;
+                const halo = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.045, 8, 24), new THREE.MeshBasicMaterial({ color: 0xffd23f })); halo.position.y = 2.25;
+                group.add(ob, sun, halo); group.userData.spin = 0.02;
+            } else if (biome === 9) {
+                // Cyberpunk: pilone dati con ottaedro wireframe olografico
+                const base = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.9, 0.55), propMat({ color: 0x0d1b24, metalness: 0.8, roughness: 0.25 })); base.position.y = 0.45;
+                const holo = new THREE.Mesh(new THREE.OctahedronGeometry(0.48), new THREE.MeshBasicMaterial({ color: 0x2ef2e6, wireframe: true })); holo.position.y = 1.45;
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.04, 8, 24), new THREE.MeshBasicMaterial({ color: 0xff4fd8 })); ring.position.y = 1.45; ring.rotation.x = Math.PI / 2;
+                group.add(base, holo, ring); group.userData.spin = 0.028;
+            } else if (biome === 10) {
+                // Sangue: monolito d'ossidiana cremisi con cristallo pulsante
+                const rock = new THREE.Mesh(new THREE.ConeGeometry(0.55, 2.1, 5), propMat({ color: 0x1f070a, roughness: 0.7, flatShading: true })); rock.position.y = 1.05;
+                const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.32), propMat({ color: 0xff3b4a, emissive: 0xd63031, emissiveIntensity: 0.9, roughness: 0.2 })); shard.position.set(0, 2.35, 0);
+                group.add(rock, shard); group.userData.spin = 0.018;
+            } else if (biome === 11) {
+                // Nuvole: soffice cumulo con stellina dorata fluttuante
+                const cm = propMat({ color: 0xffffff, roughness: 0.95 });
+                const p1 = new THREE.Mesh(new THREE.SphereGeometry(0.52, 12, 12), cm); p1.position.set(0, 0.42, 0);
+                const p2 = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 10), cm); p2.position.set(0.42, 0.32, 0.1);
+                const p3 = new THREE.Mesh(new THREE.SphereGeometry(0.36, 10, 10), cm); p3.position.set(-0.38, 0.3, -0.1);
+                const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.26), propMat({ color: 0xffd166, emissive: 0xffb830, emissiveIntensity: 0.6, metalness: 0.5, roughness: 0.2 })); star.position.y = 1.25;
+                group.add(p1, p2, p3, star); group.userData.spin = 0.02;
             } else if (biome === 12) {
-                const sat = new THREE.Mesh(new THREE.OctahedronGeometry(0.5), propMat({ color: 0x9fb2d8, metalness: 0.8, roughness: 0.3, flatShading: true })); sat.position.y = 1.3;
-                const panel = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.05, 0.5), propMat({ color: 0x1f3a7a, metalness: 0.6, roughness: 0.4 })); panel.position.y = 1.3; group.add(sat, panel); group.userData.spin = 0.01;
-            } else if (biome === 14) {
-                const col = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 1.8, 10), propMat({ color: 0xfff7ee, roughness: 0.3 })); col.position.y = 0.9; col.castShadow = true;
-                const cap = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 0.7), propMat({ color: 0xffd76a, metalness: 0.7, roughness: 0.3 })); cap.position.y = 1.85; group.add(col, cap);
+                // Spazio Profondo: sonda spaziale con pannelli solari
+                const sat = new THREE.Mesh(new THREE.OctahedronGeometry(0.48), propMat({ color: 0xffd166, metalness: 0.85, roughness: 0.22, flatShading: true })); sat.position.y = 1.35;
+                const panel = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.05, 0.52), propMat({ color: 0x1f489c, emissive: 0x0a1e4a, emissiveIntensity: 0.4, metalness: 0.7, roughness: 0.3 })); panel.position.y = 1.35;
+                group.add(sat, panel); group.userData.spin = 0.014;
+            } else if (biome === 13) {
+                // Cristallo: drusa di ametista luminosa a 3 punte
+                const cm = propMat({ color: 0xe0a8ff, transparent: true, opacity: 0.88, metalness: 0.45, roughness: 0.1, emissive: 0x6c2d96, emissiveIntensity: 0.65 });
+                const c1 = new THREE.Mesh(new THREE.ConeGeometry(0.46, 2.4, 5), cm); c1.position.y = 1.2;
+                const c2 = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.5, 5), cm); c2.position.set(0.44, 0.7, 0.18); c2.rotation.z = -0.38;
+                const c3 = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.3, 5), cm); c3.position.set(-0.38, 0.62, -0.15); c3.rotation.z = 0.35;
+                group.add(c1, c2, c3);
             } else {
-                const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.6), propMat({ color: 0x9aa4b5, flatShading: true, roughness: 0.9 })); rock.position.y = 0.5; rock.castShadow = true; group.add(rock);
+                // Paradiso: colonna corinzia in marmo e oro con sfera celeste
+                const col = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 1.85, 12), propMat({ color: 0xfff7ee, roughness: 0.22 })); col.position.y = 0.92;
+                const cap = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.2, 0.72), propMat({ color: 0xffd76a, metalness: 0.8, roughness: 0.2 })); cap.position.y = 1.9;
+                const orb = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), propMat({ color: 0xffffff, emissive: 0xffd76a, emissiveIntensity: 0.9 })); orb.position.y = 2.32;
+                group.add(col, cap, orb);
             }
+            group.traverse(o => { if (o.isMesh) o.castShadow = true; });
             return group;
         }
 
@@ -1635,20 +1999,24 @@
             const group = new THREE.Group(); const type = biome % 5;
             if (type === 0) {
                 const base = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 3), propMat({ color: 0x8B4513, roughness: 0.9 })); base.position.y = 1; base.castShadow = true;
-                const roof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 2, 4), propMat({ color: 0xc73a2f, roughness: 0.8 })); roof.position.y = 3; roof.rotation.y = Math.PI / 4; roof.castShadow = true; group.add(base, roof);
+                const roof = new THREE.Mesh(new THREE.ConeGeometry(2.6, 2.1, 4), propMat({ color: 0xc73a2f, roughness: 0.75 })); roof.position.y = 3.05; roof.rotation.y = Math.PI / 4; roof.castShadow = true;
+                const door = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.12), propMat({ color: 0xffe08a, emissive: 0xffb830, emissiveIntensity: 0.5 })); door.position.set(0, 0.6, 1.52);
+                group.add(base, roof, door);
             } else if (type === 1) {
-                const pyr = new THREE.Mesh(new THREE.ConeGeometry(3, 4, 4), propMat({ color: 0xd4af37, roughness: 0.6, metalness: 0.3 })); pyr.position.y = 2; pyr.rotation.y = Math.PI / 4; pyr.castShadow = true; group.add(pyr);
+                const pyr = new THREE.Mesh(new THREE.ConeGeometry(3.1, 4, 4), propMat({ color: 0xd4af37, roughness: 0.5, metalness: 0.35 })); pyr.position.y = 2; pyr.rotation.y = Math.PI / 4; pyr.castShadow = true;
+                const tip = new THREE.Mesh(new THREE.OctahedronGeometry(0.55), propMat({ color: 0xfff7ee, emissive: 0xffd166, emissiveIntensity: 0.9 })); tip.position.y = 4.55;
+                group.add(pyr, tip);
             } else if (type === 2) {
-                const igloo = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), propMat({ color: 0xeeeeee, roughness: 0.8 })); igloo.castShadow = true;
-                const entrance = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2, 16, 1, false, 0, Math.PI), propMat({ color: 0xeeeeee })); entrance.rotation.z = Math.PI / 2; entrance.position.set(2, 1, 0); entrance.castShadow = true; group.add(igloo, entrance);
+                const igloo = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), propMat({ color: 0xeef9ff, roughness: 0.5 })); igloo.castShadow = true;
+                const entrance = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2, 16, 1, false, 0, Math.PI), propMat({ color: 0xd8f0ff })); entrance.rotation.z = Math.PI / 2; entrance.position.set(2, 1, 0); entrance.castShadow = true; group.add(igloo, entrance);
             } else if (type === 3) {
-                const alt = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3.5, 1.5, 8), propMat({ color: 0x222222 })); alt.position.y = 0.75; alt.castShadow = true;
-                const lava = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 1.51, 8), propMat({ color: 0xff3300, emissive: 0xff0000, emissiveIntensity: 0.8 })); lava.position.y = 0.75; group.add(alt, lava);
+                const alt = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3.5, 1.5, 8), propMat({ color: 0x22222a, roughness: 0.8 })); alt.position.y = 0.75; alt.castShadow = true;
+                const lava = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 1.54, 8), propMat({ color: 0xff4500, emissive: 0xff2200, emissiveIntensity: 0.95 })); lava.position.y = 0.75; group.add(alt, lava);
             } else {
-                const gm = propMat({ color: 0x222222 });
+                const gm = propMat({ color: 0x1a1e30, metalness: 0.7, roughness: 0.3 });
                 const gate1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 5, 0.8), gm); gate1.position.set(-2.5, 2.5, 0); gate1.castShadow = true;
                 const gate2 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 5, 0.8), gm); gate2.position.set(2.5, 2.5, 0); gate2.castShadow = true;
-                const arch = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.8, 0.8), propMat({ color: 0xff4fd8, emissive: 0xff4fd8, emissiveIntensity: 0.6 })); arch.position.set(0, 5.4, 0); group.add(gate1, gate2, arch);
+                const arch = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.85, 0.9), propMat({ color: 0xff4fd8, emissive: 0xff4fd8, emissiveIntensity: 0.75 })); arch.position.set(0, 5.4, 0); group.add(gate1, gate2, arch);
             }
             return group;
         }
@@ -1657,7 +2025,7 @@
             const glow = (c, i = 0.6) => propMat({ color: c, emissive: c, emissiveIntensity: i, roughness: 0.4 });
             if (biome === 0) { for (let i = 0; i < 6; i++) { const t = createBiomeProp(0); const a = i / 6 * Math.PI * 2; t.position.set(Math.cos(a) * 3.2, 0, Math.sin(a) * 3.2); t.scale.setScalar(1.3); g.add(t); } const stone = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.2, 0.5, 12), propMat({ color: 0x9aa4b5, roughness: 0.9 })); stone.position.y = 0.25; g.add(stone); }
             else if (biome === 1) { const p = new THREE.Mesh(new THREE.ConeGeometry(4.5, 6, 4), propMat({ color: 0xe2b56a, roughness: 0.8 })); p.position.y = 3; p.rotation.y = Math.PI / 4; p.castShadow = true; const cap = new THREE.Mesh(new THREE.ConeGeometry(1.1, 1.5, 4), propMat({ color: 0xffd76a, metalness: 0.8, roughness: 0.2, emissive: 0x664400, emissiveIntensity: 0.3 })); cap.position.y = 6.3; cap.rotation.y = Math.PI / 4; g.add(p, cap); }
-            else if (biome === 2) { const arch = new THREE.Mesh(new THREE.TorusGeometry(4, 0.6, 10, 30, Math.PI), propMat({ color: 0xbff3ff, transparent: true, opacity: 0.8, roughness: 0.1, metalness: 0.3 })); arch.position.y = 0.2; g.add(arch); for (let i = 0; i < 5; i++) { const c = createBiomeProp(2); c.position.set((rng() - 0.5) * 6, 0, (rng() - 0.5) * 6); c.scale.setScalar(1.4 + rng()); g.add(c); } }
+            else if (biome === 2) { const arch = new THREE.Mesh(new THREE.TorusGeometry(4, 0.6, 10, 30, Math.PI), propMat({ color: 0xbff3ff, transparent: true, opacity: 0.8, roughness: 0.1, metalness: 0.3 })); arch.position.y = 0.2; g.add(arch); for (let i = 0; i < 5; i++) { const c = createBiomeProp(2); c.position.set((propRng() - 0.5) * 6, 0, (propRng() - 0.5) * 6); c.scale.setScalar(1.4 + propRng()); g.add(c); } }
             else if (biome === 3) { const col = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.8, 6, 9), propMat({ color: 0x24222a, roughness: 0.95, flatShading: true })); col.position.y = 3; col.castShadow = true; const top = new THREE.Mesh(new THREE.SphereGeometry(1.4, 12, 12), glow(0xff6a1a, 1.4)); top.position.y = 6.4; const l = new THREE.PointLight(0xff6a1a, 1.6, 26); l.position.y = 7; g.add(col, top, l); g.userData.pulse = top; }
             else if (biome === 4) { for (let i = 0; i < 3; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(3.4 - i * 0.9, 0.12, 10, 48), new THREE.MeshBasicMaterial({ color: [0xff4fd8, 0x8a5cff, 0x38b6ff][i] })); r.position.y = 4; r.rotation.x = Math.PI / 2 * (i % 2); r.userData.spinAxis = i; g.add(r); } g.userData.spin = 0.012; g.userData.rings = true; }
             else if (biome === 5) { const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 5, 8), propMat({ color: 0xfff7ee })); stick.position.y = 2.5; const disk = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.5, 32), propMat({ color: 0xff6fb5, roughness: 0.2 })); disk.position.y = 5.5; disk.rotation.x = Math.PI / 2; const swirl = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.25, 8, 32), propMat({ color: 0xfff7ee, roughness: 0.2 })); swirl.position.set(0, 5.5, 0.28); g.add(stick, disk, swirl); g.userData.spin = 0.02; g.userData.spinTarget = [disk, swirl]; }
@@ -1668,7 +2036,7 @@
             else if (biome === 10) { const ob = new THREE.Mesh(new THREE.BoxGeometry(1.6, 7, 1.6), propMat({ color: 0x1a0a0c, roughness: 0.6 })); ob.position.y = 3.5; ob.castShadow = true; const veins = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.3, 1.7), glow(0xff3b4a, 1.2)); veins.position.y = 2.5; const veins2 = veins.clone(); veins2.position.y = 5; const tip = new THREE.Mesh(new THREE.ConeGeometry(1.15, 1.2, 4), propMat({ color: 0x1a0a0c })); tip.position.y = 7.6; tip.rotation.y = Math.PI / 4; g.add(ob, veins, veins2, tip); }
             else if (biome === 11) { [0xff5c4d, 0xffb830, 0x37e0b0, 0x38b6ff, 0x8a5cff].forEach((c, i) => { const a = new THREE.Mesh(new THREE.TorusGeometry(5.2 - i * 0.45, 0.22, 8, 40, Math.PI), propMat({ color: c, emissive: c, emissiveIntensity: 0.35, roughness: 0.5 })); a.position.y = 0.3; g.add(a); }); }
             else if (biome === 12) { const planet = new THREE.Mesh(new THREE.SphereGeometry(2.2, 24, 24), propMat({ color: 0x7fb2ff, roughness: 0.6 })); planet.position.y = 5.5; const ring = new THREE.Mesh(new THREE.TorusGeometry(3.4, 0.3, 4, 48), propMat({ color: 0xc0d8ff, roughness: 0.5, metalness: 0.3 })); ring.position.y = 5.5; ring.rotation.x = Math.PI / 2.3; ring.scale.y = 0.25; g.add(planet, ring); g.userData.spin = 0.006; g.userData.spinTarget = [planet, ring]; }
-            else if (biome === 13) { for (let i = 0; i < 7; i++) { const c = createBiomeProp(13); const a = i / 7 * Math.PI * 2; c.position.set(Math.cos(a) * 2.2, 0, Math.sin(a) * 2.2); c.scale.setScalar(1.6 + (i % 3) * 0.7); c.rotation.z = (rng() - 0.5) * 0.5; g.add(c); } const big = createBiomeProp(13); big.scale.setScalar(3.2); g.add(big); const l = new THREE.PointLight(0xe0a8ff, 1.2, 24); l.position.y = 4; g.add(l); }
+            else if (biome === 13) { for (let i = 0; i < 7; i++) { const c = createBiomeProp(13); const a = i / 7 * Math.PI * 2; c.position.set(Math.cos(a) * 2.2, 0, Math.sin(a) * 2.2); c.scale.setScalar(1.6 + (i % 3) * 0.7); c.rotation.z = (propRng() - 0.5) * 0.5; g.add(c); } const big = createBiomeProp(13); big.scale.setScalar(3.2); g.add(big); const l = new THREE.PointLight(0xe0a8ff, 1.2, 24); l.position.y = 4; g.add(l); }
             else { const arch = new THREE.Mesh(new THREE.TorusGeometry(4, 0.5, 12, 40, Math.PI), propMat({ color: 0xffd76a, metalness: 0.85, roughness: 0.2, emissive: 0x553300, emissiveIntensity: 0.3 })); arch.position.y = 0.3; const halo = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.12, 8, 48), glow(0xfff7ee, 1.2)); halo.position.y = 6.2; halo.rotation.x = Math.PI / 2; g.add(arch, halo); g.userData.spin = 0.01; g.userData.spinTarget = [halo]; }
             g.traverse(o => { if (o.isMesh) o.castShadow = true; });
             return g;
@@ -1680,6 +2048,28 @@
             for (let f = 0; f < 6; f++) { const [su, sv] = faces[f]; for (let i = 0; i < 4; i++) { const k = f * 4 + i; uv.setXY(k, uv.getX(k) * su / 4, uv.getY(k) * (f === 2 || f === 3 ? sv / 4 : sv / 2)); } }
             uv.needsUpdate = true;
         }
+        // Crea un binario o anello luminoso che mostra al giocatore la traiettoria di una piattaforma mobile o di un ostacolo
+        function createPathGuide(kind, x, y, z, dirX, dirZ, amp, colorHex) {
+            const g = new THREE.Group(); g.position.set(x, y, z); g.userData.noShadow = true;
+            const mat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.38, side: THREE.DoubleSide, depthWrite: false });
+            if ((kind === 'sway' || kind === 'sweep') && amp > 0.25) {
+                const rail = new THREE.Mesh(new THREE.PlaneGeometry(amp * 2, 0.18), mat);
+                rail.rotation.x = -Math.PI / 2; rail.rotation.z = -Math.atan2(dirZ, dirX); rail.userData.noShadow = true;
+                const nGeo = new THREE.RingGeometry(0.14, 0.28, 16);
+                const n1 = new THREE.Mesh(nGeo, mat); n1.rotation.x = -Math.PI / 2; n1.position.set(dirX * amp, 0, dirZ * amp); n1.userData.noShadow = true;
+                const n2 = new THREE.Mesh(nGeo, mat); n2.rotation.x = -Math.PI / 2; n2.position.set(-dirX * amp, 0, -dirZ * amp); n2.userData.noShadow = true;
+                g.add(rail, n1, n2);
+            } else if (kind === 'orbit' && amp > 0.25) {
+                const ring = new THREE.Mesh(new THREE.RingGeometry(Math.max(0.1, amp - 0.09), amp + 0.09, 40), mat);
+                ring.rotation.x = -Math.PI / 2; ring.userData.noShadow = true; g.add(ring);
+            } else if (kind === 'bob') {
+                const pad = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.85, 24), mat);
+                pad.rotation.x = -Math.PI / 2; pad.userData.noShadow = true; g.add(pad);
+            }
+            scene.add(g);
+            return g;
+        }
+
         function createPlatform(x, y, z, w, h, d, texIndex, opts = {}) {
             const { flag = false, bouncer = false, moving = null, noProps = false, landmark = false } = opts;
             const biome = clamp(texIndex, 0, 14), bdef = BIOMES[biome];
@@ -1691,12 +2081,26 @@
             const mats = bouncer ? bouncerMaterial : biomeMaterials[biome];
             const mesh = new THREE.Mesh(geo, [mats.side, mats.side, mats.top, bottomMaterial, mats.side, mats.side]); mesh.position.copy(body.position); mesh.receiveShadow = true; mesh.castShadow = true;
             // Bordo luminoso nel colore d'accento del bioma: leggibilità dei bordi e identità visiva
-            const edgeCol = bouncer ? 0xb8ffd9 : flag ? 0xffffff : bdef.accent;
+            const edgeCol = bouncer ? 0x5ef0a6 : flag ? 0xffffff : bdef.accent;
             const line = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMaterial(edgeCol)); line.userData.noShadow = true; mesh.add(line);
+            // Cornice inferiore smussata per dare spessore architettonico all'isola fluttuante
+            if (w >= 4 && d >= 4) {
+                const underGeo = new THREE.BoxGeometry(w * 0.86, h * 0.36, d * 0.86);
+                const underMesh = new THREE.Mesh(underGeo, bottomMaterial);
+                underMesh.position.y = -h * 0.66; underMesh.userData.noShadow = true; mesh.add(underMesh);
+            }
+            if (bouncer) {
+                const padRing = new THREE.Mesh(new THREE.RingGeometry(Math.min(w, d) * 0.24, Math.min(w, d) * 0.36, 32), new THREE.MeshBasicMaterial({ color: 0xb8ffd9, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false }));
+                padRing.rotation.x = -Math.PI / 2; padRing.position.y = h / 2 + 0.02; padRing.userData.noShadow = true; mesh.add(padRing);
+            }
             scene.add(mesh);
             const ref = { mesh, body, flagMeshes: [], topY: body.topY, moving: null }; platforms.push(ref); platformMeshes.push(mesh);
 
-            if (moving) { const o = { body, mesh, kind: 'sway', dirX: moving.dirX, dirZ: moving.dirZ, amp: moving.amp, speed: moving.speed, baseX: x, baseZ: z, baseY: y, timeOffset: rng() * 100, isPlatform: true }; movingObstacles.push(o); ref.moving = o; }
+            if (moving) {
+                const guideMesh = createPathGuide('sway', x, y, z, moving.dirX, moving.dirZ, moving.amp, bdef.accent);
+                const o = { body, mesh, guideMesh, kind: 'sway', dirX: moving.dirX, dirZ: moving.dirZ, amp: moving.amp, speed: moving.speed, baseX: x, baseZ: z, baseY: y, timeOffset: rng() * 100, isPlatform: true };
+                movingObstacles.push(o); ref.moving = o;
+            }
 
             if (landmark) { const lm = createLandmark(biome); lm.position.set(x, y + h / 2, z); scene.add(lm); ref.flagMeshes.push(lm); landmarks.push(lm); }
             else if (!flag && !bouncer && !moving && !noProps) {
@@ -1711,8 +2115,10 @@
                 const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 4.5), propMat({ color: 0xdddddd, metalness: 0.6, roughness: 0.3 })); pole.position.set(x + w / 2 - 1.5, y + 2.25, z - d / 2 + 1.5); pole.castShadow = true;
                 const flagMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1, 6, 1), propMat({ color: 0x37e0b0, emissive: 0x0c6b3a, emissiveIntensity: 0.4, side: THREE.DoubleSide })); flagMesh.position.set(x + w / 2 - 1.5, y + 4, z - d / 2 + 1.5); flagMesh.castShadow = true;
                 flagMesh.geometry.translate(0.8, 0, 0); flags.push(flagMesh);
-                const halo = new THREE.Mesh(new THREE.RingGeometry(2.6, 3.1, 48), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false })); halo.rotation.x = -Math.PI / 2; halo.position.set(x, y + h / 2 + 0.03, z); halo.userData.noShadow = true;
-                scene.add(pole, flagMesh, halo); ref.flagMeshes.push(pole, flagMesh, halo);
+                const halo = new THREE.Mesh(new THREE.RingGeometry(2.6, 3.1, 48), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.38, side: THREE.DoubleSide, depthWrite: false })); halo.rotation.x = -Math.PI / 2; halo.position.set(x, y + h / 2 + 0.03, z); halo.userData.noShadow = true;
+                const beacon = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.8, 12, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0x37e0b0, transparent: true, opacity: 0.09, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+                beacon.position.set(x, y + h / 2 + 6, z); beacon.userData.noShadow = true;
+                scene.add(pole, flagMesh, halo, beacon); ref.flagMeshes.push(pole, flagMesh, halo, beacon);
                 const struct = createCheckpointStructure(biome); struct.position.set(x - w / 4, y + h / 2, z + d / 4); scene.add(struct); ref.flagMeshes.push(struct);
             }
             return ref;
@@ -1733,16 +2139,34 @@
             if (deadly) body.isDeathObstacle = true; world.addBody(body);
             const geo = new THREE.BoxGeometry(obsW, obsH, obsD); scaleBoxUVs(geo, obsW, obsH, obsD);
             const mesh = new THREE.Mesh(geo, deadly ? hazardMaterial : blockerMaterial); mesh.castShadow = true; mesh.receiveShadow = true;
-            mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMaterial(deadly ? 0xffb9cb : 0xffb830))); scene.add(mesh);
+            const accentHex = deadly ? 0xff2e63 : 0xffb830;
+            mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMaterial(deadly ? 0xffb9cb : 0xffb830)));
+            scene.add(mesh);
             const kinds = extra.kind ? [extra.kind] : (zen ? ['sway', 'spin'] : (biome >= 5 ? ['sway', 'spin', 'bob', 'sweep', 'orbit'] : biome >= 3 ? ['sway', 'spin', 'bob', 'sweep'] : biome >= 2 ? ['sway', 'spin', 'bob'] : ['sway', 'spin']));
             const kind = kinds[Math.floor(rng() * kinds.length)];
+            // Dettagli meccanici 3D sull'ostacolo in base al comportamento (rotore, pistone, nucleo)
+            const capMat = propMat({ color: deadly ? 0x3a0814 : 0x181e30, metalness: 0.85, roughness: 0.25 });
+            const glowMat = new THREE.MeshBasicMaterial({ color: accentHex });
+            const topCap = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(obsW, obsD) * 0.28, Math.min(obsW, obsD) * 0.34, 0.16, 12), capMat);
+            topCap.position.y = obsH / 2 + 0.08; topCap.userData.noShadow = true; mesh.add(topCap);
+            const coreOrb = new THREE.Mesh(new THREE.SphereGeometry(Math.min(obsW, obsD) * 0.16, 10, 10), glowMat);
+            coreOrb.position.y = obsH / 2 + 0.18; coreOrb.userData.noShadow = true; mesh.add(coreOrb);
+            if (kind === 'spin') {
+                const fin = new THREE.Mesh(new THREE.BoxGeometry(obsW * 1.04, obsH * 0.28, obsD * 0.22), glowMat);
+                const fin2 = new THREE.Mesh(new THREE.BoxGeometry(obsW * 0.22, obsH * 0.28, obsD * 1.04), glowMat);
+                fin.userData.noShadow = true; fin2.userData.noShadow = true; mesh.add(fin, fin2);
+            } else if (kind === 'bob') {
+                const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.2, 8), capMat);
+                shaft.position.y = obsH / 2 + 0.6; shaft.userData.noShadow = true; mesh.add(shaft);
+            }
             const a = extra.dirX != null ? Math.atan2(extra.dirZ, extra.dirX) : rng() * Math.PI * 2;
             const dirX = extra.dirX != null ? extra.dirX : Math.cos(a), dirZ = extra.dirZ != null ? extra.dirZ : Math.sin(a);
             const maxAmp = Math.max(0.35, Math.min(platW, platD) / 2 - Math.max(obsW, obsD) / 2 - OBS_LANE);
             const wantAmp = extra.amp != null ? extra.amp : Math.min(platW, platD) * (kind === 'sweep' || kind === 'orbit' ? 0.26 : 0.18);
             const amp = Math.min(wantAmp, maxAmp);
             const speed = (extra.speed != null ? extra.speed : (deadly ? 0.68 : 1.02) * (1 + Math.min(0.25, (biome || 0) * 0.02))) * (zen ? 0.62 : 1);
-            const o = { body, mesh, kind, dirX, dirZ, amp, ampY: extra.ampY != null ? extra.ampY : (0.55 + rng() * 0.7), speed, baseX: px, baseZ: pz, baseY: by, timeOffset: rng() * 100, isPlatform: false, deadly, obsW, obsD };
+            const guideMesh = createPathGuide(kind, px, py + 0.52, pz, dirX, dirZ, amp, accentHex);
+            const o = { body, mesh, guideMesh, kind, dirX, dirZ, amp, ampY: extra.ampY != null ? extra.ampY : (0.55 + rng() * 0.7), speed, baseX: px, baseZ: pz, baseY: by, timeOffset: rng() * 100, isPlatform: false, deadly, obsW, obsD };
             movingObstacles.push(o); return o;
         }
         function obstacleChance(D, b) {
@@ -1771,7 +2195,13 @@
                 scene.remove(p.mesh); world.removeBody(p.body); p.flagMeshes.forEach(m => { scene.remove(m); const li = landmarks.indexOf(m); if (li >= 0) landmarks.splice(li, 1); });
                 const mi = platformMeshes.indexOf(p.mesh); if (mi >= 0) platformMeshes.splice(mi, 1); platforms.splice(i, 1);
             }
-            for (let i = movingObstacles.length - 1; i >= 0; i--) { const o = movingObstacles[i]; if (o.body.position.y < minY) { scene.remove(o.mesh); world.removeBody(o.body); movingObstacles.splice(i, 1); } }
+            for (let i = movingObstacles.length - 1; i >= 0; i--) {
+                const o = movingObstacles[i];
+                if (o.body.position.y < minY) {
+                    scene.remove(o.mesh); if (o.guideMesh) scene.remove(o.guideMesh);
+                    world.removeBody(o.body); movingObstacles.splice(i, 1);
+                }
+            }
         }
 
         /* ==========================================================================
@@ -1818,6 +2248,32 @@
                     if (i >= n - 2) decoratePlat(p, s, s, D, b, { mult: 0.9, kind: 'spin' });
                 }
                 return n;
+            },
+            stepping(D, b) {
+                const n = 4, s = Math.max(6.2, D.size * 0.82);
+                for (let i = 0; i < n; i++) {
+                    const ang = (i % 2 === 0 ? 0.65 : -0.45) + 0.18;
+                    const p = plat(s, s, D.gap * 0.72, D.rise * 0.82, ang, b, { noProps: i < n - 1 });
+                    if (i === n - 1) decoratePlat(p, s, s, D, b, { mult: 1.0, kind: 'sway' });
+                }
+                return n;
+            },
+            slalom(D, b) {
+                const n = 3, w = Math.max(8.5, D.size * 1.08), d = Math.max(7.5, D.size * 0.95);
+                for (let i = 0; i < n; i++) {
+                    const p = plat(w, d, D.gap * 0.75, D.rise * 0.82, (i % 2 === 0 ? 0.55 : -0.3) + 0.15, b, { noProps: true });
+                    const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
+                    const deadly = MODE().hazards && !MODE().zen && b >= 2 && i === 1 && rng() < 0.45 + D.t * 0.35;
+                    createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w, d, deadly, b, { kind: i % 2 === 0 ? 'sway' : 'sweep', amp: w * 0.2, speed: 0.6 + D.t * 0.2, ...across });
+                }
+                return n;
+            },
+            carousel(D, b) {
+                const w = 15 + D.t * 2, p = plat(w, w, D.gap * 0.75, D.rise * 0.8, 0.45, b, { noProps: true });
+                const deadly = MODE().hazards && !MODE().zen && b >= 3 && rng() < 0.4 + D.t * 0.35;
+                createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w * 0.75, w * 0.75, deadly, b, { kind: 'orbit', amp: w * 0.22, speed: 0.65 + D.t * 0.2 });
+                if (b >= 4) createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, 5.5, 5.5, false, b, { kind: 'spin', amp: 0.35, speed: 1.15 });
+                return 1;
             },
             longjump(D, b) {
                 plat(8.5, 8.5, D.gap * 0.7, D.rise * 0.7, 0.5, b, { noProps: true });
@@ -1949,14 +2405,14 @@
         const SIG_LABELS = { sigBridge: 'Ponte Sospeso', sigCanyon: 'Canyon', sigHelix: 'Elica', sigArena: 'Arena', sigTwin: 'Gemelli' };
         function pickSignature(b) { return SIG_PATTERNS[b % SIG_PATTERNS.length]; }
         function pickPattern(D, b) {
-            const w = { hops: 5, stairs: 3, zigzag: 3, gauntlet: 2.4 };
-            if (b >= 1) { w.longjump = 2 + D.t * 2; w.bridge = 2; w.gauntlet = 3.2 + D.t * 3; w.lanes = 2.2 + D.t * 1.6; }
-            if (b >= 2) { w.launch = MODE().lava ? 3 : 2; w.split = 2.2; w.sweepers = 2.2 + D.t * 2.2; }
+            const w = { hops: 4.5, stairs: 2.8, zigzag: 2.8, stepping: 2.4, gauntlet: 2.2 };
+            if (b >= 1) { w.longjump = 2 + D.t * 2; w.bridge = 2.2; w.slalom = 2.0 + D.t * 1.4; w.gauntlet = 3.0 + D.t * 2.8; w.lanes = 2.2 + D.t * 1.6; }
+            if (b >= 2) { w.launch = MODE().lava ? 3 : 2; w.split = 2.2; w.sweepers = 2.2 + D.t * 2.2; w.carousel = 1.8 + D.t * 1.6; }
             if (b >= 4) w.spiral = 2;
-            if (b >= 6) { w.hops = 2.4; w.stairs = 3.2; w.gauntlet = 4.2 + D.t * 2; }
+            if (b >= 6) { w.hops = 2.2; w.stairs = 3.0; w.gauntlet = 4.0 + D.t * 2; }
             if (MODE().zen) {
-                w.hops = (w.hops || 5) + 2; w.stairs = (w.stairs || 3) + 1;
-                if (w.gauntlet) w.gauntlet *= 0.4; if (w.sweepers) w.sweepers *= 0.35; if (w.lanes) w.lanes *= 0.5;
+                w.hops = (w.hops || 5) + 2; w.stairs = (w.stairs || 3) + 1; w.stepping = (w.stepping || 2) + 1.5;
+                if (w.gauntlet) w.gauntlet *= 0.4; if (w.sweepers) w.sweepers *= 0.35; if (w.lanes) w.lanes *= 0.5; if (w.carousel) w.carousel *= 0.4;
             }
             delete w[gen.lastPattern];
             let total = 0; for (const k in w) total += w[k]; let r = rng() * total;
@@ -2011,7 +2467,7 @@
 
         function fullGameReset() {
             for (const p of platforms) { scene.remove(p.mesh); world.removeBody(p.body); p.flagMeshes.forEach(m => scene.remove(m)); }
-            for (const o of movingObstacles) { scene.remove(o.mesh); world.removeBody(o.body); }
+            for (const o of movingObstacles) { scene.remove(o.mesh); if (o.guideMesh) scene.remove(o.guideMesh); world.removeBody(o.body); }
             platforms.length = 0; platformMeshes.length = 0; movingObstacles.length = 0; sceneProps.length = 0; landmarks.length = 0; flags.length = 0; camDistEff = 12;
             genCurrentX = 0; genCurrentY = 0; genCurrentZ = 0; platformIndex = 0; highestPlatformY = 0; highestScore = 0; runPeak = 0; displayedScore = 0;
             Object.assign(gen, { angle: 0, prevW: 25, prevD: 25, lastPattern: "", nextRestY: 35, sinceCheckpoint: 0, pendingSigLabel: null });
@@ -2025,7 +2481,7 @@
             createPlatform(0, 0, 0, 25, 2, 25, 0, { noProps: true }); generateMorePlatforms(40);
             sphereBody.type = CANNON.Body.DYNAMIC; sphereBody.position.set(0, 5, 0); sphereBody.velocity.set(0, 0, 0); sphereBody.angularVelocity.set(0, 0, 0); sphereBody.torque.set(0, 0, 0);
             ballGroup.position.copy(sphereBody.position); ballSquash.x = ballSquash.y = 1;
-            camYaw = Math.PI; camPitch = 0.3; camDistance = 12; scene.fog.color.setHex(0x8ae2f5); scene.fog.density = BIOMES[0].fog; setSkyTargets(0);
+            camYaw = Math.PI; camPitch = 0.3; camDistance = 12; syncCameraToBall(); scene.fog.color.setHex(0x8ae2f5); scene.fog.density = BIOMES[0].fog; setSkyTargets(0);
             skyUniforms.topColor.value.copy(skyTarget.top); skyUniforms.horizonColor.value.copy(skyTarget.horizon); skyUniforms.bottomColor.value.copy(skyTarget.bottom); skyUniforms.sunColor.value.copy(skyTarget.sun); skyUniforms.stars.value = skyTarget.stars; skyUniforms.clouds.value = skyTarget.clouds;
             camera.position.set(camDistance * Math.sin(camYaw) * Math.cos(camPitch), 5 + camDistance * Math.sin(camPitch), camDistance * Math.cos(camYaw) * Math.cos(camPitch));
             applyGraphicsSettings(); resetParticles(0, 5, 0); Audio.setZen(!!m.zen);
@@ -2255,7 +2711,7 @@
             const pos = best.body.position; sphereBody.position.set(pos.x, best.topY + 3, pos.z); sphereBody.velocity.set(0, 0, 0); sphereBody.angularVelocity.set(0, 0, 0);
             highestScore = Math.floor(best.topY); displayedScore = highestScore; $('score').textContent = highestScore; lastCheckpoint = { x: pos.x, y: best.topY + 1, z: pos.z }; lastSafePos = { x: pos.x, y: best.topY + 1.5, z: pos.z };
             checkpoints.forEach(cp => { if (cp.y <= highestScore) cp.reached = true; });
-            ballGroup.position.copy(sphereBody.position); camera.position.set(pos.x, best.topY + 6, pos.z + 12); resetParticles(pos.x, best.topY, pos.z);
+            ballGroup.position.copy(sphereBody.position); syncCameraToBall(); camera.position.set(pos.x, best.topY + 6, pos.z + 12); resetParticles(pos.x, best.topY, pos.z);
         }
         function closeConsole() { $('dev-console').classList.add('hidden'); if (gameState === 'console') { gameState = lastGameState; if (gameState === 'playing' && !touchUI) try { document.body.requestPointerLock(); } catch (e) {} } }
         $('console-input').addEventListener('keydown', (e) => {
@@ -2375,24 +2831,52 @@
         /* ==========================================================================
            SEZIONE 16: FISICA, COLLISIONI E RESPAWN
            ========================================================================== */
-        let groundedNow = false;
+        let groundedNow = false, groundPlatform = null, landingDip = 0;
+        const upAxis = new CANNON.Vec3(0, 1, 0);
+        const prevBallPos = new THREE.Vector3(0, 5, 0), currBallPos = new THREE.Vector3(0, 5, 0);
+        const prevBallQuat = new THREE.Quaternion(), currBallQuat = new THREE.Quaternion();
+        const camFocus = new THREE.Vector3(0, 5.6, 0);
+
+        function syncCameraToBall() {
+            const sx = isNaN(sphereBody.position.x) ? 0 : sphereBody.position.x;
+            const sy = isNaN(sphereBody.position.y) ? 5 : sphereBody.position.y;
+            const sz = isNaN(sphereBody.position.z) ? 0 : sphereBody.position.z;
+            prevBallPos.set(sx, sy, sz);
+            currBallPos.set(sx, sy, sz);
+            prevBallQuat.copy(sphereBody.quaternion);
+            currBallQuat.copy(sphereBody.quaternion);
+            camFocus.set(sx, sy + (gameState === 'skins' ? -0.6 : 0.6), sz);
+            landingDip = 0; screenShakeIntensity = 0;
+        }
+
         world.addEventListener('postStep', () => {
-            let onGround = false;
+            let onGround = false, gPlat = null;
             for (let i = 0; i < world.contacts.length; i++) {
                 const c = world.contacts[i];
                 if (c.bi.id !== sphereBody.id && c.bj.id !== sphereBody.id) continue;
                 const other = c.bi.id === sphereBody.id ? c.bj : c.bi;
                 if (other.isDeathObstacle && MODE().hazards) hitDeathZone = true;
                 const normal = c.ni; if (c.bi.id === sphereBody.id) normal.negate(normal);
-                if (other.isBouncer && normal.y > 0.5) { sphereBody.velocity.y = 45; AudioEngine.playBounce(); screenShakeIntensity = 0.4; ballSquash.y = 1.45; ballSquash.x = 0.8; spawnRing(sphereBody.position, 0x37e0b0, 1.4); spawnPuffs(sphereBody.position, 10, 0xb8ffd9, 6); vibrate(25); onGround = false; continue; }
-                if (normal.y > 0.5) { onGround = true; if (other.isPlatform && other.type === CANNON.Body.STATIC) lastSafePos = { x: other.position.x, y: other.topY + 1.5, z: other.position.z }; }
+                if (other.isBouncer && normal.y > 0.5) { sphereBody.velocity.y = 45; AudioEngine.playBounce(); ballSquash.y = 1.45; ballSquash.x = 0.8; spawnRing(sphereBody.position, 0x37e0b0, 1.4); spawnPuffs(sphereBody.position, 10, 0xb8ffd9, 6); vibrate(25); onGround = false; continue; }
+                if (normal.y > 0.5) {
+                    onGround = true;
+                    if (other.isPlatform) {
+                        gPlat = other;
+                        if (other.type === CANNON.Body.STATIC) lastSafePos = { x: other.position.x, y: other.topY + 1.5, z: other.position.z };
+                    }
+                }
             }
             if (onGround) coyoteTimer = COYOTE_FRAMES; else if (coyoteTimer > 0) coyoteTimer--;
-            canJump = coyoteTimer > 0; groundedNow = onGround;
+            canJump = coyoteTimer > 0; groundedNow = onGround; groundPlatform = gPlat;
             const velY = sphereBody.velocity.y;
             if (!wasOnGround && onGround && lastVelY < -8) {
                 const k = Math.min(1, Math.abs(lastVelY) / 30); AudioEngine.playLand(k);
-                if (lastVelY < -10) { screenShakeIntensity = Math.min(0.8, Math.abs(lastVelY) * 0.04); ballSquash.y = 0.7; ballSquash.x = 1.25; spawnRing(sphereBody.position, 0xffffff, Math.min(1.6, Math.abs(lastVelY) * 0.05)); spawnPuffs(sphereBody.position, Math.min(12, Math.floor(Math.abs(lastVelY) * 0.35)), 0xffffff, 5); if (lastVelY < -22) vibrate(15); }
+                if (lastVelY < -10) {
+                    ballSquash.y = 0.7; ballSquash.x = 1.25;
+                    spawnRing(sphereBody.position, 0xffffff, Math.min(1.6, Math.abs(lastVelY) * 0.05));
+                    spawnPuffs(sphereBody.position, Math.min(12, Math.floor(Math.abs(lastVelY) * 0.35)), 0xffffff, 5);
+                    if (lastVelY < -28) { landingDip = Math.min(0.28, (Math.abs(lastVelY) - 28) * 0.015); vibrate(15); }
+                }
             }
             wasOnGround = onGround; lastVelY = velY;
         });
@@ -2403,6 +2887,7 @@
             sphereBody.position.set(isNaN(pos.x) ? 0 : pos.x, isNaN(pos.y) ? 5 : pos.y, isNaN(pos.z) ? 0 : pos.z);
             sphereBody.velocity.set(0, 0, 0); sphereBody.angularVelocity.set(0, 0, 0); sphereBody.torque.set(0, 0, 0); sphereBody.force.set(0, 0, 0); sphereBody.wakeUp();
             ballGroup.position.copy(sphereBody.position); sphereMesh.quaternion.copy(sphereBody.quaternion); camYaw = Math.PI;
+            syncCameraToBall();
             if (resetScoreTo !== undefined) { highestScore = Math.max(0, resetScoreTo); displayedScore = highestScore; $('score').textContent = highestScore; }
             resetParticles(sphereBody.position.x, sphereBody.position.y, sphereBody.position.z);
             spawnPuffs(sphereBody.position, 10, 0xffffff, 3);
@@ -2417,29 +2902,54 @@
         }
 
         function updatePhysics() {
+            prevBallPos.copy(sphereBody.position);
+            prevBallQuat.copy(sphereBody.quaternion);
+
+            const time = performance.now() * 0.002;
+            for (const obs of movingObstacles) {
+                if (obs.kind === 'spin') {
+                    obs.body.angularVelocity.set(0, 2.3 * obs.speed, 0);
+                    const yOff = Math.sin(time * 2.5 + obs.timeOffset) * 0.07;
+                    obs.body.velocity.y = ((obs.baseY + yOff) - obs.body.position.y) * 10;
+                } else if (obs.kind === 'bob') {
+                    const s = Math.sin(time * obs.speed + obs.timeOffset);
+                    const eased = Math.sign(s) * Math.pow(Math.abs(s), 0.65);
+                    const y = (obs.baseY || obs.body.position.y) + eased * (obs.ampY || 0.95);
+                    obs.body.velocity.x = (obs.baseX - obs.body.position.x) * 14;
+                    obs.body.velocity.y = (y - obs.body.position.y) * 14;
+                    obs.body.velocity.z = (obs.baseZ - obs.body.position.z) * 14;
+                    obs.body.angularVelocity.set(0, 1.2 * Math.cos(time * obs.speed + obs.timeOffset), 0);
+                } else if (obs.kind === 'orbit') {
+                    const a = time * obs.speed + obs.timeOffset;
+                    const tx = obs.baseX + Math.cos(a) * obs.amp, tz = obs.baseZ + Math.sin(a) * obs.amp;
+                    obs.body.velocity.x = (tx - obs.body.position.x) * 16;
+                    obs.body.velocity.z = (tz - obs.body.position.z) * 16;
+                    if (!obs.isPlatform) obs.body.quaternion.setFromAxisAngle(upAxis, -a);
+                } else if (obs.kind === 'sweep') {
+                    const raw = Math.sin(time * obs.speed * 0.92 + obs.timeOffset);
+                    const s = (Math.tanh(raw * 2.4) / 0.98367) * obs.amp;
+                    obs.body.velocity.x = ((obs.baseX + obs.dirX * s) - obs.body.position.x) * 16;
+                    obs.body.velocity.z = ((obs.baseZ + obs.dirZ * s) - obs.body.position.z) * 16;
+                    if (!obs.isPlatform) obs.body.angularVelocity.set(0, Math.cos(time * obs.speed * 0.92 + obs.timeOffset) * 2.2, 0);
+                } else {
+                    const s = Math.sin(time * obs.speed + obs.timeOffset) * obs.amp;
+                    obs.body.velocity.x = ((obs.baseX + obs.dirX * s) - obs.body.position.x) * 14;
+                    obs.body.velocity.z = ((obs.baseZ + obs.dirZ * s) - obs.body.position.z) * 14;
+                }
+            }
+
+            if (groundedNow && groundPlatform && groundPlatform.type === CANNON.Body.KINEMATIC) {
+                sphereBody.position.x += groundPlatform.velocity.x * (1 / 60);
+                sphereBody.position.z += groundPlatform.velocity.z * (1 / 60);
+            }
+
             world.step(1 / 60);
             if (isNaN(sphereBody.position.x) || isNaN(sphereBody.position.y) || isNaN(sphereBody.position.z)) { triggerRespawn(); return; }
-            const gpData = processGamepad(); const time = performance.now() * 0.002;
+            const gpData = processGamepad();
             if (jumpBufferTimer > 0) jumpBufferTimer--;
             if (screenShakeIntensity > 0) screenShakeIntensity *= 0.75;
 
             for (const obs of movingObstacles) {
-                if (obs.kind === 'spin') obs.body.angularVelocity.set(0, 2 * obs.speed, 0);
-                else if (obs.kind === 'bob') {
-                    const y = (obs.baseY || obs.body.position.y) + Math.sin(time * obs.speed + obs.timeOffset) * (obs.ampY || 0.8);
-                    obs.body.velocity.x = (obs.baseX - obs.body.position.x) * 10;
-                    obs.body.velocity.y = (y - obs.body.position.y) * 10;
-                    obs.body.velocity.z = (obs.baseZ - obs.body.position.z) * 10;
-                } else if (obs.kind === 'orbit') {
-                    const a = time * obs.speed + obs.timeOffset;
-                    const tx = obs.baseX + Math.cos(a) * obs.amp, tz = obs.baseZ + Math.sin(a) * obs.amp;
-                    obs.body.velocity.x = (tx - obs.body.position.x) * 10;
-                    obs.body.velocity.z = (tz - obs.body.position.z) * 10;
-                } else {
-                    const s = Math.sin(time * obs.speed + obs.timeOffset) * obs.amp;
-                    obs.body.velocity.x = ((obs.baseX + obs.dirX * s) - obs.body.position.x) * 10;
-                    obs.body.velocity.z = ((obs.baseZ + obs.dirZ * s) - obs.body.position.z) * 10;
-                }
                 obs.mesh.position.copy(obs.body.position); obs.mesh.quaternion.copy(obs.body.quaternion);
             }
             for (const prop of sceneProps) prop.rotation.y += prop.userData.spin || 0.01;
@@ -2473,36 +2983,60 @@
             }
             const speed = Math.sqrt(sphereBody.velocity.x ** 2 + sphereBody.velocity.z ** 2);
             if (speed > maxVelocity) { const ratio = maxVelocity / speed; sphereBody.velocity.x *= ratio; sphereBody.velocity.z *= ratio; }
-            if (gameState === 'playing') Audio.roll(speed, groundedNow);
-            ballGroup.position.copy(sphereBody.position);
-            if (gameState === 'skins') { sphereMesh.rotation.y += 0.012; sphereMesh.rotation.x += 0.004; } else sphereMesh.quaternion.copy(sphereBody.quaternion);
+            if (gameState === 'playing') {
+                Audio.roll(speed, groundedNow);
+                if (groundedNow && speed > 15 && Math.random() < 0.25) {
+                    spawnPuffs({ x: sphereBody.position.x, y: sphereBody.position.y - radius * 0.7, z: sphereBody.position.z }, 1, BIOMES[currentVisualBiome]?.accent || 0xffffff, 2.2);
+                }
+            }
+            currBallPos.copy(sphereBody.position);
+            currBallQuat.copy(sphereBody.quaternion);
+            if (gameState === 'skins') { sphereMesh.rotation.y += 0.012; sphereMesh.rotation.x += 0.004; }
         }
 
         /* ==========================================================================
            SEZIONE 17: CAMERA, AMBIENTE E LOOP PRINCIPALE
            ========================================================================== */
-        const tmpColor = new THREE.Color(), camRay = new THREE.Raycaster(), camDir = new THREE.Vector3();
+        const tmpColor = new THREE.Color(), camRay = new THREE.Raycaster(), camDir = new THREE.Vector3(), downOrigin = new THREE.Vector3();
         let camDistEff = 12, cullTimer = 0;
-        function occludedDistance(origin, dir, maxDist) {
-            camRay.set(origin, dir); camRay.near = 0.5; camRay.far = maxDist;
+        function occludedDistance(origin, dir, maxDist, ballBottomY) {
+            camRay.set(origin, dir); camRay.near = 1.2; camRay.far = maxDist;
             const hits = camRay.intersectObjects(platformMeshes, false);
-            return hits.length ? Math.max(2.5, hits[0].distance - 0.7) : maxDist;
+            for (let i = 0; i < hits.length; i++) {
+                const h = hits[i];
+                // Ignora le piattaforme che si trovano sotto la pallina per evitare scatti di zoom durante il salto
+                if (h.object.position.y + 0.6 <= ballBottomY + 0.35) continue;
+                return Math.max(3.2, h.distance - 0.8);
+            }
+            return maxDist;
         }
         function updateCamera(dt) {
             const p = ballGroup.position;
             const safeX = isNaN(p.x) ? lastCheckpoint.x : p.x, safeY = isNaN(p.y) ? lastCheckpoint.y : p.y, safeZ = isNaN(p.z) ? lastCheckpoint.z : p.z;
-            const lookTarget = new THREE.Vector3(safeX, safeY + (gameState === 'skins' ? -0.6 : 0.6), safeZ);
             if (gameState === 'menu' || gameState === 'settings' && previousState === 'menu') { camYaw += dt * 0.25; camDistance += (11 - camDistance) * 0.05; camPitch += (0.28 - camPitch) * 0.05; }
             else if (gameState === 'skins') camYaw += dt * 0.15;
 
+            const offsetY = gameState === 'skins' ? -0.6 : 0.6;
+            const targetFocusY = safeY + offsetY;
+            const kXZ = gameState === 'playing' ? (1 - Math.exp(-dt * 28)) : (1 - Math.exp(-dt * 6));
+            const kY = gameState === 'playing' ? (1 - Math.exp(-dt * 20)) : (1 - Math.exp(-dt * 6));
+            camFocus.x += (safeX - camFocus.x) * kXZ;
+            camFocus.y += (targetFocusY - camFocus.y) * kY;
+            camFocus.z += (safeZ - camFocus.z) * kXZ;
+
+            landingDip *= Math.exp(-dt * 14);
+
             camDir.set(Math.sin(camYaw) * Math.cos(camPitch), Math.sin(camPitch), Math.cos(camYaw) * Math.cos(camPitch));
-            const wanted = (gameState === 'playing' || gameState === 'paused') ? occludedDistance(new THREE.Vector3(safeX, safeY - radius * 0.6, safeZ), camDir, camDistance) : camDistance;
-            camDistEff += (wanted - camDistEff) * (wanted < camDistEff ? 0.5 : 0.08);
-            const tx = safeX + camDistEff * camDir.x, ty = safeY + camDistEff * camDir.y, tz = safeZ + camDistEff * camDir.z;
-            const lerpK = gameState === 'playing' ? 0.3 : 0.08;
-            camera.position.x += (tx - camera.position.x) * lerpK; camera.position.y += (ty - camera.position.y) * lerpK; camera.position.z += (tz - camera.position.z) * lerpK;
-            if (screenShakeIntensity > 0.01) { camera.position.x += (Math.random() - 0.5) * screenShakeIntensity; camera.position.y += (Math.random() - 0.5) * screenShakeIntensity; }
-            camera.lookAt(lookTarget);
+            const wanted = (gameState === 'playing' || gameState === 'paused') ? occludedDistance(camFocus, camDir, camDistance, safeY - radius) : camDistance;
+            const distK = 1 - Math.exp(-dt * (wanted < camDistEff ? 14 : 6));
+            camDistEff += (wanted - camDistEff) * distK;
+
+            camera.position.set(
+                camFocus.x + camDistEff * camDir.x,
+                (camFocus.y - offsetY) + camDistEff * camDir.y - landingDip,
+                camFocus.z + camDistEff * camDir.z
+            );
+            camera.lookAt(camFocus.x, camFocus.y - landingDip * 0.5, camFocus.z);
             skyMesh.position.copy(camera.position); skyUniforms.time.value += dt;
 
             const currBiome = clamp(Math.floor(isFinite(safeY / 70) ? safeY / 70 : 0), 0, 14), bdef = BIOMES[currBiome];
@@ -2514,6 +3048,24 @@
             dirLight.color.lerp(dirLightTarget.setHex(bdef.sun), 0.03);
             particleMesh.material.color.lerp(tmpColor.set(bdef.accent).lerp(new THREE.Color(0xffffff), 0.35), 0.05);
             particleMesh.material.size = bdef.particle.size;
+
+            if (gameState !== 'skins' && platformMeshes.length > 0) {
+                downOrigin.set(safeX, safeY, safeZ);
+                downRay.set(downOrigin, downVec);
+                const gHits = downRay.intersectObjects(platformMeshes, false);
+                if (gHits.length > 0) {
+                    const hit = gHits[0], dist = Math.max(0, hit.distance - radius);
+                    landingShadow.visible = true;
+                    landingShadow.position.set(safeX, hit.point.y + 0.03, safeZ);
+                    const sScale = clamp(1.05 - dist * 0.028, 0.36, 1.05);
+                    shadowDisc.scale.setScalar(sScale);
+                    shadowDisc.material.opacity = clamp(0.55 - dist * 0.015, 0.14, 0.55);
+                    const ringScale = clamp(0.65 + dist * 0.035, 0.65, 1.55);
+                    shadowRing.scale.setScalar(ringScale);
+                    shadowRing.material.color.set(bdef.accent);
+                    shadowRing.material.opacity = dist > 0.35 ? clamp(0.65 - dist * 0.018, 0.12, 0.6) : 0;
+                } else landingShadow.visible = false;
+            } else landingShadow.visible = false;
 
             const positions = particleMesh.geometry.attributes.position.array, velocities = particleMesh.geometry.attributes.velocity.array, now = performance.now(), pm = bdef.particle.mode;
             for (let i = 0; i < particleCount * 3; i += 3) {
@@ -2553,6 +3105,9 @@
                 accumulator += dt; let steps = 0;
                 while (accumulator >= FIXED_DT && steps < 3) { updatePhysics(); accumulator -= FIXED_DT; steps++; }
                 if (steps === 3) accumulator = 0;
+                const alpha = clamp(accumulator / FIXED_DT, 0, 1);
+                ballGroup.position.lerpVectors(prevBallPos, currBallPos, alpha);
+                if (gameState !== 'skins') sphereMesh.quaternion.slerpQuaternions(prevBallQuat, currBallQuat, alpha);
             }
             if (gameState !== 'console') updateCamera(dt);
             updateFx(dt); Audio.update(dt);
