@@ -380,8 +380,136 @@
         }
         @media (max-width: 380px) { .modes { grid-template-columns: 1fr 1fr; } }
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
-        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .panel, .screen.overlay, .chip, .toast, .hud-progress, .hints, .mode-card { background-color: rgba(10, 13, 28, .94); } }
+        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .panel, .screen.overlay, .chip, .toast, .hud-progress, .hints, .mode-card, .version-badge { background-color: rgba(10, 13, 28, .94); } }
         ::-webkit-scrollbar { width: 6px; height: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+
+        /* ---------- Version Badge (in basso a destra) & Patch Notes Modal ---------- */
+        .version-badge {
+            position: fixed;
+            right: calc(14px + var(--sar));
+            bottom: calc(12px + var(--sab));
+            z-index: 48;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 13px;
+            border-radius: 999px;
+            background: rgba(10, 14, 30, .78);
+            border: 1px solid rgba(255, 255, 255, .18);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: var(--ink);
+            font-family: inherit;
+            font-size: .78rem;
+            font-weight: 700;
+            letter-spacing: .3px;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .38);
+            transition: transform .15s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
+            user-select: none;
+        }
+        .version-badge:hover {
+            transform: translateY(-2px) scale(1.03);
+            border-color: var(--sun);
+            background: rgba(18, 24, 52, .92);
+            box-shadow: 0 10px 28px rgba(255, 184, 48, .25);
+        }
+        .version-badge:active { transform: translateY(0) scale(.98); }
+        .version-badge .v-num { color: var(--sun); font-weight: 800; }
+        .version-badge .v-sep { opacity: .4; }
+        .version-badge .v-label { color: var(--muted); font-weight: 600; }
+        .version-badge:hover .v-label { color: #fff; }
+        .version-badge .v-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--mint);
+            box-shadow: 0 0 10px var(--mint);
+            animation: pulseDot 1.6s infinite ease-in-out;
+        }
+        @keyframes pulseDot { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: .65; } }
+        body.touch-ui #version-badge.in-play {
+            bottom: calc(6px + var(--sab));
+            right: 50%;
+            transform: translateX(50%);
+            padding: 4px 10px;
+            font-size: .68rem;
+            opacity: .75;
+        }
+        #patch-modal { z-index: 70; }
+        .patch-panel {
+            width: min(92vw, 560px);
+            max-height: min(84vh, 660px);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .patch-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border-bottom: 1px solid rgba(255,255,255,.1);
+            padding-bottom: 10px;
+        }
+        .patch-header h2 { margin: 0; display: flex; align-items: center; gap: 8px; font-size: clamp(1.15rem, 3.2vw, 1.45rem); }
+        .patch-list {
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-right: 4px;
+            text-align: left;
+        }
+        .patch-card {
+            background: rgba(255, 255, 255, .05);
+            border: 1px solid rgba(255, 255, 255, .12);
+            border-radius: var(--r-md);
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .patch-card.latest {
+            background: linear-gradient(135deg, rgba(56, 182, 255, .13), rgba(138, 92, 255, .10));
+            border-color: rgba(56, 182, 255, .45);
+            box-shadow: 0 8px 24px rgba(56, 182, 255, .12);
+        }
+        .patch-card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .patch-ver {
+            font-size: .98rem;
+            font-weight: 800;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .patch-tag {
+            font-size: .66rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--mint), var(--sky));
+            color: #04131a;
+        }
+        .patch-date { font-size: .74rem; color: var(--muted); font-weight: 600; }
+        .patch-items {
+            margin: 0;
+            padding-left: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: .83rem;
+            line-height: 1.42;
+            color: rgba(247, 249, 255, .9);
+        }
+        .patch-items li strong { color: var(--sun); font-weight: 700; }
     </style>
 </head>
 <body>
@@ -419,6 +547,7 @@
         <symbol id="i-shadow" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><ellipse cx="12" cy="19" rx="7" ry="2" fill="currentColor" fill-opacity=".35"/></symbol>
         <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.4 13.2 15.6 17.1M15.6 6.9 8.4 10.8"/></symbol>
         <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+        <symbol id="i-notes" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="currentColor" fill-opacity=".22"/><path d="M14 3v5h5M8 12h8M8 16h6"/></symbol>
     </svg>
 
     <!-- CONSOLE SEGRETA -->
@@ -526,6 +655,7 @@
             </div>
             <div class="menu-footer">
                 <span id="menu-best-score" class="chip chip-gold"><svg class="i"><use href="#i-trophy"/></svg> Record: <b id="menu-best-val">0</b> m</span>
+                <button id="btn-patch-menu" type="button" class="chip chip-blue" style="cursor:pointer;"><svg class="i"><use href="#i-notes"/></svg> Patch Notes</button>
                 <span id="gamepad-status" class="chip hidden"><svg class="i"><use href="#i-controller"/></svg> Controller rilevato</span>
             </div>
         </div>
@@ -620,6 +750,62 @@
                 <button id="btn-gameover-share" class="btn btn-sun"><svg class="i"><use href="#i-share"/></svg> Condividi</button>
                 <button id="btn-gameover-home" class="btn btn-ghost"><svg class="i"><use href="#i-home"/></svg> Menu</button>
             </div>
+        </div>
+    </div>
+
+    <!-- BADGE VERSIONE (IN BASSO A DESTRA) -->
+    <button id="version-badge" class="version-badge" type="button" title="Visualizza le Patch Notes">
+        <span id="version-dot" class="v-dot"></span>
+        <svg class="i" style="color:var(--sky);"><use href="#i-notes"/></svg>
+        <span class="v-num" id="version-num">v2.1.0</span>
+        <span class="v-sep">&middot;</span>
+        <span class="v-label">Patch Notes</span>
+    </button>
+
+    <!-- POP-UP PATCH NOTES -->
+    <div id="patch-modal" class="screen overlay hidden" role="dialog" aria-modal="true" aria-labelledby="patch-modal-title">
+        <div class="panel patch-panel">
+            <div class="patch-header">
+                <h2 id="patch-modal-title"><svg class="i" style="color:var(--sun);"><use href="#i-notes"/></svg> Patch Notes</h2>
+                <span class="chip chip-gold" id="patch-ver-chip">v2.1.0</span>
+            </div>
+            <div class="patch-list">
+                <div class="patch-card latest">
+                    <div class="patch-card-head">
+                        <span class="patch-ver">v2.1.0 — Texture, Livelli &amp; Fisica <span class="patch-tag">Nuovo</span></span>
+                        <span class="patch-date">Ultimo aggiornamento</span>
+                    </div>
+                    <ul class="patch-items">
+                        <li><strong>Texture PBR Procedurali 2.0:</strong> Materiali multi-strato (Voronoi + FBM) con normal map, roughness ed emissive per tutti i 15 biomi e fianchi piattaforma su misura (erba pendente, glassa, stalattiti, LED, fregi dorati).</li>
+                        <li><strong>Props 3D &amp; Piattaforme:</strong> Elementi scenici 3D dedicati per ogni bioma, cornici inferiori smussate, anelli trampolino e colonne di luce sui Checkpoint.</li>
+                        <li><strong>Nuovi Pattern di Livelli:</strong> Aggiunti <em>Stepping</em> (isole con trampolino), <em>Slalom</em> (porte alternate) e <em>Carousel</em> (giostra rotante).</li>
+                        <li><strong>Movimenti Ostacoli &amp; Guide:</strong> 5 comportamenti distinti (<em>sway</em>, <em>sweep</em> rapido con pausa, <em>bob</em> a pistone, <em>orbit</em> tangenziale, <em>spin</em> a lame) con binari e anelli guida luminosi.</li>
+                        <li><strong>Telecamera &amp; Fisica:</strong> Risolto il tremolio della visuale durante i salti con interpolazione a 60Hz, aggiunto mirino d'atterraggio dinamico e trascinamento stabile sulle piattaforme mobili.</li>
+                        <li><strong>3 Nuove Skin:</strong> Sblocca <em>Nucleo Magma</em> (560 m), <em>Cyber Neon</em> (720 m) e <em>Galassia</em> (920 m).</li>
+                    </ul>
+                </div>
+                <div class="patch-card">
+                    <div class="patch-card-head">
+                        <span class="patch-ver">v2.0.0 — Ultimate Edition</span>
+                        <span class="patch-date">Major Release</span>
+                    </div>
+                    <ul class="patch-items">
+                        <li><strong>6 Modalità di Gioco:</strong> Classica, Hardcore, Contro il Tempo, Lava Crescente, Zen e Sfida del Giorno con seed condiviso.</li>
+                        <li><strong>15 Biomi Verticali:</strong> Scalata fino a 1000 m con colonne sonore procedurali, effetti meteo e landmark monumentali.</li>
+                        <li><strong>Controlli &amp; Feel:</strong> Supporto Touch, Tastiera/Mouse e Gamepad con Coyote Time e Jump Buffering.</li>
+                    </ul>
+                </div>
+                <div class="patch-card">
+                    <div class="patch-card-head">
+                        <span class="patch-ver">v1.0.0 — Lancio Originale</span>
+                        <span class="patch-date">Release Iniziale</span>
+                    </div>
+                    <ul class="patch-items">
+                        <li><strong>Scalata Fisica 3D:</strong> Prima versione giocabile con motore Cannon.js + Three.js, prime skin sbloccabili e titoli di coda a 1000 m.</li>
+                    </ul>
+                </div>
+            </div>
+            <button id="btn-close-patch" type="button" class="btn btn-primary btn-block"><svg class="i"><use href="#i-check"/></svg> Ho capito, chiudi</button>
         </div>
     </div>
 
@@ -2493,7 +2679,10 @@
             skyTarget.sun.setHex(b.sun); skyTarget.stars = b.stars; skyTarget.clouds = b.clouds;
         }
 
-        function showScreen(id) { ['main-menu', 'skin-menu', 'settings-menu', 'pause-menu', 'gameover'].forEach(s => $(s).classList.toggle('hidden', s !== id)); }
+        function showScreen(id) {
+            ['main-menu', 'skin-menu', 'settings-menu', 'pause-menu', 'gameover'].forEach(s => $(s).classList.toggle('hidden', s !== id));
+            const vb = $('version-badge'); if (vb) vb.classList.toggle('in-play', id === null);
+        }
 
         function startGame() {
             if (worldModeKey !== modeKey) fullGameReset();
@@ -2699,6 +2888,26 @@
         document.addEventListener('visibilitychange', () => { if (document.hidden && gameState === 'playing') openPauseMenu(); });
         setTouchUI(touchUI);
 
+        /* ---------- Version Badge & Patch Notes Pop-up ---------- */
+        const GAME_VERSION = '2.1.0';
+        const seenPatch = localStorage.getItem('onlyball_seen_patch') === GAME_VERSION;
+        if (seenPatch && $('version-dot')) $('version-dot').classList.add('hidden');
+        function openPatchNotes() {
+            AudioEngine.playUI();
+            if (gameState === 'playing') openPauseMenu();
+            $('patch-modal').classList.remove('hidden');
+            if ($('version-dot')) $('version-dot').classList.add('hidden');
+            try { localStorage.setItem('onlyball_seen_patch', GAME_VERSION); } catch (e) {}
+        }
+        function closePatchNotes() {
+            AudioEngine.playUIBack();
+            $('patch-modal').classList.add('hidden');
+        }
+        $('version-badge').addEventListener('click', (e) => { e.stopPropagation(); openPatchNotes(); });
+        if ($('btn-patch-menu')) $('btn-patch-menu').addEventListener('click', (e) => { e.stopPropagation(); openPatchNotes(); });
+        $('btn-close-patch').addEventListener('click', (e) => { e.stopPropagation(); closePatchNotes(); });
+        $('patch-modal').addEventListener('click', (e) => { if (e.target === $('patch-modal')) closePatchNotes(); });
+
         /* ==========================================================================
            SEZIONE 14: CONSOLE SEGRETA E CREDITI
            ========================================================================== */
@@ -2751,6 +2960,10 @@
         const keys = { w: false, a: false, s: false, d: false, space: false, shift: false };
         const keyMap = { arrowup: 'w', arrowdown: 's', arrowleft: 'a', arrowright: 'd' };
         document.addEventListener('keydown', (e) => {
+            if (!$('patch-modal').classList.contains('hidden')) {
+                if (e.code === 'Escape' || e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); closePatchNotes(); }
+                return;
+            }
             if (e.key === '\\') {
                 e.preventDefault(); const consoleEl = $('dev-console'), inputEl = $('console-input');
                 if (gameState !== 'console') { lastGameState = gameState; gameState = 'console'; consoleEl.classList.remove('hidden'); try { document.exitPointerLock(); } catch (err) {} inputEl.value = ''; setTimeout(() => inputEl.focus(), 100); }
