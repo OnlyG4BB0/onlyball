@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://onlyg4bb0.github.io/onlyball/sitemap.xml
