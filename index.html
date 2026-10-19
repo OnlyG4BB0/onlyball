@@ -510,6 +510,131 @@
             color: rgba(247, 249, 255, .9);
         }
         .patch-items li strong { color: var(--sun); font-weight: 700; }
+
+        /* ---------- Classifica (Leaderboard Modal) ---------- */
+        #leaderboard-modal { z-index: 70; }
+        .lb-panel {
+            width: min(94vw, 640px);
+            max-height: min(86vh, 690px);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .lb-profile {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+            background: rgba(255, 255, 255, .05);
+            border: 1px solid rgba(255, 255, 255, .12);
+            border-radius: 14px;
+            padding: 8px 12px;
+        }
+        .lb-name-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1 1 200px;
+            font-size: .8rem;
+            font-weight: 700;
+            color: var(--muted);
+        }
+        .lb-name-input {
+            flex: 1;
+            min-width: 110px;
+            max-width: 190px;
+            padding: 6px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, .22);
+            background: rgba(8, 11, 24, .85);
+            color: #fff;
+            font-family: inherit;
+            font-size: .84rem;
+            font-weight: 700;
+            outline: none;
+        }
+        .lb-name-input:focus { border-color: var(--sun); box-shadow: 0 0 0 2px rgba(255, 184, 48, .25); }
+        .lb-tabs {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+        }
+        .lb-tabs::-webkit-scrollbar { display: none; }
+        .lb-tab {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 11px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, .14);
+            background: rgba(255, 255, 255, .05);
+            color: var(--muted);
+            font-family: inherit;
+            font-size: .75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .15s ease;
+        }
+        .lb-tab:hover { color: #fff; background: rgba(255, 255, 255, .1); }
+        .lb-tab.active {
+            background: linear-gradient(135deg, var(--sun), #ff8a3d);
+            color: #1d1100;
+            border-color: transparent;
+            box-shadow: 0 4px 14px rgba(255, 184, 48, .32);
+        }
+        .lb-list {
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-right: 4px;
+            min-height: 220px;
+            max-height: 360px;
+        }
+        .lb-row {
+            display: grid;
+            grid-template-columns: 38px 1.3fr 1fr 84px 72px 72px;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 12px;
+            border-radius: 13px;
+            background: rgba(255, 255, 255, .04);
+            border: 1px solid rgba(255, 255, 255, .08);
+            font-size: .82rem;
+            text-align: left;
+        }
+        .lb-row.head {
+            background: transparent;
+            border: none;
+            padding: 2px 12px 4px;
+            font-size: .68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            color: var(--muted);
+        }
+        .lb-row.me {
+            background: linear-gradient(135deg, rgba(55, 224, 176, .16), rgba(56, 182, 255, .10));
+            border-color: rgba(55, 224, 176, .5);
+        }
+        .lb-row.top-1 { border-color: rgba(255, 210, 63, .55); background: linear-gradient(135deg, rgba(255, 210, 63, .14), rgba(255, 255, 255, .04)); }
+        .lb-row.top-2 { border-color: rgba(200, 214, 229, .45); }
+        .lb-row.top-3 { border-color: rgba(225, 140, 85, .45); }
+        .lb-rank { font-weight: 800; font-size: .92rem; text-align: center; }
+        .lb-player { font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lb-you-tag { font-size: .6rem; font-weight: 800; padding: 2px 6px; border-radius: 99px; background: var(--mint); color: #041a12; text-transform: uppercase; }
+        .lb-mode { font-size: .74rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+        .lb-peak { font-weight: 800; color: var(--sun-2); text-align: right; }
+        .lb-time { font-variant-numeric: tabular-nums; color: #d6e4ff; font-weight: 600; text-align: right; }
+        .lb-pts { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--mint); text-align: right; }
+        @media (max-width: 540px) {
+            .lb-row { grid-template-columns: 32px 1.2fr .95fr 68px 58px; font-size: .75rem; padding: 8px 9px; }
+            .lb-pts, .lb-row.head .lb-pts-h { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -651,6 +776,7 @@
             <div class="menu-actions">
                 <button id="btn-play" class="btn btn-primary btn-lg"><svg class="i"><use href="#i-play"/></svg> Gioca</button>
                 <button id="btn-open-skins" class="btn btn-grape"><svg class="i"><use href="#i-palette"/></svg> Pallina</button>
+                <button id="btn-open-leaderboard" class="btn btn-sun"><svg class="i"><use href="#i-trophy"/></svg> Classifica</button>
                 <button id="btn-settings-main" class="btn btn-ghost"><svg class="i"><use href="#i-gear"/></svg> Impostazioni</button>
             </div>
             <div class="menu-footer">
@@ -747,9 +873,38 @@
             </div>
             <div class="btn-row">
                 <button id="btn-gameover-restart" class="btn btn-primary"><svg class="i"><use href="#i-restart"/></svg> Riprova</button>
+                <button id="btn-gameover-lb" class="btn btn-grape"><svg class="i"><use href="#i-trophy"/></svg> Classifica</button>
                 <button id="btn-gameover-share" class="btn btn-sun"><svg class="i"><use href="#i-share"/></svg> Condividi</button>
                 <button id="btn-gameover-home" class="btn btn-ghost"><svg class="i"><use href="#i-home"/></svg> Menu</button>
             </div>
+        </div>
+    </div>
+
+    <!-- POP-UP CLASSIFICA GIOCATORI -->
+    <div id="leaderboard-modal" class="screen overlay hidden" role="dialog" aria-modal="true" aria-labelledby="lb-modal-title">
+        <div class="panel lb-panel">
+            <div class="patch-header">
+                <h2 id="lb-modal-title"><svg class="i" style="color:var(--sun);"><use href="#i-trophy"/></svg> Classifica Migliori Scalatori</h2>
+                <button id="btn-lb-scope" type="button" class="chip chip-blue" style="cursor:pointer;" title="Filtra tra tutti gli sfidanti o solo le tue partite">Tutti i giocatori</button>
+            </div>
+            <div class="lb-profile">
+                <label class="lb-name-wrap" for="lb-player-name">
+                    <span>Il tuo nome:</span>
+                    <input id="lb-player-name" class="lb-name-input" type="text" maxlength="16" placeholder="Il tuo nickname..." autocomplete="off" spellcheck="false">
+                </label>
+                <span class="chip chip-gold" id="lb-summary-chip"><svg class="i"><use href="#i-mountain"/></svg> Vetta: <b id="lb-best-peak">0 m</b></span>
+            </div>
+            <div class="lb-tabs" id="lb-tabs" role="tablist" aria-label="Filtra per modalità"></div>
+            <div class="lb-row head">
+                <span style="text-align:center;">#</span>
+                <span>Giocatore</span>
+                <span>Modalità</span>
+                <span style="text-align:right;">Vetta</span>
+                <span style="text-align:right;">Tempo</span>
+                <span class="lb-pts-h" style="text-align:right;">Punti</span>
+            </div>
+            <div class="lb-list" id="lb-rows"></div>
+            <button id="btn-close-leaderboard" type="button" class="btn btn-primary btn-block"><svg class="i"><use href="#i-check"/></svg> Chiudi Classifica</button>
         </div>
     </div>
 
@@ -757,7 +912,7 @@
     <button id="version-badge" class="version-badge" type="button" title="Visualizza le Patch Notes">
         <span id="version-dot" class="v-dot"></span>
         <svg class="i" style="color:var(--sky);"><use href="#i-notes"/></svg>
-        <span class="v-num" id="version-num">v2.1.0</span>
+        <span class="v-num" id="version-num">v2.2.0</span>
         <span class="v-sep">&middot;</span>
         <span class="v-label">Patch Notes</span>
     </button>
@@ -767,13 +922,24 @@
         <div class="panel patch-panel">
             <div class="patch-header">
                 <h2 id="patch-modal-title"><svg class="i" style="color:var(--sun);"><use href="#i-notes"/></svg> Patch Notes</h2>
-                <span class="chip chip-gold" id="patch-ver-chip">v2.1.0</span>
+                <span class="chip chip-gold" id="patch-ver-chip">v2.2.0</span>
             </div>
             <div class="patch-list">
                 <div class="patch-card latest">
                     <div class="patch-card-head">
-                        <span class="patch-ver">v2.1.0 — Texture, Livelli &amp; Fisica <span class="patch-tag">Nuovo</span></span>
+                        <span class="patch-ver">v2.2.0 — Classifica Migliori Giocatori <span class="patch-tag">Nuovo</span></span>
                         <span class="patch-date">Ultimo aggiornamento</span>
+                    </div>
+                    <ul class="patch-items">
+                        <li><strong>Classifica Ufficiale Scalatori:</strong> Nuova classifica integrata che valuta <strong>Modalità giocata</strong>, <strong>Vetta raggiunta (m)</strong> e <strong>Tempo impiegato</strong>.</li>
+                        <li><strong>Filtri per Modalità &amp; Punteggio:</strong> Consulta la classifica generale (con moltiplicatori di difficoltà per <em>Hardcore</em>, <em>Lava</em>, <em>Sfida del Giorno</em>, ecc.) o filtra per singola modalità dove a parità di quota vince il tempo più rapido.</li>
+                        <li><strong>Profilo &amp; Hall of Fame:</strong> Imposta il tuo Nickname personalizzato e sfida i record dei tester ufficiali di OnlyBall o visualizza solo le tue migliori scalate.</li>
+                    </ul>
+                </div>
+                <div class="patch-card">
+                    <div class="patch-card-head">
+                        <span class="patch-ver">v2.1.0 — Texture, Livelli &amp; Fisica</span>
+                        <span class="patch-date">Aggiornamento Grafico</span>
                     </div>
                     <ul class="patch-items">
                         <li><strong>Texture PBR Procedurali 2.0:</strong> Materiali multi-strato (Voronoi + FBM) con normal map, roughness ed emissive per tutti i 15 biomi e fianchi piattaforma su misura (erba pendente, glassa, stalattiti, LED, fregi dorati).</li>
@@ -952,11 +1118,11 @@
         function cycleMode(dir) { const keys = Object.keys(MODES); selectMode(keys[(keys.indexOf(modeKey) + dir + keys.length) % keys.length]); }
 
         const menuGroups = {
-            'menu': [...Object.keys(MODES).map(k => 'mode-card-' + k), 'btn-play', 'btn-open-skins', 'btn-settings-main'],
+            'menu': [...Object.keys(MODES).map(k => 'mode-card-' + k), 'btn-play', 'btn-open-skins', 'btn-open-leaderboard', 'btn-settings-main'],
             'skins': ['btn-skin-prev', 'btn-skin-next', 'btn-custom-skin', 'btn-close-skin'],
             'paused': ['btn-resume', 'btn-restart', 'btn-settings-pause', 'btn-home'],
             'settings': ['vol-slider', 'music-slider', 'amb-slider', 'mute-toggle', 'sens-slider', 'res-select', 'shadow-toggle', 'vibrate-toggle', 'touch-select', 'btn-close-settings'],
-            'gameover': ['btn-gameover-restart', 'btn-gameover-share', 'btn-gameover-home']
+            'gameover': ['btn-gameover-restart', 'btn-gameover-lb', 'btn-gameover-share', 'btn-gameover-home']
         };
 
         /* Biomi: palette, cielo, pattern texture, particelle, ambiente sonoro e musica — tutto in un'unica tabella.
@@ -2822,6 +2988,7 @@
             const prevBest = getBest(modeKey); const isRecord = runPeak > prevBest && runPeak > 0;
             if (isRecord) { setBest(modeKey, runPeak); bestScore = runPeak; setTimeout(() => AudioEngine.playRecord(), 900); }
             noteProgressHeight(runPeak);
+            recordLeaderboardRun(modeKey, runPeak, runTime);
             $('go-best').textContent = Math.max(prevBest, runPeak) + ' m'; $('gameover-record').classList.toggle('hidden', !isRecord);
             $('btn-gameover-share').classList.toggle('btn-sun', modeKey === 'daily' || isRecord);
             showScreen('gameover'); AudioEngine.playGameOver(); Audio.music('menu'); Audio.ambience(null); Audio.roll(0, false); renderModeCards();
@@ -2888,8 +3055,167 @@
         document.addEventListener('visibilitychange', () => { if (document.hidden && gameState === 'playing') openPauseMenu(); });
         setTouchUI(touchUI);
 
+        /* ---------- Classifica Migliori Giocatori (Modalità + Vetta + Tempo) ---------- */
+        const LB_STORAGE_KEY = 'onlyball_leaderboard_v1';
+        const MODE_MULT = { hardcore: 1.50, lava: 1.40, daily: 1.25, timeattack: 1.20, classic: 1.00, zen: 0.75 };
+        const CHAMPION_ENTRIES = [
+            { name: 'ONLY_G4BB0',   mode: 'hardcore',   peak: 1000, time: 398.4, me: false },
+            { name: 'RomanoDeRoma', mode: 'classic',    peak: 1000, time: 342.8, me: false },
+            { name: 'Kiri',         mode: 'lava',       peak: 915,  time: 318.2, me: false },
+            { name: 'Reef',         mode: 'daily',      peak: 860,  time: 294.5, me: false },
+            { name: 'Franko',       mode: 'timeattack', peak: 645,  time: 180.0, me: false },
+            { name: 'Antonix',      mode: 'hardcore',   peak: 740,  time: 265.0, me: false },
+            { name: 'ONLY_G4BB0',   mode: 'classic',    peak: 1000, time: 356.1, me: false },
+            { name: 'RomanoDeRoma', mode: 'timeattack', peak: 710,  time: 180.0, me: false },
+            { name: 'Kiri',         mode: 'zen',        peak: 1000, time: 412.0, me: false },
+            { name: 'Conci',        mode: 'zen',        peak: 680,  time: 310.4, me: false },
+            { name: 'Macco',        mode: 'classic',    peak: 590,  time: 248.7, me: false },
+            { name: 'Reef',         mode: 'lava',       peak: 670,  time: 229.3, me: false }
+        ];
+        let lbFilter = 'all', lbOnlyMe = false;
+
+        function getPlayerName() {
+            return (localStorage.getItem('onlyball_player_name') || 'Tu').trim() || 'Tu';
+        }
+        function setPlayerName(n) {
+            const clean = (n || '').trim().slice(0, 16) || 'Tu';
+            try { localStorage.setItem('onlyball_player_name', clean); } catch (e) {}
+            const list = loadPlayerLb();
+            list.forEach(r => { if (r.me) r.name = clean; });
+            savePlayerLb(list);
+        }
+        function fmtTimePrecise(s) {
+            s = Math.max(0, Number(s) || 0);
+            const m = Math.floor(s / 60), sec = Math.floor(s % 60), d = Math.floor((s - Math.floor(s)) * 10);
+            return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${d}`;
+        }
+        function calcRankScore(mode, peak, time) {
+            const mult = MODE_MULT[mode] || 1.0;
+            const heightPts = peak * 10;
+            const summitBonus = peak >= 1000 ? 1500 : 0;
+            const speedRate = peak / Math.max(15, time || 60);
+            const speedBonus = Math.min(950, speedRate * 190);
+            return Math.round((heightPts + summitBonus + speedBonus) * mult);
+        }
+        function loadPlayerLb() {
+            let arr = [];
+            try { arr = JSON.parse(localStorage.getItem(LB_STORAGE_KEY) || '[]'); if (!Array.isArray(arr)) arr = []; } catch (e) { arr = []; }
+            // Importa eventuali record già salvati in precedenza se non ancora presenti
+            let changed = false;
+            const pName = getPlayerName();
+            Object.keys(MODES).forEach(k => {
+                const b = getBest(k);
+                if (b >= 5 && !arr.some(r => r.mode === k && r.peak >= b)) {
+                    const estTime = Math.max(12, Math.round(b * 0.45));
+                    arr.push({ name: pName, mode: k, peak: b, time: estTime, me: true, date: todayKey() });
+                    changed = true;
+                }
+            });
+            if (changed) savePlayerLb(arr);
+            return arr;
+        }
+        function savePlayerLb(arr) {
+            try { localStorage.setItem(LB_STORAGE_KEY, JSON.stringify(arr.slice(0, 50))); } catch (e) {}
+        }
+        function recordLeaderboardRun(mode, peak, time) {
+            peak = Math.floor(Number(peak) || 0);
+            time = Math.max(1, +(Number(time) || 1).toFixed(1));
+            if (peak < 5) return;
+            const list = loadPlayerLb();
+            const pName = getPlayerName();
+            // Se esiste già una run migliore o identica nella stessa modalità, aggiorna o aggiungi
+            const existingIdx = list.findIndex(r => r.me && r.mode === mode);
+            if (existingIdx >= 0) {
+                const prev = list[existingIdx];
+                if (peak > prev.peak || (peak === prev.peak && time < prev.time)) {
+                    list[existingIdx] = { name: pName, mode, peak, time, me: true, date: todayKey() };
+                }
+            } else {
+                list.push({ name: pName, mode, peak, time, me: true, date: todayKey() });
+            }
+            savePlayerLb(list);
+        }
+        function renderLeaderboard() {
+            const tabsEl = $('lb-tabs'), rowsEl = $('lb-rows'), nameInput = $('lb-player-name');
+            if (!tabsEl || !rowsEl) return;
+            if (nameInput && document.activeElement !== nameInput) nameInput.value = getPlayerName();
+            $('btn-lb-scope').textContent = lbOnlyMe ? 'Solo le mie run' : 'Tutti i giocatori';
+
+            const tabDefs = [{ key: 'all', label: '🏆 Tutte' }, ...Object.entries(MODES).map(([k, m]) => ({ key: k, label: `${icon(m.icon)} ${m.name}` }))];
+            tabsEl.innerHTML = '';
+            tabDefs.forEach(t => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'lb-tab' + (lbFilter === t.key ? ' active' : '');
+                btn.innerHTML = t.label;
+                btn.addEventListener('click', () => { AudioEngine.playUI(); lbFilter = t.key; renderLeaderboard(); });
+                tabsEl.appendChild(btn);
+            });
+
+            const playerRuns = loadPlayerLb();
+            const bestOverall = playerRuns.reduce((mx, r) => Math.max(mx, r.peak || 0), progressPeak || 0);
+            if ($('lb-best-peak')) $('lb-best-peak').textContent = bestOverall + ' m';
+
+            let combined = lbOnlyMe ? [...playerRuns] : [...CHAMPION_ENTRIES, ...playerRuns];
+            if (lbFilter !== 'all') combined = combined.filter(r => r.mode === lbFilter);
+            const enriched = combined.map(r => Object.assign({}, r, { score: calcRankScore(r.mode, r.peak, r.time) }));
+
+            enriched.sort((a, b) => {
+                if (lbFilter === 'all') {
+                    if (b.score !== a.score) return b.score - a.score;
+                }
+                if (b.peak !== a.peak) return b.peak - a.peak;
+                return a.time - b.time;
+            });
+
+            rowsEl.innerHTML = '';
+            if (enriched.length === 0) {
+                rowsEl.innerHTML = `<div style="text-align:center; padding: 36px 12px; color: var(--muted); font-size: .88rem;">Nessuna scalata registrata in questa modalità. Gioca una partita per entrare in classifica!</div>`;
+                return;
+            }
+            enriched.slice(0, 20).forEach((r, idx) => {
+                const rank = idx + 1;
+                const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+                const m = MODES[r.mode] || MODES.classic;
+                const row = document.createElement('div');
+                row.className = 'lb-row' + (r.me ? ' me' : '') + (rank <= 3 ? ` top-${rank}` : '');
+                const summitCrown = r.peak >= 1000 ? ' 👑' : '';
+                row.innerHTML = `
+                    <span class="lb-rank">${medal}</span>
+                    <span class="lb-player">${r.name}${r.me ? '<span class="lb-you-tag">TU</span>' : ''}</span>
+                    <span class="lb-mode" style="color:${m.color}">${icon(m.icon)} ${m.name}</span>
+                    <span class="lb-peak">${r.peak} m${summitCrown}</span>
+                    <span class="lb-time">${fmtTimePrecise(r.time)}</span>
+                    <span class="lb-pts">${r.score} pt</span>
+                `;
+                rowsEl.appendChild(row);
+            });
+        }
+        function openLeaderboard(defaultFilter) {
+            AudioEngine.playUI();
+            if (gameState === 'playing') openPauseMenu();
+            if (defaultFilter) lbFilter = defaultFilter;
+            renderLeaderboard();
+            $('leaderboard-modal').classList.remove('hidden');
+        }
+        function closeLeaderboard() {
+            AudioEngine.playUIBack();
+            if ($('lb-player-name')) setPlayerName($('lb-player-name').value);
+            $('leaderboard-modal').classList.add('hidden');
+        }
+        if ($('btn-open-leaderboard')) $('btn-open-leaderboard').addEventListener('click', () => openLeaderboard('all'));
+        if ($('btn-gameover-lb')) $('btn-gameover-lb').addEventListener('click', () => openLeaderboard(modeKey));
+        if ($('btn-close-leaderboard')) $('btn-close-leaderboard').addEventListener('click', (e) => { e.stopPropagation(); closeLeaderboard(); });
+        if ($('btn-lb-scope')) $('btn-lb-scope').addEventListener('click', () => { AudioEngine.playUI(); lbOnlyMe = !lbOnlyMe; renderLeaderboard(); });
+        if ($('lb-player-name')) {
+            $('lb-player-name').value = getPlayerName();
+            $('lb-player-name').addEventListener('change', (e) => { setPlayerName(e.target.value); renderLeaderboard(); });
+            $('lb-player-name').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { setPlayerName(e.target.value); e.target.blur(); renderLeaderboard(); } });
+        }
+        $('leaderboard-modal').addEventListener('click', (e) => { if (e.target === $('leaderboard-modal')) closeLeaderboard(); });
+
         /* ---------- Version Badge & Patch Notes Pop-up ---------- */
-        const GAME_VERSION = '2.1.0';
+        const GAME_VERSION = '2.2.0';
         const seenPatch = localStorage.getItem('onlyball_seen_patch') === GAME_VERSION;
         if (seenPatch && $('version-dot')) $('version-dot').classList.add('hidden');
         function openPatchNotes() {
@@ -2940,8 +3266,10 @@
             gameState = 'credits'; if (!touchUI) { try { document.exitPointerLock(); } catch (e) {} }
             $('ui-layer').classList.add('hidden'); $('mobile-controls').classList.add('hidden');
             sphereBody.type = CANNON.Body.STATIC; sphereBody.velocity.set(0, 0, 0); sphereBody.angularVelocity.set(0, 0, 0);
+            runPeak = Math.max(runPeak, 1000);
             const prevBest = getBest(modeKey); if (runPeak > prevBest) { setBest(modeKey, runPeak); bestScore = runPeak; }
             noteProgressHeight(runPeak);
+            recordLeaderboardRun(modeKey, 1000, runTime);
             $('credits-stats').textContent = `${MODE().name} · Tempo: ${fmtTime(runTime)}`;
             const cs = $('credits-screen'); cs.classList.remove('hidden'); cs.classList.add('fade-in-overlay');
             const ct = $('credits-text'); ct.classList.remove('animate-credits'); void ct.offsetWidth; ct.classList.add('animate-credits');
@@ -2960,6 +3288,10 @@
         const keys = { w: false, a: false, s: false, d: false, space: false, shift: false };
         const keyMap = { arrowup: 'w', arrowdown: 's', arrowleft: 'a', arrowright: 'd' };
         document.addEventListener('keydown', (e) => {
+            if (!$('leaderboard-modal').classList.contains('hidden')) {
+                if (e.code === 'Escape') { e.preventDefault(); closeLeaderboard(); }
+                return;
+            }
             if (!$('patch-modal').classList.contains('hidden')) {
                 if (e.code === 'Escape' || e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); closePatchNotes(); }
                 return;
