@@ -4,7 +4,8 @@
    - Creazione stanze con codice alfanumerico breve normalizzato (es. OB-8K4F)
    - Auto-retry in caso di latenza del signaling server WebRTC
    - Sincronizzazione seed percorso (stessa mappa), 30Hz posizione, rotazione, skin e quota
-   - Sfera avversario 3D con nametag olografico fluttuante e HUD Gara con distacco live
+   - Sfera avversario 3D con illuminazione dedicata, interpolazione 60 FPS e nametag olografico
+   - HUD Gara con distacco live e notifiche tempo reale (cadute, checkpoint, vittoria)
    ========================================================================== */
 
 const Multiplayer = {
@@ -58,7 +59,6 @@ const Multiplayer = {
                     iceServers: [
                         { urls: 'stun:stun.l.google.com:19302' },
                         { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' },
                         { urls: 'stun:global.stun.twilio.com:3478' }
                     ]
                 }
@@ -67,7 +67,7 @@ const Multiplayer = {
             this.peer = customId ? new Peer(customId, peerOptions) : new Peer(peerOptions);
 
             this.peer.on('open', (id) => {
-                console.log('[P2P] Peer open with ID:', id);
+                console.log('[P2P] Peer pronto con ID:', id);
                 if (onOpen) onOpen(id);
             });
 
@@ -76,7 +76,7 @@ const Multiplayer = {
                 if (onError) onError(err);
             });
         } catch (e) {
-            console.error('[P2P] Failed to init PeerJS:', e);
+            console.error('[P2P] Inizializzazione PeerJS fallita:', e);
             if (onError) onError(e);
         }
     },
@@ -100,9 +100,8 @@ const Multiplayer = {
                 this.setupConnection(onGuestJoin, onError);
             });
         }, (err) => {
-            // Se ID gia in uso sul server PeerJS, rigenera nuovo codice
             if (err && err.type === 'unavailable-id') {
-                console.warn('[P2P] ID occupato, rigenerazione...');
+                console.warn('[P2P] ID già in uso, rigenerazione...');
                 this.createRoom(onCodeReady, onHostReady, onGuestJoin, onError);
             } else if (onError) {
                 onError(err);
@@ -134,7 +133,7 @@ const Multiplayer = {
             let joinFinished = false;
 
             const tryConnect = () => {
-                if (joinFinished) return;
+                if (joinFinished || this.connected) return;
                 attempt++;
                 if (onProgress) {
                     onProgress(`Connessione alla stanza ${this.roomCode}... (tentativo ${attempt}/${maxAttempts})`);
@@ -146,15 +145,27 @@ const Multiplayer = {
 
                 let attemptCompleted = false;
 
-                const attemptTimer = setTimeout(() => {
-                    if (attemptCompleted || joinFinished) return;
+                const disarmAttempt = () => {
                     attemptCompleted = true;
-                    console.warn(`[P2P] Tentativo ${attempt} scaduto per timeout`);
+                    joinFinished = true;
+                    clearTimeout(attemptTimer);
+                    if (this.activeJoinTimeout) {
+                        clearTimeout(this.activeJoinTimeout);
+                        this.activeJoinTimeout = null;
+                    }
+                    if (this.peer) this.peer.off('error', peerErrorHandler);
+                };
+
+                // Timeout generoso per la negoziazione WebRTC tra reti diverse (es. mobile e WiFi)
+                const attemptTimer = setTimeout(() => {
+                    if (attemptCompleted || joinFinished || this.connected) return;
+                    attemptCompleted = true;
+                    console.warn(`[P2P] Tentativo ${attempt} scaduto (timeout WebRTC 15s)`);
                     nextOrExit('Timeout connessione');
-                }, 3500);
+                }, 15000);
 
                 const peerErrorHandler = (err) => {
-                    if (attemptCompleted || joinFinished) return;
+                    if (attemptCompleted || joinFinished || this.connected) return;
                     if (err && err.type === 'peer-unavailable') {
                         attemptCompleted = true;
                         clearTimeout(attemptTimer);
@@ -166,16 +177,16 @@ const Multiplayer = {
 
                 this.peer.on('error', peerErrorHandler);
 
+                dataConn.on('open', () => {
+                    disarmAttempt();
+                });
+
                 this.setupConnection(() => {
-                    if (attemptCompleted || joinFinished) return;
-                    attemptCompleted = true;
-                    joinFinished = true;
-                    clearTimeout(attemptTimer);
-                    this.peer.off('error', peerErrorHandler);
+                    disarmAttempt();
                     console.log('[P2P] Connessione riuscita con successo!');
                     if (onJoined) onJoined();
                 }, (err) => {
-                    if (attemptCompleted || joinFinished) return;
+                    if (attemptCompleted || joinFinished || this.connected) return;
                     attemptCompleted = true;
                     clearTimeout(attemptTimer);
                     this.peer.off('error', peerErrorHandler);
@@ -184,13 +195,14 @@ const Multiplayer = {
             };
 
             const nextOrExit = (reason) => {
+                if (this.connected || joinFinished) return;
                 if (attempt < maxAttempts) {
                     console.log(`[P2P] Nuovo tentativo tra 1200ms... (motivo: ${reason})`);
                     this.activeJoinTimeout = setTimeout(tryConnect, 1200);
                 } else {
                     joinFinished = true;
                     if (onError) {
-                        onError(new Error(`Stanza ${this.roomCode} non trovata. Controlla il codice o assicurati che l'amico abbia la stanza aperta.`));
+                        onError(new Error(`Stanza ${this.roomCode} non trovata. Controlla il codice o assicurati che l'amico abbia il gioco aperto.`));
                     }
                 }
             };
@@ -208,6 +220,11 @@ const Multiplayer = {
             opened = true;
             this.connected = true;
             console.log('[P2P] DataChannel aperto. isHost:', this.isHost);
+
+            if (this.activeJoinTimeout) {
+                clearTimeout(this.activeJoinTimeout);
+                this.activeJoinTimeout = null;
+            }
 
             if (this.isHost) {
                 // Host invia il seed casuale condiviso e il proprio nickname/skin
@@ -311,14 +328,23 @@ const Multiplayer = {
         this.despawnOpponent();
 
         const group = new THREE.Group();
+        // Spawna alla quota iniziale di caduta del player (y = 5) e non dentro la piattaforma sottoterra (y = 0)
+        group.position.set(0, 5, 0);
+
+        const ballRadius = (typeof radius !== 'undefined') ? radius : 0.8;
         const mat = (typeof window.getBallMaterial === 'function')
             ? window.getBallMaterial(skinKey)
             : new THREE.MeshStandardMaterial({ color: 0x37e0b0, roughness: 0.4, metalness: 0.1 });
 
-        const ballRadius = (typeof radius !== 'undefined') ? radius : 0.8;
         const mesh = new THREE.Mesh(new THREE.SphereGeometry(ballRadius, 36, 36), mat);
         mesh.castShadow = true;
+        mesh.receiveShadow = true;
         group.add(mesh);
+
+        // Luce d'accento olografica per rendere la sfera avversaria sempre brillante e visibile
+        const oppLight = new THREE.PointLight(0x37e0b0, 0.9, 14);
+        oppLight.position.y = 0.4;
+        group.add(oppLight);
 
         // Nametag 3D olografico
         const nametag = this.createNametagSprite(name);
@@ -331,6 +357,7 @@ const Multiplayer = {
             skinKey,
             group,
             mesh,
+            oppLight,
             nametag,
             targetPos: new THREE.Vector3(0, 5, 0),
             targetQuat: new THREE.Quaternion(),
@@ -380,8 +407,12 @@ const Multiplayer = {
 
     updateOpponentState(data) {
         if (!this.opponent) return;
-        this.opponent.targetPos.set(data.x, data.y, data.z);
-        this.opponent.targetQuat.set(data.qx, data.qy, data.qz, data.qw);
+        if (data.x != null && !isNaN(data.x) && !isNaN(data.y) && !isNaN(data.z)) {
+            this.opponent.targetPos.set(data.x, data.y, data.z);
+        }
+        if (data.qx != null && !isNaN(data.qx) && !isNaN(data.qy) && !isNaN(data.qz) && !isNaN(data.qw)) {
+            this.opponent.targetQuat.set(data.qx, data.qy, data.qz, data.qw);
+        }
         this.opponent.alt = data.alt || 0;
 
         // Aggiorna indicatore di quota e delta nell'HUD
@@ -416,6 +447,8 @@ const Multiplayer = {
 
     broadcastState() {
         if (!this.connected || !this.conn || this.conn.open !== true) return;
+        if (typeof sphereBody === 'undefined' || !sphereBody) return;
+
         const now = performance.now();
         if (now - this.lastSendTime < this.sendInterval) return;
         this.lastSendTime = now;
@@ -450,9 +483,11 @@ const Multiplayer = {
         if (!this.opponent || !this.opponent.group) return;
         // Interpolazione morbida a 60fps
         this.opponent.group.position.lerp(this.opponent.targetPos, 0.35);
-        this.opponent.mesh.quaternion.slerp(this.opponent.targetQuat, 0.35);
+        if (this.opponent.mesh) {
+            this.opponent.mesh.quaternion.slerp(this.opponent.targetQuat, 0.35);
+        }
         // Billboard del nametag verso la telecamera
-        if (this.opponent.nametag) {
+        if (this.opponent.nametag && typeof camera !== 'undefined' && camera) {
             this.opponent.nametag.quaternion.copy(camera.quaternion);
         }
     },

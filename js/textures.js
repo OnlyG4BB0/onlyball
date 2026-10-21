@@ -642,15 +642,18 @@
 
         function getBallMaterial(skinKey) {
             if (!skinKey || !SKINS_DEF[skinKey]) skinKey = 'brand';
-            const d = SKINS_DEF[skinKey];
+            const d = SKINS_DEF[skinKey] || SKINS_DEF['brand'];
             const t = skinTextures(skinKey);
-            return new THREE.MeshStandardMaterial({
+            const mat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
                 map: t.map,
                 bumpMap: t.bump,
                 bumpScale: d.bumpScale || 0.01,
-                roughness: isRTX ? Math.max(0.08, d.roughness - 0.2) : d.roughness,
-                metalness: isRTX ? Math.min(0.85, d.metalness + 0.3) : d.metalness
+                roughness: isRTX ? Math.max(0.08, d.roughness - 0.2) : (d.roughness || 0.4),
+                metalness: isRTX ? Math.min(0.85, d.metalness + 0.3) : (d.metalness || 0.1)
             });
+            mat.needsUpdate = true;
+            return mat;
         }
         window.getBallMaterial = getBallMaterial;
 

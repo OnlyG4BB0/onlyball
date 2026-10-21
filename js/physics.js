@@ -170,7 +170,7 @@
             spawnPuffs(sphereBody.position, 10, 0xffffff, 3);
         }
         function triggerRespawn(manual = false, cause = 'fall') {
-            AudioEngine.playDeath(); flashScreen(); vibrate([40, 30, 60]);
+            AudioEngine.playDeath(); flashScreen(); vibrate([40, 30, 60]); if (window.Multiplayer && Multiplayer.connected) Multiplayer.broadcastEvent('respawn', { alt: highestScore });
             const m = MODE();
             if (m.fall === 'gameover') { endRun(cause); return; }
             if (m.fall === 'safe') { respawnAt({ x: lastSafePos.x, y: lastSafePos.y + 2, z: lastSafePos.z }); if (!manual) showEvent(`${icon('lotus')} Respiro profondo… si riparte`, 'good', 1400); return; }

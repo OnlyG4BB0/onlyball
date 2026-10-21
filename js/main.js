@@ -319,6 +319,13 @@
             if (gameState !== 'console') updateCamera(dt);
             updateFx(dt); Audio.update(dt);
 
+            if (window.Multiplayer) {
+                if (Multiplayer.connected && gameState === 'playing') {
+                    Multiplayer.broadcastState();
+                }
+                Multiplayer.update(dt);
+            }
+
             if (gameState === 'playing') {
                 runTime += dt; const m = MODE();
                 if (isRTX) { ballGroup.visible = false; cubeCamera.position.copy(ballGroup.position); cubeCamera.update(renderer, scene); ballGroup.visible = true; }
@@ -353,7 +360,7 @@
                         bestScore = runPeak; setBest(modeKey, bestScore); $('best-score-val').textContent = bestScore; $('menu-best-val').textContent = bestScore;
                     }
                     noteProgressHeight(runPeak);
-                    if (highestScore >= 1000) { triggerEnding(); return; }
+                    if (highestScore >= 1000) { if (window.Multiplayer && Multiplayer.connected) Multiplayer.broadcastEvent('win'); triggerEnding(); return; }
                 }
                 if (ballGroup.position.y > highestPlatformY - 100) generateMorePlatforms(20);
                 cullTimer += dt; if (cullTimer > 1.5) { cullTimer = 0; cullBelow(highestScore - 130); }
@@ -367,6 +374,7 @@
                             showEvent(`${icon('flag')} Checkpoint ${cp.y} m${sigMsg}`, 'good');
                             gen.pendingSigLabel = null;
                             vibrate([15, 30, 15]);
+                            if (window.Multiplayer && Multiplayer.connected) Multiplayer.broadcastEvent('checkpoint', { alt: cp.y });
                         }
                     }
                 }
