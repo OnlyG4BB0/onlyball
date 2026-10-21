@@ -1279,7 +1279,7 @@
                         <li><strong>Nuovo Ostacolo &quot;Rotore Laser a 4 Lame&quot;:</strong> Torretta di contenimento centrale con pale laser al plasma ad alta velocità e riverbero additivo. Richiede salto ritmico tempestivo per superare i fasci letali.</li>
                         <li><strong>Nuovo Ostacolo &quot;Mina Plasma Gimbal&quot;:</strong> Sfera energetica fluttuante a icosaedro circondata da doppi anelli stabilizzatori anti-gravità che pattuglia le piattaforme con orbite a otto (Lissajous).</li>
                         <li><strong>Nuovo Ostacolo &quot;Maglio Pendolare&quot;:</strong> Pesante testa cinetica sfaccettata ad alette che oscilla ad arco sospesa da montanti aerei.</li>
-                        <li><strong>Difficoltà Scalare &amp; Doppie Trappole:</strong> Nei biomi superiori (&ge;140m &ndash; Vulcano, Ciberspazio, Abisso Cosmico) compaiono coppie coordinate di ostacoli a velocità maggiorata per un platforming stimolante e mai ingiusto.</li>
+                        <li><strong>Ostacoli Attivi e Letali in Tutte le Modalit&agrave;:</strong> Rotori laser a lame energetiche, stomper schiacciatori, magli oscillanti e mine plasma sono ora pienamente attivi anche nella <strong>Modalit&agrave; Classica Standard</strong> fin dal primo bioma (0 m), con letalit&agrave; immediata e respingimento cinetico esplosivo a 22 m/s per non essere mai innocui!</li>
                         <li><strong>Guide Tattiche a Terra:</strong> Nuovi cerchi di guardia laser, reticoli di pericolo sotto gli stomper e binari olografici rifiniti per una leggibilità di salto impeccabile.</li>
                     </ul>
                 </div>
@@ -2869,16 +2869,20 @@
             const zen = !!MODE().zen;
             const scale = zen ? 0.78 : 1;
             
-            // Selezione del tipo di ostacolo in base alla quota e al bioma
+            // Selezione del tipo di ostacolo: attivi in tutte le modalita (inclusa la Standard) fin dal Bioma 0
             const kinds = extra.kind ? [extra.kind] : (zen ? ['sway', 'spin'] : (
-                biome >= 5 ? ['sway', 'spin', 'bob', 'sweep', 'orbit', 'stomp', 'laser_rotor', 'plasma_mine', 'pendulum'] :
-                biome >= 4 ? ['sway', 'spin', 'bob', 'sweep', 'orbit', 'stomp', 'laser_rotor', 'pendulum'] :
-                biome >= 3 ? ['sway', 'spin', 'bob', 'sweep', 'stomp', 'laser_rotor'] :
-                biome >= 2 ? ['sway', 'spin', 'bob', 'stomp'] :
-                biome >= 1 ? ['sway', 'spin', 'bob'] :
-                ['sway', 'spin']
+                biome >= 2 ? ['laser_rotor', 'stomp', 'plasma_mine', 'pendulum', 'sweep', 'orbit', 'bob', 'spin', 'sway'] :
+                biome >= 1 ? ['laser_rotor', 'stomp', 'plasma_mine', 'pendulum', 'sway', 'spin', 'sweep'] :
+                ['laser_rotor', 'stomp', 'sway', 'spin', 'sweep']
             ));
             const kind = kinds[Math.floor(rng() * kinds.length)];
+            
+            // I pericoli ad alta tecnologia (laser, stomper, mine, maglio) sono intrinsecamente letali se hazards attivi
+            if (!zen && MODE().hazards && (kind === 'laser_rotor' || kind === 'stomp' || kind === 'plasma_mine' || kind === 'pendulum')) {
+                deadly = true;
+            } else if (!zen && MODE().hazards && !deadly && rng() < 0.45) {
+                deadly = true;
+            }
             
             let obsW = Math.min((deadly ? 2.35 : 3.05) * scale, platW * 0.34);
             let obsD = Math.min((deadly ? 2.35 : 3.05) * scale, platD * 0.34);
@@ -3040,6 +3044,8 @@
             }
             
             body.position.set(px, by, pz);
+            body.isMovingObstacle = true;
+            body.obstacleKind = kind;
             if (deadly) body.isDeathObstacle = true;
             world.addBody(body);
             scene.add(mesh);
@@ -3049,7 +3055,7 @@
             const maxAmp = Math.max(0.35, Math.min(platW, platD) / 2 - Math.max(obsW, obsD) / 2 - OBS_LANE);
             const wantAmp = extra.amp != null ? extra.amp : Math.min(platW, platD) * (kind === 'sweep' || kind === 'orbit' || kind === 'plasma_mine' ? 0.26 : 0.18);
             const amp = Math.min(wantAmp, maxAmp);
-            const speed = (extra.speed != null ? extra.speed : (deadly ? 0.72 : 1.05) * (1 + Math.min(0.45, (biome || 0) * 0.035))) * (zen ? 0.62 : 1);
+            const speed = (extra.speed != null ? extra.speed : (deadly ? 0.88 : 1.15) * (1 + Math.min(0.5, (biome || 0) * 0.04))) * (zen ? 0.62 : 1);
             
             const guideMesh = createPathGuide(kind, px, py + 0.52, pz, dirX, dirZ, kind === 'laser_rotor' ? armLen : amp, accentHex);
             const o = { body, mesh, guideMesh, kind, dirX, dirZ, amp, ampY: extra.ampY != null ? extra.ampY : (0.55 + rng() * 0.7), speed, baseX: px, baseZ: pz, baseY: by, timeOffset: rng() * 100, isPlatform: false, deadly, obsW, obsD, stompLift, armLen, wasInAir: false };
@@ -3070,14 +3076,14 @@
             if (Math.min(w, d) < 6) return;
             const chance = obstacleChance(D, b) * (opts.mult || 1);
             if (rng() > chance) return;
-            const deadly = MODE().hazards && !MODE().zen && b >= 1 && rng() < (0.24 + D.t * 0.5);
+            const deadly = MODE().hazards && !MODE().zen && rng() < (0.60 + D.t * 0.35);
             const ox = (rng() < 0.5 ? 1 : -1) * w * 0.22, oz = (rng() - 0.5) * d * 0.22;
             const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
             createObstacle(p.body.position.x + ox, p.body.position.y, p.body.position.z + oz, w, d, deadly, b, { kind: opts.kind, amp: Math.min(1.5, Math.min(w, d) * 0.14), ...across });
             
-            // Nei biomi avanzati (b >= 3) su piattaforme ampie: possibilità di secondo pericolo coordinato
-            if (!opts.kind && b >= 3 && Math.min(w, d) >= 11 && !MODE().zen && rng() < (0.28 + D.t * 0.35)) {
-                const deadly2 = MODE().hazards && rng() < (0.35 + D.t * 0.4);
+            // Su piattaforme ampie (>=10.5m): possibilita di secondo pericolo coordinato fin dai biomi iniziali
+            if (!opts.kind && Math.min(w, d) >= 10.5 && !MODE().zen && rng() < (0.35 + D.t * 0.35)) {
+                const deadly2 = MODE().hazards && !MODE().zen;
                 createObstacle(p.body.position.x - ox, p.body.position.y, p.body.position.z - oz, w, d, deadly2, b, { amp: Math.min(1.4, Math.min(w, d) * 0.12), dirX: across.dirX, dirZ: across.dirZ });
             }
         }
@@ -3156,18 +3162,18 @@
                 for (let i = 0; i < n; i++) {
                     const p = plat(w, d, D.gap * 0.75, D.rise * 0.82, (i % 2 === 0 ? 0.55 : -0.3) + 0.15, b, { noProps: true });
                     const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
-                    const deadly = MODE().hazards && !MODE().zen && b >= 2 && i === 1 && rng() < 0.45 + D.t * 0.35;
-                    const k = i % 2 === 0 ? (b >= 3 && rng() < 0.45 ? 'stomp' : 'sway') : (b >= 4 && rng() < 0.45 ? 'laser_rotor' : 'sweep');
-                    createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w, d, deadly, b, { kind: k, amp: w * 0.2, speed: 0.65 + D.t * 0.22, ...across });
+                    const deadly = MODE().hazards && !MODE().zen;
+                    const k = i % 2 === 0 ? (rng() < 0.55 ? 'stomp' : 'sway') : (rng() < 0.55 ? 'laser_rotor' : 'sweep');
+                    createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w, d, deadly, b, { kind: k, amp: w * 0.2, speed: 0.8 + D.t * 0.25, ...across });
                 }
                 return n;
             },
             carousel(D, b) {
                 const w = 15 + D.t * 2, p = plat(w, w, D.gap * 0.75, D.rise * 0.8, 0.45, b, { noProps: true });
-                const deadly = MODE().hazards && !MODE().zen && b >= 3 && rng() < 0.4 + D.t * 0.35;
-                const k = b >= 3 && rng() < 0.55 ? 'laser_rotor' : 'orbit';
-                createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w * 0.75, w * 0.75, deadly, b, { kind: k, amp: w * 0.22, speed: 0.65 + D.t * 0.2 });
-                if (b >= 4) createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, 5.5, 5.5, false, b, { kind: b >= 5 && rng() < 0.5 ? 'plasma_mine' : 'spin', amp: 0.35, speed: 1.15 });
+                const deadly = MODE().hazards && !MODE().zen;
+                const k = rng() < 0.6 ? 'laser_rotor' : 'plasma_mine';
+                createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w * 0.75, w * 0.75, deadly, b, { kind: k, amp: w * 0.22, speed: 0.8 + D.t * 0.22 });
+                if (rng() < 0.65) createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, 5.5, 5.5, deadly, b, { kind: 'stomp', amp: 0.35, speed: 1.15 });
                 return 1;
             },
             longjump(D, b) {
@@ -3195,31 +3201,34 @@
             },
             gauntlet(D, b) {
                 const w = 13 + D.t * 3, p = plat(w, w, D.gap * 0.8, D.rise * 0.8, 0.55, b, { noProps: true });
-                const hazards = MODE().hazards, n = 1 + (b >= 2 ? 1 : 0) + (b >= 7 && rng() < 0.65 ? 1 : 0);
+                const hazards = MODE().hazards && !MODE().zen;
+                const n = 2 + (b >= 2 ? 1 : 0);
                 for (let i = 0; i < n; i++) {
                     const ang = (i / n) * Math.PI * 2 + rng() * 0.35, r = w * 0.26;
-                    const deadly = hazards && b >= 2 && rng() < 0.42 + D.t * 0.4;
-                    const k = b >= 5 && i % 2 ? 'plasma_mine' : (b >= 3 && i % 2 ? 'stomp' : (b >= 4 && !i ? 'laser_rotor' : (i % 2 ? 'orbit' : 'sway')));
-                    createObstacle(p.body.position.x + Math.cos(ang) * r, p.body.position.y, p.body.position.z + Math.sin(ang) * r, w * 0.72, w * 0.72, deadly, b, { kind: k, amp: w * 0.16, speed: 0.7 + D.t * 0.2 });
+                    const k = i === 0 ? 'laser_rotor' : (i === 1 ? 'stomp' : 'plasma_mine');
+                    createObstacle(p.body.position.x + Math.cos(ang) * r, p.body.position.y, p.body.position.z + Math.sin(ang) * r, w * 0.72, w * 0.72, hazards, b, { kind: k, amp: w * 0.16, speed: 0.8 + D.t * 0.2 });
                 }
                 return 1;
             },
             sweepers(D, b) {
                 const w = 15 + D.t * 2, d = 11, p = plat(w, d, D.gap * 0.75, D.rise * 0.8, 0.5, b, { noProps: true });
                 const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
-                const deadly = MODE().hazards && b >= 2 && rng() < 0.55 + D.t * 0.3;
-                const k = b >= 4 && rng() < 0.4 ? 'pendulum' : (b >= 3 && rng() < 0.4 ? 'stomp' : 'sweep');
-                createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w, d, deadly, b, { kind: k, amp: w * 0.24, speed: 0.55 + D.t * 0.22, ...across });
-                if (b >= 5) createObstacle(p.body.position.x + across.dirX * w * 0.18, p.body.position.y, p.body.position.z + across.dirZ * d * 0.18, 6, 6, false, b, { kind: 'plasma_mine', amp: 0.5, speed: 1.1 });
+                const deadly = MODE().hazards && !MODE().zen;
+                const k = rng() < 0.45 ? 'pendulum' : (rng() < 0.5 ? 'stomp' : 'sweep');
+                createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w, d, deadly, b, { kind: k, amp: w * 0.24, speed: 0.68 + D.t * 0.25, ...across });
+                createObstacle(p.body.position.x + across.dirX * w * 0.18, p.body.position.y, p.body.position.z + across.dirZ * d * 0.18, 6, 6, deadly, b, { kind: 'laser_rotor', amp: 0.5, speed: 1.1 });
                 return 1;
             },
             lanes(D, b) {
                 const w = 16 + D.t, d = 12, p = plat(w, d, D.gap * 0.75, D.rise * 0.8, 0.5, b, { noProps: true });
                 const px = p.body.position.x, py = p.body.position.y, pz = p.body.position.z;
                 const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
-                createObstacle(px + across.dirX * w * 0.32, py, pz + across.dirZ * d * 0.1, 5.2, d * 0.5, false, b, { kind: 'spin', amp: 0.4, speed: 0.95 });
-                createObstacle(px - across.dirX * w * 0.32, py, pz - across.dirZ * d * 0.1, 5.2, d * 0.5, false, b, { kind: 'spin', amp: 0.4, speed: 0.95 });
-                if (MODE().hazards && b >= 3 && rng() < 0.5 + D.t * 0.35) createObstacle(px, py, pz, 5.2, 5.2, true, b, { kind: 'bob', amp: 1.1, speed: 0.85 });
+                createObstacle(px + across.dirX * w * 0.32, py, pz + across.dirZ * d * 0.1, 5.2, d * 0.5, false, b, { kind: 'spin', amp: 0.4, speed: 1.05 });
+                createObstacle(px - across.dirX * w * 0.32, py, pz - across.dirZ * d * 0.1, 5.2, d * 0.5, false, b, { kind: 'spin', amp: 0.4, speed: 1.05 });
+                if (MODE().hazards && !MODE().zen) {
+                    const k = rng() < 0.5 ? 'laser_rotor' : 'stomp';
+                    createObstacle(px, py, pz, 5.2, 5.2, true, b, { kind: k, amp: 1.1, speed: 0.95 });
+                }
                 return 1;
             },
             split(D, b) {
@@ -3912,7 +3921,23 @@
                 const c = world.contacts[i];
                 if (c.bi.id !== sphereBody.id && c.bj.id !== sphereBody.id) continue;
                 const other = c.bi.id === sphereBody.id ? c.bj : c.bi;
-                if (other.isDeathObstacle && MODE().hazards) hitDeathZone = true;
+                if (other.isDeathObstacle && MODE().hazards) {
+                    hitDeathZone = true;
+                } else if (other.isMovingObstacle) {
+                    // Impatto cinetico ad alta energia: lancia via la pallina e scuote la visuale
+                    const kx = sphereBody.position.x - other.position.x;
+                    const kz = sphereBody.position.z - other.position.z;
+                    const klen = Math.hypot(kx, kz) || 1;
+                    const bump = 22;
+                    sphereBody.velocity.x = (kx / klen) * bump;
+                    sphereBody.velocity.z = (kz / klen) * bump;
+                    sphereBody.velocity.y = Math.max(sphereBody.velocity.y, 8.5);
+                    AudioEngine.playLand(1.0);
+                    screenShakeIntensity = Math.max(screenShakeIntensity, 0.25);
+                    spawnRing(sphereBody.position, 0xff5500, 1.3);
+                    spawnPuffs(sphereBody.position, 8, 0xffa040, 5);
+                    vibrate([35, 20, 50]);
+                }
                 const normal = c.ni; if (c.bi.id === sphereBody.id) normal.negate(normal);
                 if (other.isBouncer && normal.y > 0.5) { sphereBody.velocity.y = 45; AudioEngine.playBounce(); ballSquash.y = 1.45; ballSquash.x = 0.8; spawnRing(sphereBody.position, 0x37e0b0, 1.4); spawnPuffs(sphereBody.position, 10, 0xb8ffd9, 6); vibrate(25); onGround = false; continue; }
                 if (normal.y > 0.5) {
