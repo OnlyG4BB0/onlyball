@@ -348,10 +348,11 @@ function initHostRoom() {
             if (codeEl) codeEl.textContent = code;
         },
         (code) => {
-            if (statusEl) statusEl.innerHTML = '<span class="status-dot pulse"></span> Stanza pronta! In attesa dell\'avversario...';
+            if (statusEl) statusEl.innerHTML = '<span class="status-dot pulse"></span> Stanza pronta! In attesa che gli amici inseriscano il codice...';
+            Multiplayer.updateLobbyUI();
         },
         () => {
-            if (statusEl) statusEl.innerHTML = '<span class="status-dot" style="background:var(--mint)"></span> Connesso! Avvio gara...';
+            Multiplayer.updateLobbyUI();
         },
         (err) => {
             if (statusEl) statusEl.innerHTML = '<span class="status-dot" style="background:var(--coral)"></span> Errore connessione P2P. Riprova.';
@@ -400,6 +401,7 @@ if ($('btn-close-multiplayer')) $('btn-close-multiplayer').addEventListener('cli
 if ($('multiplayer-modal')) $('multiplayer-modal').addEventListener('click', (e) => { if (e.target === $('multiplayer-modal')) closeMultiplayerModal(); });
 if ($('mp-tab-create')) $('mp-tab-create').addEventListener('click', () => selectMpTab('create'));
 if ($('mp-tab-join')) $('mp-tab-join').addEventListener('click', () => selectMpTab('join'));
+if ($('btn-start-mp-game')) $('btn-start-mp-game').addEventListener('click', () => { AudioEngine.playUI(); Multiplayer.startMatchAsHost(); });
 
 if ($('btn-copy-code')) $('btn-copy-code').addEventListener('click', () => {
     const code = $('mp-create-code') ? $('mp-create-code').textContent : '';

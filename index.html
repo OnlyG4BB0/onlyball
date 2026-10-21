@@ -188,6 +188,14 @@
                 </div>
             </div>
         </div>
+                <!-- CLASSIFICA GARA ONLINE 4 GIOCATORI -->
+        <div id="hud-p2p-leaderboard" class="hud-p2p-leaderboard hidden">
+            <div class="p2p-lb-head">
+                <span class="p2p-live-pulse"></span>
+                <span>GARA ONLINE (4P)</span>
+            </div>
+            <div id="p2p-lb-list" class="p2p-lb-list"></div>
+        </div>
         <div id="pc-crosshair"></div>
     </div>
 
@@ -385,7 +393,7 @@
     <button id="version-badge" class="version-badge" type="button" title="Visualizza le Patch Notes">
         <span id="version-dot" class="v-dot"></span>
         <svg class="i" style="color:var(--sky);"><use href="#i-notes"/></svg>
-        <span class="v-num" id="version-num">v2.5.1</span>
+        <span class="v-num" id="version-num">v2.6.0</span>
         <span class="v-sep">&middot;</span>
         <span class="v-label">Patch Notes</span>
     </button>
@@ -445,15 +453,18 @@
         <div class="panel patch-panel">
             <div class="patch-header">
                 <h2 id="patch-modal-title"><svg class="i" style="color:var(--sun);"><use href="#i-notes"/></svg> Patch Notes</h2>
-                <span class="chip chip-gold" id="patch-ver-chip">v2.5.1</span>
+                <span class="chip chip-gold" id="patch-ver-chip">v2.6.0</span>
             </div>
             <div class="patch-list">
                                 <div class="patch-card latest">
                     <div class="patch-card-head">
-                        <span class="patch-ver">v2.5.1 — Fix Controller Switch Pro &amp; P2P Sync <span class="patch-tag">Nuovo</span></span>
+                        <span class="patch-ver">v2.6.0 — Multigiocatore Online fino a 4 Giocatori <span class="patch-tag">Nuovo</span></span>
                         <span class="patch-date">Ultimo aggiornamento</span>
                     </div>
                     <ul class="patch-items">
+                        <li><strong>Lobby Online fino a 4 Giocatori:</strong> Entra in gara con un massimo di 4 giocatori contemporanei nella stessa stanza (1 Host + 3 Ospiti) via WebRTC. Topologia a Stella ad altissima efficienza e latenza minima.</li>
+                        <li><strong>Presenza 3D e Colori Distintivi:</strong> Ciascun giocatore ha la propria sfera 3D con skin, luce olografica dedicata e nametag colorato (Verde Menta, Giallo Sole, Rosso Corallo, Blu Cielo).</li>
+                        <li><strong>Classifica Gara HUD in Tempo Reale:</strong> Nuova interfaccia HUD con classifica dinamica in live (1°, 2°, 3°, 4° posto, metri raggiunti e distacco in tempo reale).</li>
                         <li><strong>Multigiocatore Online P2P a Stanze:</strong> Sfida i tuoi amici in tempo reale senza server dedicati grazie alla tecnologia WebRTC e PeerJS. Crea una stanza con codice (es. <em>OB-8K4F</em> o semplicemente <em>8K4F</em>) o condividi il link diretto per iniziare subito la gara! Connessione ultra-resiliente con auto-retry automatico e tolleranza ad ogni formato di codice.</li>
                         <li><strong>Mappa Sincronizzata (Stesso Percorso):</strong> Generazione procedurale condivisa tramite seed sincronizzato: entrambi i giocatori affrontano la medesima sequenza di piattaforme e ostacoli.</li>
                         <li><strong>Presenza 3D &amp; Nametag Olografico:</strong> Visualizza la sfera dell'avversario in tempo reale con la sua skin sbloccata, targhetta con il nome sopra la testa e interpolazione a 60 FPS senza scatti.</li>
