@@ -1255,7 +1255,7 @@
     <button id="version-badge" class="version-badge" type="button" title="Visualizza le Patch Notes">
         <span id="version-dot" class="v-dot"></span>
         <svg class="i" style="color:var(--sky);"><use href="#i-notes"/></svg>
-        <span class="v-num" id="version-num">v2.3.0</span>
+        <span class="v-num" id="version-num">v2.4.0</span>
         <span class="v-sep">&middot;</span>
         <span class="v-label">Patch Notes</span>
     </button>
@@ -1265,13 +1265,28 @@
         <div class="panel patch-panel">
             <div class="patch-header">
                 <h2 id="patch-modal-title"><svg class="i" style="color:var(--sun);"><use href="#i-notes"/></svg> Patch Notes</h2>
-                <span class="chip chip-gold" id="patch-ver-chip">v2.3.0</span>
+                <span class="chip chip-gold" id="patch-ver-chip">v2.4.0</span>
             </div>
             <div class="patch-list">
-                                <div class="patch-card latest">
+                <div class="patch-card latest">
                     <div class="patch-card-head">
-                        <span class="patch-ver">v2.3.0 — UI/UX Overhaul &amp; Polish <span class="patch-tag">Nuovo</span></span>
+                        <span class="patch-ver">v2.4.0 — Modelli 3D Procedurali &amp; Nuovi Ostacoli (R3F Style) <span class="patch-tag">Nuovo</span></span>
                         <span class="patch-date">Ultimo aggiornamento</span>
+                    </div>
+                    <ul class="patch-items">
+                        <li><strong>Modelli 3D Procedurali R3F/Drei:</strong> Scocche industriali PBR ad alta fedeltà, carter smussati in lega scura, giroscopi gimbal controrotanti, visori di scansione pulsanti e micro-animazioni float organiche.</li>
+                        <li><strong>Nuovo Ostacolo &quot;Stomper&quot; (Pistone Schiacciatore):</strong> Pressa idraulica aerea con pistoni telescopici cromati e allarme stroboscopico. Si solleva aprendo un varco di attraversamento, si carica a mezz'aria e si abbatte violentemente con onda d'urto e fumo volumetrico.</li>
+                        <li><strong>Nuovo Ostacolo &quot;Rotore Laser a 4 Lame&quot;:</strong> Torretta di contenimento centrale con pale laser al plasma ad alta velocità e riverbero additivo. Richiede salto ritmico tempestivo per superare i fasci letali.</li>
+                        <li><strong>Nuovo Ostacolo &quot;Mina Plasma Gimbal&quot;:</strong> Sfera energetica fluttuante a icosaedro circondata da doppi anelli stabilizzatori anti-gravità che pattuglia le piattaforme con orbite a otto (Lissajous).</li>
+                        <li><strong>Nuovo Ostacolo &quot;Maglio Pendolare&quot;:</strong> Pesante testa cinetica sfaccettata ad alette che oscilla ad arco sospesa da montanti aerei.</li>
+                        <li><strong>Difficoltà Scalare &amp; Doppie Trappole:</strong> Nei biomi superiori (&ge;140m &ndash; Vulcano, Ciberspazio, Abisso Cosmico) compaiono coppie coordinate di ostacoli a velocità maggiorata per un platforming stimolante e mai ingiusto.</li>
+                        <li><strong>Guide Tattiche a Terra:</strong> Nuovi cerchi di guardia laser, reticoli di pericolo sotto gli stomper e binari olografici rifiniti per una leggibilità di salto impeccabile.</li>
+                    </ul>
+                </div>
+                <div class="patch-card">
+                    <div class="patch-card-head">
+                        <span class="patch-ver">v2.3.0 — UI/UX Overhaul &amp; Polish</span>
+                        <span class="patch-date">Aggiornamento Grafico</span>
                     </div>
                     <ul class="patch-items">
                         <li><strong>Design System Glassmorphism 2.0:</strong> Nuovi pannelli multistrato con blur saturato, doppi bordi con riflesso luminoso e ombre d'ambiente profonde per una gerarchia visiva superiore.</li>
@@ -2767,9 +2782,25 @@
                 const n1 = new THREE.Mesh(nGeo, mat); n1.rotation.x = -Math.PI / 2; n1.position.set(dirX * amp, 0, dirZ * amp); n1.userData.noShadow = true;
                 const n2 = new THREE.Mesh(nGeo, mat); n2.rotation.x = -Math.PI / 2; n2.position.set(-dirX * amp, 0, -dirZ * amp); n2.userData.noShadow = true;
                 g.add(rail, n1, n2);
-            } else if (kind === 'orbit' && amp > 0.25) {
+            } else if ((kind === 'orbit' || kind === 'plasma_mine') && amp > 0.25) {
                 const ring = new THREE.Mesh(new THREE.RingGeometry(Math.max(0.1, amp - 0.09), amp + 0.09, 40), mat);
                 ring.rotation.x = -Math.PI / 2; ring.userData.noShadow = true; g.add(ring);
+            } else if (kind === 'laser_rotor') {
+                const ring = new THREE.Mesh(new THREE.RingGeometry(Math.max(0.2, amp - 0.12), amp + 0.12, 48), mat);
+                ring.rotation.x = -Math.PI / 2; ring.userData.noShadow = true;
+                const hubRing = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.55, 20), mat);
+                hubRing.rotation.x = -Math.PI / 2; hubRing.userData.noShadow = true;
+                g.add(ring, hubRing);
+            } else if (kind === 'stomp') {
+                const pad = new THREE.Mesh(new THREE.PlaneGeometry(Math.max(1.5, amp * 1.4), Math.max(1.5, amp * 1.4)), mat);
+                pad.rotation.x = -Math.PI / 2; pad.userData.noShadow = true;
+                const reticle = new THREE.Mesh(new THREE.RingGeometry(0.65, 0.85, 24), mat);
+                reticle.rotation.x = -Math.PI / 2; reticle.userData.noShadow = true;
+                g.add(pad, reticle);
+            } else if (kind === 'pendulum') {
+                const rail = new THREE.Mesh(new THREE.PlaneGeometry(amp * 2, 0.22), mat);
+                rail.rotation.x = -Math.PI / 2; rail.rotation.z = -Math.atan2(dirZ, dirX); rail.userData.noShadow = true;
+                g.add(rail);
             } else if (kind === 'bob') {
                 const pad = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.85, 24), mat);
                 pad.rotation.x = -Math.PI / 2; pad.userData.noShadow = true; g.add(pad);
@@ -2837,64 +2868,218 @@
             if (deadly && !MODE().hazards) deadly = false;
             const zen = !!MODE().zen;
             const scale = zen ? 0.78 : 1;
+            
+            // Selezione del tipo di ostacolo in base alla quota e al bioma
+            const kinds = extra.kind ? [extra.kind] : (zen ? ['sway', 'spin'] : (
+                biome >= 5 ? ['sway', 'spin', 'bob', 'sweep', 'orbit', 'stomp', 'laser_rotor', 'plasma_mine', 'pendulum'] :
+                biome >= 4 ? ['sway', 'spin', 'bob', 'sweep', 'orbit', 'stomp', 'laser_rotor', 'pendulum'] :
+                biome >= 3 ? ['sway', 'spin', 'bob', 'sweep', 'stomp', 'laser_rotor'] :
+                biome >= 2 ? ['sway', 'spin', 'bob', 'stomp'] :
+                biome >= 1 ? ['sway', 'spin', 'bob'] :
+                ['sway', 'spin']
+            ));
+            const kind = kinds[Math.floor(rng() * kinds.length)];
+            
             let obsW = Math.min((deadly ? 2.35 : 3.05) * scale, platW * 0.34);
             let obsD = Math.min((deadly ? 2.35 : 3.05) * scale, platD * 0.34);
             obsW = Math.min(obsW, Math.max(1.1, platW - OBS_LANE));
             obsD = Math.min(obsD, Math.max(1.1, platD - OBS_LANE));
-            const obsH = deadly ? 1.05 : (zen ? 1.7 : 2.15);
-            const body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC }); body.addShape(new CANNON.Box(new CANNON.Vec3(obsW / 2, obsH / 2, obsD / 2)));
-            const by = py + obsH / 2 + 0.5; body.position.set(px, by, pz);
-            if (deadly) body.isDeathObstacle = true; world.addBody(body);
-            const geo = new THREE.BoxGeometry(obsW, obsH, obsD); scaleBoxUVs(geo, obsW, obsH, obsD);
-            const mesh = new THREE.Mesh(geo, deadly ? hazardMaterial : blockerMaterial); mesh.castShadow = true; mesh.receiveShadow = true;
+            let obsH = deadly ? 1.05 : (zen ? 1.7 : 2.15);
+            
+            const body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC });
+            let by = py + obsH / 2 + 0.5;
+            let mesh = null;
             const accentHex = deadly ? 0xff2e63 : 0xffb830;
-            mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMaterial(deadly ? 0xffb9cb : 0xffb830)));
-            scene.add(mesh);
-            const kinds = extra.kind ? [extra.kind] : (zen ? ['sway', 'spin'] : (biome >= 5 ? ['sway', 'spin', 'bob', 'sweep', 'orbit'] : biome >= 3 ? ['sway', 'spin', 'bob', 'sweep'] : biome >= 2 ? ['sway', 'spin', 'bob'] : ['sway', 'spin']));
-            const kind = kinds[Math.floor(rng() * kinds.length)];
-            // Dettagli meccanici 3D sull'ostacolo in base al comportamento (rotore, pistone, nucleo)
-            const capMat = propMat({ color: deadly ? 0x3a0814 : 0x181e30, metalness: 0.85, roughness: 0.25 });
+            const capMat = propMat({ color: deadly ? 0x2e0610 : 0x161c2c, metalness: 0.88, roughness: 0.22 });
             const glowMat = new THREE.MeshBasicMaterial({ color: accentHex });
-            const topCap = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(obsW, obsD) * 0.28, Math.min(obsW, obsD) * 0.34, 0.16, 12), capMat);
-            topCap.position.y = obsH / 2 + 0.08; topCap.userData.noShadow = true; mesh.add(topCap);
-            const coreOrb = new THREE.Mesh(new THREE.SphereGeometry(Math.min(obsW, obsD) * 0.16, 10, 10), glowMat);
-            coreOrb.position.y = obsH / 2 + 0.18; coreOrb.userData.noShadow = true; mesh.add(coreOrb);
-            if (kind === 'spin') {
-                const fin = new THREE.Mesh(new THREE.BoxGeometry(obsW * 1.04, obsH * 0.28, obsD * 0.22), glowMat);
-                const fin2 = new THREE.Mesh(new THREE.BoxGeometry(obsW * 0.22, obsH * 0.28, obsD * 1.04), glowMat);
-                fin.userData.noShadow = true; fin2.userData.noShadow = true; mesh.add(fin, fin2);
-            } else if (kind === 'bob') {
-                const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.2, 8), capMat);
-                shaft.position.y = obsH / 2 + 0.6; shaft.userData.noShadow = true; mesh.add(shaft);
+            
+            let stompLift = 3.3;
+            let armLen = Math.min(platW, platD) * 0.35;
+            
+            if (kind === 'laser_rotor') {
+                obsW = 2.0; obsD = 2.0; obsH = 0.65;
+                by = py + obsH / 2 + 0.45;
+                body.addShape(new CANNON.Box(new CANNON.Vec3(0.7, obsH / 2, 0.7)));
+                body.addShape(new CANNON.Box(new CANNON.Vec3(armLen, 0.24, 0.15)));
+                body.addShape(new CANNON.Box(new CANNON.Vec3(0.15, 0.24, armLen)));
+                
+                mesh = new THREE.Group();
+                const stator = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.95, obsH, 12), deadly ? hazardMaterial : blockerMaterial);
+                stator.castShadow = true; stator.receiveShadow = true;
+                stator.add(new THREE.LineSegments(new THREE.EdgesGeometry(stator.geometry), edgeMaterial(accentHex)));
+                mesh.add(stator);
+                
+                const rotor = new THREE.Group(); rotor.position.y = obsH * 0.45;
+                const coreCap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.22, 12), capMat);
+                const coreOrb = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 10), glowMat);
+                coreOrb.position.y = 0.18;
+                rotor.add(coreCap, coreOrb);
+                
+                const bladeGeo = new THREE.BoxGeometry(armLen * 0.75, 0.12, 0.05);
+                const glowGeo = new THREE.BoxGeometry(armLen * 0.76, 0.24, 0.12);
+                const bloomMat = new THREE.MeshBasicMaterial({ color: accentHex, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false });
+                
+                [0, Math.PI / 2, Math.PI, Math.PI * 1.5].forEach(ang => {
+                    const arm = new THREE.Group(); arm.rotation.y = ang;
+                    const socket = new THREE.Mesh(new THREE.BoxGeometry(armLen * 0.25, 0.2, 0.18), capMat);
+                    socket.position.x = armLen * 0.12;
+                    const blade = new THREE.Mesh(bladeGeo, glowMat);
+                    blade.position.x = armLen * 0.6;
+                    const bloom = new THREE.Mesh(glowGeo, bloomMat);
+                    bloom.position.x = armLen * 0.6; bloom.userData.noShadow = true;
+                    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), glowMat);
+                    tip.position.x = armLen * 0.98;
+                    arm.add(socket, blade, bloom, tip);
+                    rotor.add(arm);
+                });
+                mesh.add(rotor);
+                mesh.userData.rotor = rotor;
+            } else if (kind === 'stomp') {
+                obsW = Math.min(2.7 * scale, platW * 0.32);
+                obsD = Math.min(2.7 * scale, platD * 0.32);
+                obsH = 1.3;
+                by = py + obsH / 2 + 0.5;
+                body.addShape(new CANNON.Box(new CANNON.Vec3(obsW / 2, obsH / 2, obsD / 2)));
+                
+                mesh = new THREE.Group();
+                const anvilGeo = new THREE.BoxGeometry(obsW, obsH, obsD); scaleBoxUVs(anvilGeo, obsW, obsH, obsD);
+                const anvil = new THREE.Mesh(anvilGeo, deadly ? hazardMaterial : blockerMaterial);
+                anvil.castShadow = true; anvil.receiveShadow = true;
+                anvil.add(new THREE.LineSegments(new THREE.EdgesGeometry(anvilGeo), edgeMaterial(accentHex)));
+                mesh.add(anvil);
+                
+                const impactPlate = new THREE.Mesh(new THREE.PlaneGeometry(obsW * 0.92, obsD * 0.92), glowMat);
+                impactPlate.rotation.x = Math.PI / 2; impactPlate.position.y = -obsH / 2 - 0.01;
+                impactPlate.userData.noShadow = true;
+                mesh.add(impactPlate);
+                
+                const rodMat = propMat({ color: 0xdce5f5, metalness: 0.95, roughness: 0.12 });
+                [-obsW * 0.28, obsW * 0.28].forEach(rx => {
+                    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3.6, 8), rodMat);
+                    rod.position.set(rx, obsH / 2 + 1.8, 0); rod.userData.noShadow = true;
+                    mesh.add(rod);
+                });
+                const crossbar = new THREE.Mesh(new THREE.BoxGeometry(obsW * 0.85, 0.28, obsD * 0.6), capMat);
+                crossbar.position.y = obsH / 2 + 3.6; crossbar.userData.noShadow = true;
+                const siren = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), glowMat);
+                siren.position.y = obsH / 2 + 3.9; siren.userData.noShadow = true;
+                mesh.add(crossbar, siren);
+                mesh.userData.siren = siren;
+                mesh.userData.stompLift = stompLift;
+            } else if (kind === 'plasma_mine') {
+                obsW = 2.2 * scale; obsD = 2.2 * scale; obsH = 2.2 * scale;
+                by = py + 1.8;
+                body.addShape(new CANNON.Sphere(0.92));
+                
+                mesh = new THREE.Group();
+                const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), glowMat);
+                core.userData.noShadow = true;
+                const chromeRingMat = propMat({ color: 0x9fb5d5, metalness: 0.92, roughness: 0.15 });
+                const innerRing = new THREE.Mesh(new THREE.TorusGeometry(0.88, 0.055, 8, 28), chromeRingMat);
+                const outerRing = new THREE.Mesh(new THREE.TorusGeometry(1.22, 0.055, 8, 28), capMat);
+                innerRing.userData.noShadow = true; outerRing.userData.noShadow = true;
+                [-1, 1].forEach(dir => {
+                    const probeX = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.35, 6), capMat);
+                    probeX.position.x = dir * 1.35; probeX.rotation.z = -dir * Math.PI / 2;
+                    const probeZ = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.35, 6), capMat);
+                    probeZ.position.z = dir * 1.35; probeZ.rotation.x = dir * Math.PI / 2;
+                    mesh.add(probeX, probeZ);
+                });
+                mesh.add(core, innerRing, outerRing);
+                mesh.userData.core = core; mesh.userData.innerRing = innerRing; mesh.userData.outerRing = outerRing;
+            } else if (kind === 'pendulum') {
+                obsW = 2.0; obsD = 2.0; obsH = 2.0;
+                by = py + 2.0;
+                body.addShape(new CANNON.Sphere(0.92));
+                
+                mesh = new THREE.Group();
+                const head = new THREE.Mesh(new THREE.OctahedronGeometry(0.85, 0), deadly ? hazardMaterial : blockerMaterial);
+                head.castShadow = true; head.receiveShadow = true;
+                head.add(new THREE.LineSegments(new THREE.EdgesGeometry(head.geometry), edgeMaterial(accentHex)));
+                const fin1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.25, 1.25), glowMat);
+                const fin2 = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.25, 0.12), glowMat);
+                fin1.userData.noShadow = true; fin2.userData.noShadow = true;
+                head.add(fin1, fin2);
+                const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 4.4, 6), capMat);
+                cable.position.y = 2.2; cable.userData.noShadow = true;
+                mesh.add(head, cable);
+            } else {
+                body.addShape(new CANNON.Box(new CANNON.Vec3(obsW / 2, obsH / 2, obsD / 2)));
+                const geo = new THREE.BoxGeometry(obsW, obsH, obsD); scaleBoxUVs(geo, obsW, obsH, obsD);
+                mesh = new THREE.Mesh(geo, deadly ? hazardMaterial : blockerMaterial); mesh.castShadow = true; mesh.receiveShadow = true;
+                mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMaterial(deadly ? 0xffb9cb : 0xffb830)));
+                
+                const topCap = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(obsW, obsD) * 0.28, Math.min(obsW, obsD) * 0.34, 0.16, 12), capMat);
+                topCap.position.y = obsH / 2 + 0.08; topCap.userData.noShadow = true; mesh.add(topCap);
+                const coreOrb = new THREE.Mesh(new THREE.SphereGeometry(Math.min(obsW, obsD) * 0.16, 10, 10), glowMat);
+                coreOrb.position.y = obsH / 2 + 0.18; coreOrb.userData.noShadow = true; mesh.add(coreOrb);
+                
+                if (kind === 'spin') {
+                    const fin = new THREE.Mesh(new THREE.BoxGeometry(obsW * 1.1, obsH * 0.3, obsD * 0.22), glowMat);
+                    const fin2 = new THREE.Mesh(new THREE.BoxGeometry(obsW * 0.22, obsH * 0.3, obsD * 1.1), glowMat);
+                    const ring = new THREE.Mesh(new THREE.TorusGeometry(Math.min(obsW, obsD) * 0.38, 0.045, 6, 20), capMat);
+                    ring.rotation.x = Math.PI / 2; ring.position.y = obsH / 2 + 0.12;
+                    fin.userData.noShadow = true; fin2.userData.noShadow = true; ring.userData.noShadow = true;
+                    mesh.add(fin, fin2, ring);
+                } else if (kind === 'bob') {
+                    const collar = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(obsW, obsD) * 0.42, Math.min(obsW, obsD) * 0.48, obsH * 0.5, 8), capMat);
+                    collar.position.y = -obsH * 0.25; collar.userData.noShadow = true;
+                    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.4, 8), propMat({ color: 0xdde5f0, metalness: 0.95, roughness: 0.12 }));
+                    shaft.position.y = obsH / 2 + 0.65; shaft.userData.noShadow = true;
+                    mesh.add(collar, shaft);
+                } else if (kind === 'sweep' || kind === 'sway') {
+                    const visor = new THREE.Mesh(new THREE.BoxGeometry(obsW * 0.88, 0.14, 0.1), glowMat);
+                    visor.position.set(0, obsH * 0.2, obsD / 2 + 0.05); visor.userData.noShadow = true;
+                    [-obsW * 0.28, obsW * 0.28].forEach(tx => {
+                        const thruster = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.32, 8), capMat);
+                        thruster.rotation.x = Math.PI / 2; thruster.position.set(tx, 0, -obsD / 2 - 0.12); thruster.userData.noShadow = true;
+                        mesh.add(thruster);
+                    });
+                    mesh.add(visor); mesh.userData.visor = visor;
+                }
             }
+            
+            body.position.set(px, by, pz);
+            if (deadly) body.isDeathObstacle = true;
+            world.addBody(body);
+            scene.add(mesh);
+            
             const a = extra.dirX != null ? Math.atan2(extra.dirZ, extra.dirX) : rng() * Math.PI * 2;
             const dirX = extra.dirX != null ? extra.dirX : Math.cos(a), dirZ = extra.dirZ != null ? extra.dirZ : Math.sin(a);
             const maxAmp = Math.max(0.35, Math.min(platW, platD) / 2 - Math.max(obsW, obsD) / 2 - OBS_LANE);
-            const wantAmp = extra.amp != null ? extra.amp : Math.min(platW, platD) * (kind === 'sweep' || kind === 'orbit' ? 0.26 : 0.18);
+            const wantAmp = extra.amp != null ? extra.amp : Math.min(platW, platD) * (kind === 'sweep' || kind === 'orbit' || kind === 'plasma_mine' ? 0.26 : 0.18);
             const amp = Math.min(wantAmp, maxAmp);
-            const speed = (extra.speed != null ? extra.speed : (deadly ? 0.68 : 1.02) * (1 + Math.min(0.25, (biome || 0) * 0.02))) * (zen ? 0.62 : 1);
-            const guideMesh = createPathGuide(kind, px, py + 0.52, pz, dirX, dirZ, amp, accentHex);
-            const o = { body, mesh, guideMesh, kind, dirX, dirZ, amp, ampY: extra.ampY != null ? extra.ampY : (0.55 + rng() * 0.7), speed, baseX: px, baseZ: pz, baseY: by, timeOffset: rng() * 100, isPlatform: false, deadly, obsW, obsD };
-            movingObstacles.push(o); return o;
+            const speed = (extra.speed != null ? extra.speed : (deadly ? 0.72 : 1.05) * (1 + Math.min(0.45, (biome || 0) * 0.035))) * (zen ? 0.62 : 1);
+            
+            const guideMesh = createPathGuide(kind, px, py + 0.52, pz, dirX, dirZ, kind === 'laser_rotor' ? armLen : amp, accentHex);
+            const o = { body, mesh, guideMesh, kind, dirX, dirZ, amp, ampY: extra.ampY != null ? extra.ampY : (0.55 + rng() * 0.7), speed, baseX: px, baseZ: pz, baseY: by, timeOffset: rng() * 100, isPlatform: false, deadly, obsW, obsD, stompLift, armLen, wasInAir: false };
+            movingObstacles.push(o);
+            return o;
         }
         function obstacleChance(D, b) {
             if (gen.sinceCheckpoint === 0 && gen.lastPattern === 'checkpoint') return 0;
-            let c = 0.40 + D.t * 0.48;
-            if (b === 0) c *= 0.88;
+            let c = 0.42 + D.t * 0.52;
+            if (b === 0) c *= 0.85;
             if (gen.sinceCheckpoint === 1 && gen.lastPattern !== '') c *= 0.55;
             if (gen.lastPattern === 'rest') c *= 0.4;
             if (MODE().zen) c *= 0.42;
-            return c;
+            return Math.min(0.92, c);
         }
         function decoratePlat(p, w, d, D, b, opts = {}) {
             if (!p || !p.body || opts.skip || opts.flag || opts.landmark || opts.bouncer) return;
             if (Math.min(w, d) < 6) return;
             const chance = obstacleChance(D, b) * (opts.mult || 1);
             if (rng() > chance) return;
-            const deadly = MODE().hazards && !MODE().zen && b >= 1 && rng() < (0.22 + D.t * 0.48);
+            const deadly = MODE().hazards && !MODE().zen && b >= 1 && rng() < (0.24 + D.t * 0.5);
             const ox = (rng() < 0.5 ? 1 : -1) * w * 0.22, oz = (rng() - 0.5) * d * 0.22;
             const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
             createObstacle(p.body.position.x + ox, p.body.position.y, p.body.position.z + oz, w, d, deadly, b, { kind: opts.kind, amp: Math.min(1.5, Math.min(w, d) * 0.14), ...across });
+            
+            // Nei biomi avanzati (b >= 3) su piattaforme ampie: possibilità di secondo pericolo coordinato
+            if (!opts.kind && b >= 3 && Math.min(w, d) >= 11 && !MODE().zen && rng() < (0.28 + D.t * 0.35)) {
+                const deadly2 = MODE().hazards && rng() < (0.35 + D.t * 0.4);
+                createObstacle(p.body.position.x - ox, p.body.position.y, p.body.position.z - oz, w, d, deadly2, b, { amp: Math.min(1.4, Math.min(w, d) * 0.12), dirX: across.dirX, dirZ: across.dirZ });
+            }
         }
         // Rimuove piattaforme e ostacoli molto sotto la vetta raggiunta: meno draw call e broadphase più leggero
         function cullBelow(minY) {
@@ -2972,15 +3157,17 @@
                     const p = plat(w, d, D.gap * 0.75, D.rise * 0.82, (i % 2 === 0 ? 0.55 : -0.3) + 0.15, b, { noProps: true });
                     const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
                     const deadly = MODE().hazards && !MODE().zen && b >= 2 && i === 1 && rng() < 0.45 + D.t * 0.35;
-                    createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w, d, deadly, b, { kind: i % 2 === 0 ? 'sway' : 'sweep', amp: w * 0.2, speed: 0.6 + D.t * 0.2, ...across });
+                    const k = i % 2 === 0 ? (b >= 3 && rng() < 0.45 ? 'stomp' : 'sway') : (b >= 4 && rng() < 0.45 ? 'laser_rotor' : 'sweep');
+                    createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w, d, deadly, b, { kind: k, amp: w * 0.2, speed: 0.65 + D.t * 0.22, ...across });
                 }
                 return n;
             },
             carousel(D, b) {
                 const w = 15 + D.t * 2, p = plat(w, w, D.gap * 0.75, D.rise * 0.8, 0.45, b, { noProps: true });
                 const deadly = MODE().hazards && !MODE().zen && b >= 3 && rng() < 0.4 + D.t * 0.35;
-                createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w * 0.75, w * 0.75, deadly, b, { kind: 'orbit', amp: w * 0.22, speed: 0.65 + D.t * 0.2 });
-                if (b >= 4) createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, 5.5, 5.5, false, b, { kind: 'spin', amp: 0.35, speed: 1.15 });
+                const k = b >= 3 && rng() < 0.55 ? 'laser_rotor' : 'orbit';
+                createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w * 0.75, w * 0.75, deadly, b, { kind: k, amp: w * 0.22, speed: 0.65 + D.t * 0.2 });
+                if (b >= 4) createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, 5.5, 5.5, false, b, { kind: b >= 5 && rng() < 0.5 ? 'plasma_mine' : 'spin', amp: 0.35, speed: 1.15 });
                 return 1;
             },
             longjump(D, b) {
@@ -3012,7 +3199,8 @@
                 for (let i = 0; i < n; i++) {
                     const ang = (i / n) * Math.PI * 2 + rng() * 0.35, r = w * 0.26;
                     const deadly = hazards && b >= 2 && rng() < 0.42 + D.t * 0.4;
-                    createObstacle(p.body.position.x + Math.cos(ang) * r, p.body.position.y, p.body.position.z + Math.sin(ang) * r, w * 0.72, w * 0.72, deadly, b, { kind: i % 2 ? 'orbit' : 'sway', amp: w * 0.16, speed: 0.7 + D.t * 0.2 });
+                    const k = b >= 5 && i % 2 ? 'plasma_mine' : (b >= 3 && i % 2 ? 'stomp' : (b >= 4 && !i ? 'laser_rotor' : (i % 2 ? 'orbit' : 'sway')));
+                    createObstacle(p.body.position.x + Math.cos(ang) * r, p.body.position.y, p.body.position.z + Math.sin(ang) * r, w * 0.72, w * 0.72, deadly, b, { kind: k, amp: w * 0.16, speed: 0.7 + D.t * 0.2 });
                 }
                 return 1;
             },
@@ -3020,8 +3208,9 @@
                 const w = 15 + D.t * 2, d = 11, p = plat(w, d, D.gap * 0.75, D.rise * 0.8, 0.5, b, { noProps: true });
                 const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
                 const deadly = MODE().hazards && b >= 2 && rng() < 0.55 + D.t * 0.3;
-                createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w, d, deadly, b, { kind: 'sweep', amp: w * 0.24, speed: 0.52 + D.t * 0.22, ...across });
-                if (b >= 5) createObstacle(p.body.position.x + across.dirX * w * 0.18, p.body.position.y, p.body.position.z + across.dirZ * d * 0.18, 6, 6, false, b, { kind: 'spin', amp: 0.5, speed: 1.1 });
+                const k = b >= 4 && rng() < 0.4 ? 'pendulum' : (b >= 3 && rng() < 0.4 ? 'stomp' : 'sweep');
+                createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w, d, deadly, b, { kind: k, amp: w * 0.24, speed: 0.55 + D.t * 0.22, ...across });
+                if (b >= 5) createObstacle(p.body.position.x + across.dirX * w * 0.18, p.body.position.y, p.body.position.z + across.dirZ * d * 0.18, 6, 6, false, b, { kind: 'plasma_mine', amp: 0.5, speed: 1.1 });
                 return 1;
             },
             lanes(D, b) {
@@ -3083,8 +3272,9 @@
                 const w = 16 + D.t * 2, p = plat(w, w, D.gap * 0.7, D.rise * 0.8, 0.5, b, { landmark: true, noProps: true });
                 if (MODE().hazards && b >= 1) {
                     const across = { dirX: -Math.sin(gen.angle), dirZ: Math.cos(gen.angle) };
-                    createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w * 0.7, w * 0.7, b >= 3 && rng() < 0.45, b, { kind: 'orbit', amp: w * 0.22, speed: 0.55 + D.t * 0.2 });
-                    if (b >= 5) createObstacle(p.body.position.x + across.dirX * w * 0.15, p.body.position.y, p.body.position.z + across.dirZ * w * 0.15, 5, 5, false, b, { kind: 'spin', amp: 0.4, speed: 1.0 });
+                    const k = b >= 5 && rng() < 0.5 ? 'plasma_mine' : (b >= 3 ? 'laser_rotor' : 'orbit');
+                    createObstacle(p.body.position.x, p.body.position.y, p.body.position.z, w * 0.7, w * 0.7, b >= 3 && rng() < 0.45, b, { kind: k, amp: w * 0.22, speed: 0.58 + D.t * 0.2 });
+                    if (b >= 4) createObstacle(p.body.position.x + across.dirX * w * 0.16, p.body.position.y, p.body.position.z + across.dirZ * w * 0.16, 5, 5, false, b, { kind: 'stomp', amp: 0.4, speed: 1.0 });
                 }
                 plat(D.size, D.size, 1.6, D.rise * 0.75, 0.35, b);
                 return 2;
@@ -3537,7 +3727,7 @@
         $('leaderboard-modal').addEventListener('click', (e) => { if (e.target === $('leaderboard-modal')) closeLeaderboard(); });
 
         /* ---------- Version Badge & Patch Notes Pop-up ---------- */
-        const GAME_VERSION = '2.3.0';
+        const GAME_VERSION = '2.4.0';
         const seenPatch = localStorage.getItem('onlyball_seen_patch') === GAME_VERSION;
         if (seenPatch && $('version-dot')) $('version-dot').classList.add('hidden');
         function openPatchNotes() {
@@ -3774,7 +3964,61 @@
 
             const time = performance.now() * 0.002;
             for (const obs of movingObstacles) {
-                if (obs.kind === 'spin') {
+                if (obs.kind === 'laser_rotor') {
+                    obs.body.angularVelocity.set(0, (obs.deadly ? 2.8 : 2.1) * obs.speed, 0);
+                    const yOff = Math.sin(time * 2.2 + obs.timeOffset) * 0.05;
+                    obs.body.velocity.y = ((obs.baseY + yOff) - obs.body.position.y) * 10;
+                } else if (obs.kind === 'stomp') {
+                    const cycle = 3.4;
+                    const phase = ((time * (obs.speed * 0.72) + obs.timeOffset) % cycle) / cycle;
+                    let yOff = 0;
+                    if (phase < 0.45) {
+                        const t = phase / 0.45;
+                        yOff = Math.sin(t * Math.PI * 0.5) * obs.stompLift;
+                    } else if (phase < 0.65) {
+                        yOff = obs.stompLift + Math.sin(time * 35) * 0.04;
+                        if (obs.mesh && obs.mesh.userData.siren) {
+                            obs.mesh.userData.siren.material.emissiveIntensity = 2.4 + Math.sin(time * 30) * 1.6;
+                        }
+                    } else if (phase < 0.72) {
+                        const t = (phase - 0.65) / 0.07;
+                        yOff = obs.stompLift * (1 - Math.pow(t, 2.5));
+                    } else {
+                        yOff = 0;
+                        if (obs.wasInAir) {
+                            obs.wasInAir = false;
+                            spawnRing(obs.body.position, obs.deadly ? 0xff2e63 : 0xffb830, 1.4);
+                            spawnPuffs(obs.body.position, 6, obs.deadly ? 0xff4070 : 0xffd060, 4);
+                            if (Math.hypot(sphereBody.position.x - obs.body.position.x, sphereBody.position.z - obs.body.position.z) < 22) {
+                                screenShakeIntensity = Math.max(screenShakeIntensity, 0.16);
+                                AudioEngine.playLand(0.85);
+                            }
+                        }
+                    }
+                    if (phase < 0.65) obs.wasInAir = true;
+                    const targetY = obs.baseY + yOff;
+                    obs.body.velocity.x = (obs.baseX - obs.body.position.x) * 14;
+                    obs.body.velocity.y = (targetY - obs.body.position.y) * 20;
+                    obs.body.velocity.z = (obs.baseZ - obs.body.position.z) * 14;
+                } else if (obs.kind === 'plasma_mine') {
+                    const a = time * obs.speed * 0.85 + obs.timeOffset;
+                    const tx = obs.baseX + Math.sin(a) * obs.amp;
+                    const tz = obs.baseZ + Math.sin(a * 2) * (obs.amp * 0.65);
+                    const ty = obs.baseY + Math.sin(time * 2.8 + obs.timeOffset) * 0.28;
+                    obs.body.velocity.x = (tx - obs.body.position.x) * 14;
+                    obs.body.velocity.y = (ty - obs.body.position.y) * 14;
+                    obs.body.velocity.z = (tz - obs.body.position.z) * 14;
+                } else if (obs.kind === 'pendulum') {
+                    const swingAng = Math.sin(time * obs.speed * 1.15 + obs.timeOffset) * 0.88;
+                    const arm = 4.6;
+                    const tx = obs.baseX + Math.sin(swingAng) * arm * obs.dirX;
+                    const tz = obs.baseZ + Math.sin(swingAng) * arm * obs.dirZ;
+                    const ty = (obs.baseY + 4.2) - Math.cos(swingAng) * arm;
+                    obs.body.velocity.x = (tx - obs.body.position.x) * 16;
+                    obs.body.velocity.y = (ty - obs.body.position.y) * 16;
+                    obs.body.velocity.z = (tz - obs.body.position.z) * 16;
+                    obs.body.quaternion.setFromAxisAngle(new CANNON.Vec3(obs.dirZ, 0, -obs.dirX), swingAng);
+                } else if (obs.kind === 'spin') {
                     obs.body.angularVelocity.set(0, 2.3 * obs.speed, 0);
                     const yOff = Math.sin(time * 2.5 + obs.timeOffset) * 0.07;
                     obs.body.velocity.y = ((obs.baseY + yOff) - obs.body.position.y) * 10;
@@ -3818,6 +4062,17 @@
 
             for (const obs of movingObstacles) {
                 obs.mesh.position.copy(obs.body.position); obs.mesh.quaternion.copy(obs.body.quaternion);
+                if (obs.mesh.userData.innerRing) {
+                    obs.mesh.userData.innerRing.rotation.x += 0.04 * obs.speed;
+                    obs.mesh.userData.outerRing.rotation.z -= 0.032 * obs.speed;
+                    if (obs.mesh.userData.core) {
+                        const pulse = 1 + Math.sin(time * 4 + obs.timeOffset) * 0.12;
+                        obs.mesh.userData.core.scale.set(pulse, pulse, pulse);
+                    }
+                }
+                if (obs.mesh.userData.visor) {
+                    obs.mesh.userData.visor.material.opacity = 0.75 + Math.sin(time * 6 + obs.timeOffset) * 0.25;
+                }
             }
             for (const prop of sceneProps) prop.rotation.y += prop.userData.spin || 0.01;
             for (const lm of landmarks) { const sp = lm.userData.spin; if (sp) { (lm.userData.spinTarget || [lm]).forEach(t => { t.rotation.y += sp; }); if (lm.userData.rings) lm.children.forEach((r, i) => { if (r.userData.spinAxis !== undefined) { r.rotation.x += sp * (i % 2 ? 1 : -0.6); r.rotation.z += sp * 0.5; } }); } if (lm.userData.pulse) lm.userData.pulse.material.emissiveIntensity = 1.2 + Math.sin(time * 3) * 0.5; }
