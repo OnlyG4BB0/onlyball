@@ -553,6 +553,46 @@
         #tutorial-coach kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25); border-bottom-width: 3px; font-family: inherit; font-weight: 700; color: var(--sun-2); }
 
         /* ---------- Settings Modals & Sliders ---------- */
+        #settings-menu { z-index: 70; }
+        .settings-panel {
+            width: min(92vw, 540px);
+            max-height: min(88vh, 680px);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow: hidden;
+        }
+        .settings-header {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-bottom: 2px;
+        }
+        .settings-header h2 {
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            font-size: clamp(1.2rem, 3.4vw, 1.55rem);
+        }
+        .settings-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-right: 6px;
+            padding-bottom: 4px;
+        }
+        .settings-footer {
+            flex-shrink: 0;
+            padding-top: 4px;
+        }
         .setting { display: flex; flex-direction: column; gap: 7px; }
         .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; border-radius: 16px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); }
         .setting label, .setting-row .lbl { display: inline-flex; align-items: center; gap: 9px; font-weight: 600; font-size: clamp(.78rem, 2vw, .92rem); color: #ece8ff; }
@@ -1150,37 +1190,45 @@
     </div>
 
     <!-- IMPOSTAZIONI -->
-    <div id="settings-menu" class="screen overlay hidden">
-        <div class="panel">
-            <h2>Impostazioni</h2>
-            <div class="settings-group">Audio</div>
-            <div class="setting"><label for="vol-slider"><svg class="i"><use href="#i-volume"/></svg> Effetti</label><input type="range" id="vol-slider" min="0" max="100" value="60"></div>
-            <div class="setting"><label for="music-slider"><svg class="i"><use href="#i-music"/></svg> Musica</label><input type="range" id="music-slider" min="0" max="100" value="40"></div>
-            <div class="setting"><label for="amb-slider"><svg class="i"><use href="#i-wind"/></svg> Ambiente</label><input type="range" id="amb-slider" min="0" max="100" value="50"></div>
-            <div class="setting-row"><span class="lbl"><svg class="i"><use href="#i-volume"/></svg><span>Audio attivo<small>Disattiva tutto l'audio del gioco</small></span></span><label class="switch"><input type="checkbox" id="mute-toggle" checked><span></span></label></div>
-            <div class="settings-group">Grafica</div>
-            <div class="setting"><label for="sens-slider"><svg class="i"><use href="#i-sun"/></svg> Sensibilità visuale</label><input type="range" id="sens-slider" min="20" max="200" value="100"></div>
-            <div class="setting">
-                <label for="res-select"><svg class="i"><use href="#i-monitor"/></svg> Qualità grafica</label>
-                <select id="res-select" class="select">
-                    <option value="ultra">Ultra (riflessi in tempo reale)</option>
-                    <option value="high">Alta</option>
-                    <option value="medium" selected>Media (consigliata)</option>
-                    <option value="low">Bassa (dispositivi lenti)</option>
-                </select>
+    <div id="settings-menu" class="screen overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="panel settings-panel">
+            <div class="settings-header">
+                <h2 id="settings-title"><svg class="i" style="color:var(--sun);"><use href="#i-gear"/></svg> Impostazioni</h2>
             </div>
-            <div class="setting-row"><span class="lbl"><svg class="i"><use href="#i-shadow"/></svg><span>Ombre dinamiche</span></span><label class="switch"><input type="checkbox" id="shadow-toggle" checked><span></span></label></div>
-            <div class="settings-group">Controlli</div>
-            <div class="setting-row"><span class="lbl"><svg class="i"><use href="#i-vibrate"/></svg><span>Vibrazione<small>solo dispositivi compatibili</small></span></span><label class="switch"><input type="checkbox" id="vibrate-toggle" checked><span></span></label></div>
-            <div class="setting">
-                <label for="touch-select"><svg class="i"><use href="#i-touch"/></svg> Controlli touch</label>
-                <select id="touch-select" class="select">
-                    <option value="auto" selected>Automatico</option>
-                    <option value="on">Sempre attivi</option>
-                    <option value="off">Disattivati</option>
-                </select>
+            <div class="settings-body">
+                <div class="settings-group">Audio</div>
+                <div class="setting"><label for="vol-slider"><svg class="i"><use href="#i-volume"/></svg> Effetti</label><input type="range" id="vol-slider" min="0" max="100" value="60"></div>
+                <div class="setting"><label for="music-slider"><svg class="i"><use href="#i-music"/></svg> Musica</label><input type="range" id="music-slider" min="0" max="100" value="40"></div>
+                <div class="setting"><label for="amb-slider"><svg class="i"><use href="#i-wind"/></svg> Ambiente</label><input type="range" id="amb-slider" min="0" max="100" value="50"></div>
+                <div class="setting-row"><span class="lbl"><svg class="i"><use href="#i-volume"/></svg><span>Audio attivo<small>Disattiva tutto l'audio del gioco</small></span></span><label class="switch"><input type="checkbox" id="mute-toggle" checked><span></span></label></div>
+                
+                <div class="settings-group">Grafica</div>
+                <div class="setting"><label for="sens-slider"><svg class="i"><use href="#i-sun"/></svg> Sensibilità visuale</label><input type="range" id="sens-slider" min="20" max="200" value="100"></div>
+                <div class="setting">
+                    <label for="res-select"><svg class="i"><use href="#i-monitor"/></svg> Qualità grafica</label>
+                    <select id="res-select" class="select">
+                        <option value="ultra">Ultra (riflessi in tempo reale)</option>
+                        <option value="high">Alta</option>
+                        <option value="medium" selected>Media (consigliata)</option>
+                        <option value="low">Bassa (dispositivi lenti)</option>
+                    </select>
+                </div>
+                <div class="setting-row"><span class="lbl"><svg class="i"><use href="#i-shadow"/></svg><span>Ombre dinamiche</span></span><label class="switch"><input type="checkbox" id="shadow-toggle" checked><span></span></label></div>
+                
+                <div class="settings-group">Controlli</div>
+                <div class="setting-row"><span class="lbl"><svg class="i"><use href="#i-vibrate"/></svg><span>Vibrazione<small>solo dispositivi compatibili</small></span></span><label class="switch"><input type="checkbox" id="vibrate-toggle" checked><span></span></label></div>
+                <div class="setting">
+                    <label for="touch-select"><svg class="i"><use href="#i-touch"/></svg> Controlli touch</label>
+                    <select id="touch-select" class="select">
+                        <option value="auto" selected>Automatico</option>
+                        <option value="on">Sempre attivi</option>
+                        <option value="off">Disattivati</option>
+                    </select>
+                </div>
             </div>
-            <button id="btn-close-settings" class="btn btn-sky btn-block"><svg class="i"><use href="#i-check"/></svg> Salva e chiudi</button>
+            <div class="settings-footer">
+                <button id="btn-close-settings" class="btn btn-sky btn-block"><svg class="i"><use href="#i-check"/></svg> Salva e chiudi</button>
+            </div>
         </div>
     </div>
 
@@ -3585,6 +3633,7 @@
             gameState = previousState; showScreen(previousState === 'menu' ? 'main-menu' : 'pause-menu'); applyGraphicsSettings();
         }
         $('btn-close-settings').addEventListener('click', () => { AudioEngine.playUI(); closeSettings(); });
+        $('settings-menu').addEventListener('click', (e) => { if (e.target === $('settings-menu')) closeSettings(); });
         $('vol-slider').addEventListener('input', (e) => { settings.sfx = parseInt(e.target.value); Audio.applyVolumes(); saveSettings(); });
         $('vol-slider').addEventListener('change', () => AudioEngine.playUI());
         $('music-slider').addEventListener('input', (e) => { settings.music = parseInt(e.target.value); Audio.applyVolumes(); saveSettings(); });
