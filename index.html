@@ -393,7 +393,7 @@
     <button id="version-badge" class="version-badge" type="button" title="Visualizza le Patch Notes">
         <span id="version-dot" class="v-dot"></span>
         <svg class="i" style="color:var(--sky);"><use href="#i-notes"/></svg>
-        <span class="v-num" id="version-num">v2.6.0</span>
+        <span class="v-num" id="version-num">v2.6.1</span>
         <span class="v-sep">&middot;</span>
         <span class="v-label">Patch Notes</span>
     </button>
@@ -413,7 +413,7 @@
 
                 <!-- Scheda Crea Stanza -->
                 <div id="mp-view-create" class="mp-view">
-                    <p class="sub" style="margin: 0; text-align: center;">Crea una stanza e condividi il codice o il link per sfidare un amico in tempo reale sulla stessa scalata.</p>
+                    <p class="sub" style="margin: 0; text-align: center;">Crea una stanza (fino a 4 giocatori) e condividi il codice o il link per iniziare la gara.</p>
                     <div class="room-code-card">
                         <span class="room-code-label">Codice Stanza</span>
                         <div class="room-code-val" id="mp-create-code">...</div>
@@ -422,8 +422,18 @@
                             <button id="btn-copy-link" class="btn btn-ghost btn-sm" type="button"><svg class="i"><use href="#i-link"/></svg> Copia Link Gara</button>
                         </div>
                     </div>
-                    <div class="mp-status" id="mp-host-status">
-                        <span class="status-dot pulse"></span> In attesa dell'avversario...
+                    <div class="mp-lobby-section">
+                        <div class="mp-lobby-head">
+                            <span>Giocatori in Stanza</span>
+                            <span class="chip chip-mint" id="mp-player-count">1/4</span>
+                        </div>
+                        <div class="mp-slots-grid" id="mp-slots-list"></div>
+                        <button id="btn-start-mp-game" class="btn btn-primary btn-block" type="button" style="margin-top: 8px;">
+                            <svg class="i"><use href="#i-play"/></svg> Inizia Gara Subito
+                        </button>
+                    </div>
+                    <div class="mp-status" id="mp-host-status" style="margin-top: 8px;">
+                        <span class="status-dot pulse"></span> Creazione stanza sui server P2P...
                     </div>
                 </div>
 
@@ -453,12 +463,12 @@
         <div class="panel patch-panel">
             <div class="patch-header">
                 <h2 id="patch-modal-title"><svg class="i" style="color:var(--sun);"><use href="#i-notes"/></svg> Patch Notes</h2>
-                <span class="chip chip-gold" id="patch-ver-chip">v2.6.0</span>
+                <span class="chip chip-gold" id="patch-ver-chip">v2.6.1</span>
             </div>
             <div class="patch-list">
                                 <div class="patch-card latest">
                     <div class="patch-card-head">
-                        <span class="patch-ver">v2.6.0 — Multigiocatore Online fino a 4 Giocatori <span class="patch-tag">Nuovo</span></span>
+                        <span class="patch-ver">v2.6.1 — Multigiocatore Online fino a 4 Giocatori <span class="patch-tag">Nuovo</span></span>
                         <span class="patch-date">Ultimo aggiornamento</span>
                     </div>
                     <ul class="patch-items">

@@ -40,6 +40,7 @@ const Multiplayer = {
     lastSendTime: 0,
     sendInterval: 1000 / 30, // 30 FPS sync
     activeJoinTimeout: null,
+    autoStartTimer: null,
 
     normalizeRoomCode(raw) {
         if (!raw) return '';
@@ -244,6 +245,35 @@ const Multiplayer = {
             this.updateLobbyUI();
             this.updateLeaderboardHUD();
             if (onPlayerUpdate) onPlayerUpdate();
+
+            // Auto-start con conto alla rovescia (Host puo cliccare Inizia Gara in qualsiasi momento)
+            if (gameState !== 'playing') {
+                let secondsLeft = 3;
+                if (this.autoStartTimer) clearInterval(this.autoStartTimer);
+
+                const updateCountdownUI = () => {
+                    const btn = $('btn-start-mp-game');
+                    if (btn) {
+                        btn.innerHTML = `<svg class="i"><use href="#i-play"/></svg> 🚀 Inizia Gara (${this.connections.size + 1}/4) — Via tra ${secondsLeft}s`;
+                    }
+                    const hostStatus = $('mp-host-status');
+                    if (hostStatus) {
+                        hostStatus.innerHTML = `<span class="status-dot" style="background:var(--mint)"></span> ${guestName} è entrato! Partenza automatica tra <b>${secondsLeft}s</b> (o clicca Inizia Gara subito)`;
+                    }
+                };
+
+                updateCountdownUI();
+                this.autoStartTimer = setInterval(() => {
+                    secondsLeft--;
+                    if (secondsLeft <= 0) {
+                        clearInterval(this.autoStartTimer);
+                        this.autoStartTimer = null;
+                        this.startMatchAsHost();
+                    } else {
+                        updateCountdownUI();
+                    }
+                }, 1000);
+            }
 
         } else if (data.type === 'state') {
             const guestPeerId = dataConn.peer;
@@ -512,6 +542,10 @@ const Multiplayer = {
        ========================================================================== */
     startMatchAsHost() {
         if (!this.isHost) return;
+        if (this.autoStartTimer) {
+            clearInterval(this.autoStartTimer);
+            this.autoStartTimer = null;
+        }
         this.broadcastToGuests({ type: 'start_match' });
         this.startMultiplayerMatch();
     },
@@ -764,10 +798,13 @@ const Multiplayer = {
         if (startBtn) {
             if (this.isHost) {
                 startBtn.classList.remove('hidden');
-                startBtn.disabled = (players.length < 2);
-                startBtn.innerHTML = (players.length < 2)
-                    ? `<svg class="i"><use href="#i-play"/></svg> In attesa di amici (1/4)...`
-                    : `<svg class="i"><use href="#i-play"/></svg> Inizia Gara (${players.length}/4 Giocatori)`;
+                startBtn.disabled = false;
+                if (!this.autoStartTimer) {
+                    const total = players.length;
+                    startBtn.innerHTML = (total < 2)
+                        ? `<svg class="i"><use href="#i-play"/></svg> Inizia Gara Subito (in attesa di amici)`
+                        : `<svg class="i"><use href="#i-play"/></svg> 🚀 Inizia Gara (${total}/4 Giocatori)`;
+                }
             } else {
                 startBtn.classList.add('hidden');
             }
@@ -869,6 +906,10 @@ const Multiplayer = {
 
     leaveRoom() {
         this.connected = false;
+        if (this.autoStartTimer) {
+            clearInterval(this.autoStartTimer);
+            this.autoStartTimer = null;
+        }
         if (this.activeJoinTimeout) {
             clearTimeout(this.activeJoinTimeout);
             this.activeJoinTimeout = null;
