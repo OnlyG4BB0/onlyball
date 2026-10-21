@@ -39,7 +39,29 @@
         // Un dispositivo desktop con touch (o un browser in "modalità desktop") attiva i controlli al primo tocco
         window.addEventListener('touchstart', () => { if (settings.touch === 'auto' && !touchUI) setTouchUI(true); }, { passive: true, once: true });
 
-        const vibrate = (pattern) => { if (settings.vibrate && navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} } };
+        const vibrate = (pattern) => {
+            if (!settings.vibrate) return;
+            if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} }
+            try {
+                if (navigator.getGamepads) {
+                    const pads = navigator.getGamepads();
+                    if (pads) {
+                        const dur = Array.isArray(pattern) ? (pattern[0] || 35) : (pattern || 35);
+                        for (let i = 0; i < pads.length; i++) {
+                            const p = pads[i];
+                            if (p && p.connected && p.vibrationActuator && typeof p.vibrationActuator.playEffect === 'function') {
+                                p.vibrationActuator.playEffect('dual-rumble', {
+                                    startDelay: 0,
+                                    duration: Math.min(200, dur * 2.2),
+                                    weakMagnitude: 0.45,
+                                    strongMagnitude: 0.55
+                                }).catch(() => {});
+                            }
+                        }
+                    }
+                }
+            } catch (e) {}
+        };
 
         let camYaw = Math.PI, camPitch = 0.3, camDistance = 12;
         let gameState = 'menu', lastGameState = 'menu', previousState = 'menu';

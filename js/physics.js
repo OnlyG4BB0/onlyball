@@ -53,40 +53,209 @@
             camYaw -= movX * sens; camPitch += movY * sens; camPitch = clamp(camPitch, 0.1, Math.PI / 2 - 0.1);
         });
         document.addEventListener('wheel', (e) => { if (gameState !== 'playing' || touchUI) return; camDistance = clamp(camDistance + e.deltaY * 0.02, 5, 30); }, { passive: true });
-        window.addEventListener('gamepadconnected', () => $('gamepad-status').classList.remove('hidden'));
+        window.addEventListener('gamepadconnected', (e) => {
+            const el = $('gamepad-status');
+            if (el) el.classList.remove('hidden');
+            const name = (e && e.gamepad && e.gamepad.id) ? e.gamepad.id.split('(')[0].trim() : 'Controller';
+            if (typeof showEvent === 'function') showEvent(`🎮 ${name} collegato!`, 'good', 2200);
+        });
+        window.addEventListener('gamepaddisconnected', () => {
+            const el = $('gamepad-status');
+            if (el) el.classList.add('hidden');
+            if (typeof showEvent === 'function') showEvent('🎮 Controller disconnesso', 'bad', 2000);
+        });
+
+        const gpButtonPrevState = {};
+        function wasJustPressed(key, isDown) {
+            const prev = !!gpButtonPrevState[key];
+            gpButtonPrevState[key] = isDown;
+            return isDown && !prev;
+        }
+        function wasJustReleased(key, isDown) {
+            const prev = !!gpButtonPrevState[key];
+            gpButtonPrevState[key] = isDown;
+            return !isDown && prev;
+        }
+
+        function getActiveGamepad() {
+            if (!navigator.getGamepads) return null;
+            try {
+                const pads = navigator.getGamepads();
+                if (!pads) return null;
+                for (let i = 0; i < pads.length; i++) {
+                    const p = pads[i];
+                    if (p && p.connected) return p;
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        function isGpBtn(gp, idx) {
+            if (!gp || !gp.buttons) return false;
+            const b = gp.buttons[idx];
+            if (!b) return false;
+            return typeof b === 'object' ? !!b.pressed : b > 0.5;
+        }
+
+        function getGpAxis(gp, idx, deadzone = 0.12) {
+            if (!gp || !gp.axes) return 0;
+            const val = gp.axes[idx];
+            if (typeof val !== 'number' || isNaN(val)) return 0;
+            if (Math.abs(val) < deadzone) return 0;
+            const sign = Math.sign(val);
+            return sign * ((Math.abs(val) - deadzone) / (1 - deadzone));
+        }
 
         function processGamepad() {
-            let gp = null; try { const pads = navigator.getGamepads ? navigator.getGamepads() : []; gp = pads && pads[0]; } catch (e) {}
-            if (!gp) return { x: 0, y: 0, active: false };
-            if (gameState !== lastGameState && gameState !== 'console') { focusIndex = 0; const cMenu = menuGroups[gameState]; if (cMenu && $(cMenu[0])) $(cMenu[0]).focus(); lastGameState = gameState; }
-            const A = gp.buttons[0].pressed, Y = gp.buttons[3].pressed, Start = gp.buttons[9] ? gp.buttons[9].pressed : false;
-            const D_Up = gp.buttons[12].pressed, D_Down = gp.buttons[13].pressed, D_Left = gp.buttons[14].pressed, D_Right = gp.buttons[15].pressed;
-            if (Start && !lastGpButtons[9]) { if (gameState === 'playing') openPauseMenu(); else if (gameState === 'paused') resumeGame(); else if (gameState === 'credits') returnToMenuFromCredits(); }
-            if (Y && !lastGpButtons[3] && gameState === 'playing' && MODE().fall !== 'gameover') triggerRespawn(true);
-            if (A && !lastGpButtons[0]) { if (gameState === 'playing') keys.space = true; else if (gameState === 'credits') returnToMenuFromCredits(); }
-            if (!A && lastGpButtons[0] && gameState === 'playing') keys.space = false;
-            if (gameState !== 'playing' && gameState !== 'credits' && gameState !== 'console') {
-                const currentMenu = menuGroups[gameState];
-                if (currentMenu && currentMenu.length > 0) {
-                    if (D_Up && !lastGpButtons[12]) { focusIndex = (focusIndex - 1 + currentMenu.length) % currentMenu.length; $(currentMenu[focusIndex]).focus(); }
-                    if (D_Down && !lastGpButtons[13]) { focusIndex = (focusIndex + 1) % currentMenu.length; $(currentMenu[focusIndex]).focus(); }
-                    if (A && !lastGpButtons[0]) $(currentMenu[focusIndex]).click();
-                    const focusedId = currentMenu[focusIndex];
-                    if (focusedId.endsWith('-slider')) {
-                        const slider = $(focusedId);
-                        if (D_Left && !lastGpButtons[14]) { slider.value = Math.max(parseInt(slider.min), parseInt(slider.value) - 5); slider.dispatchEvent(new Event('input')); }
-                        if (D_Right && !lastGpButtons[15]) { slider.value = Math.min(parseInt(slider.max), parseInt(slider.value) + 5); slider.dispatchEvent(new Event('input')); }
-                    } else if (gameState === 'skins') { if (D_Left && !lastGpButtons[14]) $('btn-skin-prev').click(); if (D_Right && !lastGpButtons[15]) $('btn-skin-next').click(); }
-                    else if (gameState === 'menu') { if (D_Left && !lastGpButtons[14]) cycleMode(-1); if (D_Right && !lastGpButtons[15]) cycleMode(1); }
+            try {
+                const gp = getActiveGamepad();
+                const statusEl = $('gamepad-status');
+                if (statusEl) {
+                    if (gp && statusEl.classList.contains('hidden')) statusEl.classList.remove('hidden');
+                    else if (!gp && !statusEl.classList.contains('hidden')) statusEl.classList.add('hidden');
                 }
+                if (!gp) return { x: 0, y: 0, active: false };
+
+                // Gestione focus cambio menu
+                if (gameState !== lastGameState && gameState !== 'console') {
+                    focusIndex = 0;
+                    const cMenu = menuGroups[gameState];
+                    if (cMenu && cMenu.length > 0) {
+                        const firstEl = $(cMenu[0]);
+                        if (firstEl && typeof firstEl.focus === 'function') firstEl.focus();
+                    }
+                    lastGameState = gameState;
+                }
+
+                // Switch Pro Controller & Generic mappings:
+                // Tasto Salto: B (btn 0) o A (btn 1) o R1 (btn 5)
+                const isJumpDown = isGpBtn(gp, 0) || isGpBtn(gp, 1) || isGpBtn(gp, 5);
+                // Tasto Respawn: Y (btn 3) o X (btn 2)
+                const isRespawnDown = isGpBtn(gp, 3) || isGpBtn(gp, 2);
+                // Tasto Pausa: Start/+ (btn 9) o Select/- (btn 8)
+                const isStartDown = isGpBtn(gp, 9) || isGpBtn(gp, 8);
+
+                // D-Pad con fallback su Stick sinistro per navigazione menu
+                const stickNavX = getGpAxis(gp, 0, 0.45);
+                const stickNavY = getGpAxis(gp, 1, 0.45);
+                let dUp = isGpBtn(gp, 12) || (stickNavY < -0.5);
+                let dDown = isGpBtn(gp, 13) || (stickNavY > 0.5);
+                let dLeft = isGpBtn(gp, 14) || (stickNavX < -0.5);
+                let dRight = isGpBtn(gp, 15) || (stickNavX > 0.5);
+
+                // Gestione hat switch aggiuntivo se presente su assi 4/5 (comune su vecchi driver DirectInput Switch)
+                if (gp.axes && gp.axes.length >= 6) {
+                    const ax4 = gp.axes[4], ax5 = gp.axes[5];
+                    if (typeof ax4 === 'number' && !isNaN(ax4) && Math.abs(ax4) > 0.5) {
+                        if (ax4 > 0.5) dRight = true; else if (ax4 < -0.5) dLeft = true;
+                    }
+                    if (typeof ax5 === 'number' && !isNaN(ax5) && Math.abs(ax5) > 0.5) {
+                        if (ax5 > 0.5) dDown = true; else if (ax5 < -0.5) dUp = true;
+                    }
+                }
+
+                // Eventi single-press (edge detection sicura)
+                const startTriggered = wasJustPressed('start', isStartDown);
+                const respawnTriggered = wasJustPressed('respawn', isRespawnDown);
+                const jumpTriggered = wasJustPressed('jump', isJumpDown);
+                const jumpReleased = wasJustReleased('jump', isJumpDown);
+
+                const dUpTriggered = wasJustPressed('dUp', dUp);
+                const dDownTriggered = wasJustPressed('dDown', dDown);
+                const dLeftTriggered = wasJustPressed('dLeft', dLeft);
+                const dRightTriggered = wasJustPressed('dRight', dRight);
+
+                // Pausa / Riprendi
+                if (startTriggered) {
+                    if (gameState === 'playing') openPauseMenu();
+                    else if (gameState === 'paused') resumeGame();
+                    else if (gameState === 'credits') returnToMenuFromCredits();
+                }
+
+                // Respawn manuale
+                if (respawnTriggered && gameState === 'playing' && MODE().fall !== 'gameover') {
+                    triggerRespawn(true);
+                }
+
+                // Salto in gioco
+                if (jumpTriggered) {
+                    if (gameState === 'playing') keys.space = true;
+                    else if (gameState === 'credits') returnToMenuFromCredits();
+                }
+                if (jumpReleased && gameState === 'playing') {
+                    keys.space = false;
+                }
+
+                // Navigazione Menu
+                if (gameState !== 'playing' && gameState !== 'credits' && gameState !== 'console') {
+                    const currentMenu = menuGroups[gameState];
+                    if (currentMenu && currentMenu.length > 0) {
+                        if (dUpTriggered) {
+                            focusIndex = (focusIndex - 1 + currentMenu.length) % currentMenu.length;
+                            const el = $(currentMenu[focusIndex]);
+                            if (el && typeof el.focus === 'function') el.focus();
+                        }
+                        if (dDownTriggered) {
+                            focusIndex = (focusIndex + 1) % currentMenu.length;
+                            const el = $(currentMenu[focusIndex]);
+                            if (el && typeof el.focus === 'function') el.focus();
+                        }
+                        if (jumpTriggered) {
+                            const el = $(currentMenu[focusIndex]);
+                            if (el && typeof el.click === 'function') el.click();
+                        }
+                        const focusedId = currentMenu[focusIndex];
+                        if (focusedId) {
+                            if (focusedId.endsWith('-slider')) {
+                                const slider = $(focusedId);
+                                if (slider) {
+                                    if (dLeftTriggered) {
+                                        slider.value = Math.max(parseInt(slider.min) || 0, (parseInt(slider.value) || 0) - 5);
+                                        slider.dispatchEvent(new Event('input'));
+                                    }
+                                    if (dRightTriggered) {
+                                        slider.value = Math.min(parseInt(slider.max) || 100, (parseInt(slider.value) || 0) + 5);
+                                        slider.dispatchEvent(new Event('input'));
+                                    }
+                                }
+                            } else if (gameState === 'skins') {
+                                if (dLeftTriggered && $('btn-skin-prev')) $('btn-skin-prev').click();
+                                if (dRightTriggered && $('btn-skin-next')) $('btn-skin-next').click();
+                            } else if (gameState === 'menu') {
+                                if (dLeftTriggered) cycleMode(-1);
+                                if (dRightTriggered) cycleMode(1);
+                            }
+                        }
+                    }
+                }
+
+                // Telecamera: Levette analogiche destra (assi 2 e 3)
+                if (gameState === 'playing' || gameState === 'skins') {
+                    const lookX = getGpAxis(gp, 2, 0.15);
+                    const lookY = getGpAxis(gp, 3, 0.15);
+                    const sens = 0.04 * (settings.sens / 100);
+                    if (lookX !== 0) camYaw -= lookX * sens;
+                    if (lookY !== 0) {
+                        camPitch += lookY * sens;
+                        camPitch = clamp(camPitch, 0.1, Math.PI / 2 - 0.1);
+                    }
+                }
+
+                // Sincronizza stato tasti per retrocompatibilita
+                if (gp.buttons) {
+                    for (let i = 0; i < gp.buttons.length; i++) {
+                        lastGpButtons[i] = isGpBtn(gp, i);
+                    }
+                }
+
+                // Movimento: Levetta analogica sinistra (assi 0 e 1)
+                const moveX = getGpAxis(gp, 0, 0.12);
+                const moveY = -getGpAxis(gp, 1, 0.12);
+                return { x: moveX, y: moveY, active: (moveX !== 0 || moveY !== 0) };
+            } catch (err) {
+                console.warn('[Gamepad] Errore in processGamepad protetto:', err);
+                return { x: 0, y: 0, active: false };
             }
-            if (gameState === 'playing' || gameState === 'skins') {
-                const lookX = gp.axes[2] || 0, lookY = gp.axes[3] || 0, sens = 0.04 * (settings.sens / 100);
-                if (Math.abs(lookX) > 0.1) camYaw -= lookX * sens; if (Math.abs(lookY) > 0.1) camPitch += lookY * sens; camPitch = clamp(camPitch, 0.1, Math.PI / 2 - 0.1);
-            }
-            for (let i = 0; i < gp.buttons.length; i++) lastGpButtons[i] = gp.buttons[i].pressed;
-            const moveX = Math.abs(gp.axes[0]) > 0.1 ? gp.axes[0] : 0, moveY = Math.abs(gp.axes[1]) > 0.1 ? -gp.axes[1] : 0;
-            return { x: moveX, y: moveY, active: (moveX !== 0 || moveY !== 0) };
         }
 
 /* ==========================================================================
