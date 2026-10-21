@@ -342,6 +342,7 @@ function initHostRoom() {
     const statusEl = $('mp-host-status');
     if (codeEl) codeEl.textContent = '...';
     if (statusEl) statusEl.innerHTML = '<span class="status-dot pulse"></span> Creazione stanza sui server P2P...';
+    Multiplayer.updateLobbyUI();
 
     Multiplayer.createRoom(
         (code) => {

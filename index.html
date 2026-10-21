@@ -393,7 +393,7 @@
     <button id="version-badge" class="version-badge" type="button" title="Visualizza le Patch Notes">
         <span id="version-dot" class="v-dot"></span>
         <svg class="i" style="color:var(--sky);"><use href="#i-notes"/></svg>
-        <span class="v-num" id="version-num">v2.6.1</span>
+        <span class="v-num" id="version-num">v2.6.2</span>
         <span class="v-sep">&middot;</span>
         <span class="v-label">Patch Notes</span>
     </button>
@@ -421,6 +421,15 @@
                             <button id="btn-copy-code" class="btn btn-ghost btn-sm" type="button"><svg class="i"><use href="#i-copy"/></svg> Copia Codice</button>
                             <button id="btn-copy-link" class="btn btn-ghost btn-sm" type="button"><svg class="i"><use href="#i-link"/></svg> Copia Link Gara</button>
                         </div>
+                    </div>
+                    <!-- Selettore Modalità di Gioco in Lobby -->
+                    <div class="mp-mode-section">
+                        <div class="mp-mode-header">
+                            <span><svg class="i" style="color:var(--mint);"><use href="#i-flag"/></svg> Modalità di Gioco</span>
+                            <span class="chip chip-mint" id="mp-lobby-mode-chip">Classica</span>
+                        </div>
+                        <div class="mp-mode-selector" id="mp-lobby-modes"></div>
+                        <div class="mp-mode-desc-text" id="mp-lobby-mode-desc">Checkpoint ogni 70 m. Se cadi riparti dall'ultimo checkpoint.</div>
                     </div>
                     <div class="mp-lobby-section">
                         <div class="mp-lobby-head">
@@ -463,13 +472,25 @@
         <div class="panel patch-panel">
             <div class="patch-header">
                 <h2 id="patch-modal-title"><svg class="i" style="color:var(--sun);"><use href="#i-notes"/></svg> Patch Notes</h2>
-                <span class="chip chip-gold" id="patch-ver-chip">v2.6.1</span>
+                <span class="chip chip-gold" id="patch-ver-chip">v2.6.2</span>
             </div>
             <div class="patch-list">
-                                <div class="patch-card latest">
+                <div class="patch-card latest">
                     <div class="patch-card-head">
-                        <span class="patch-ver">v2.6.1 — Multigiocatore Online fino a 4 Giocatori <span class="patch-tag">Nuovo</span></span>
+                        <span class="patch-ver">v2.6.2 — Sincronizzazione Mappe P2P, Skin Personali &amp; Selettore Modalità in Lobby <span class="patch-tag">Nuovo</span></span>
                         <span class="patch-date">Ultimo aggiornamento</span>
+                    </div>
+                    <ul class="patch-items">
+                        <li><strong>Sincronizzazione Perfetta dei Percorsi:</strong> Risolto il bug di desincronizzazione della generazione procedurale su riavvio partita. Ora Host e Ospiti generano al millimetro la stessa identica sequenza di piattaforme, ostacoli e biomi, eliminando le cadute fantasma nel vuoto.</li>
+                        <li><strong>Snap Istantaneo su Teleport / Respawn:</strong> Eliminato il trascinamento a mezz'aria dei giocatori al respawn dopo una caduta o un checkpoint; la sfera 3D scatta immediatamente al punto esatto.</li>
+                        <li><strong>Supporto Completo Skin Personali in Multiplayer:</strong> Le skin personalizzate caricate da file vengono salvate in memoria locale e trasmesse in tempo reale via WebRTC, apparendo con texture ad alta definizione sulla sfera 3D degli avversari nella lobby e in pista.</li>
+                        <li><strong>Selettore Modalità Direttamente dalla Lobby Online:</strong> Il Capostanza può ora selezionare comodamente la modalità di gioco (Classica, Hardcore, Lava Crescente, Contro il Tempo, Zen) direttamente dall'interfaccia della stanza, sincronizzandola all'istante con tutti gli ospiti.</li>
+                    </ul>
+                </div>
+                <div class="patch-card">
+                    <div class="patch-card-head">
+                        <span class="patch-ver">v2.6.1 — Multigiocatore Online fino a 4 Giocatori</span>
+                        <span class="patch-date">Aggiornamento precedente</span>
                     </div>
                     <ul class="patch-items">
                         <li><strong>Lobby Online fino a 4 Giocatori:</strong> Entra in gara con un massimo di 4 giocatori contemporanei nella stessa stanza (1 Host + 3 Ospiti) via WebRTC. Topologia a Stella ad altissima efficienza e latenza minima.</li>
@@ -600,14 +621,14 @@
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 
     <!-- MODULI DI GIOCO ONLY BALL -->
-    <script src="js/config.js?v=2.5.1"></script>
-    <script src="js/audio.js?v=2.5.1"></script>
-    <script src="js/engine.js?v=2.5.1"></script>
-    <script src="js/textures.js?v=2.5.1"></script>
-    <script src="js/world.js?v=2.5.1"></script>
-    <script src="js/physics.js?v=2.5.1"></script>
-    <script src="js/p2p.js?v=2.5.1"></script>
-    <script src="js/ui.js?v=2.5.1"></script>
-    <script src="js/main.js?v=2.5.1"></script>
+    <script src="js/config.js?v=2.6.2"></script>
+    <script src="js/audio.js?v=2.6.2"></script>
+    <script src="js/engine.js?v=2.6.2"></script>
+    <script src="js/textures.js?v=2.6.2"></script>
+    <script src="js/world.js?v=2.6.2"></script>
+    <script src="js/physics.js?v=2.6.2"></script>
+    <script src="js/p2p.js?v=2.6.2"></script>
+    <script src="js/ui.js?v=2.6.2"></script>
+    <script src="js/main.js?v=2.6.2"></script>
 </body>
 </html>

@@ -583,8 +583,27 @@
         // Migrazione: la skin brand "Only Ball" è ora la prima; gli indici salvati in precedenza scalano di uno
         let currentSkinIndex = parseInt(localStorage.getItem('onlyball_skin') || '0');
         if (!localStorage.getItem('onlyball_skin_v2')) { if (localStorage.getItem('onlyball_skin') !== null) currentSkinIndex += 1; localStorage.setItem('onlyball_skin_v2', '1'); }
-        if (isNaN(currentSkinIndex) || currentSkinIndex < 0 || currentSkinIndex >= skinList.length) currentSkinIndex = 0;
-        if (!isSkinUnlocked(currentSkinIndex)) currentSkinIndex = firstUnlockedSkinIndex();
+
+        let savedCustomDataUrl = null;
+        try { savedCustomDataUrl = localStorage.getItem('onlyball_custom_skin'); } catch (e) {}
+        if (savedCustomDataUrl) {
+            window.customSkinDataUrl = savedCustomDataUrl;
+            const cImg = new Image();
+            cImg.onload = () => {
+                const [c, ctx] = mkCanvas(cImg.width, cImg.height);
+                ctx.drawImage(cImg, 0, 0);
+                customTexture = mkTex(c);
+                customTexture.wrapS = customTexture.wrapT = THREE.ClampToEdgeWrapping;
+                if (currentSkinIndex === -1) {
+                    applySkin(-1);
+                }
+            };
+            cImg.src = savedCustomDataUrl;
+        }
+
+        if (isNaN(currentSkinIndex) || currentSkinIndex < -1 || currentSkinIndex >= skinList.length) currentSkinIndex = 0;
+        if (currentSkinIndex === -1 && !savedCustomDataUrl) currentSkinIndex = 0;
+        else if (currentSkinIndex >= 0 && !isSkinUnlocked(currentSkinIndex)) currentSkinIndex = firstUnlockedSkinIndex();
 
         const radius = 0.8;
         const sphereBody = new CANNON.Body({ mass: 5, material: physicsMaterial, shape: new CANNON.Sphere(radius), angularDamping: 0.9, linearDamping: 0.1 }); world.addBody(sphereBody);
@@ -612,6 +631,7 @@
             if (index === -1 && customTexture) {
                 m.map = customTexture; m.bumpMap = null; m.roughness = isRTX ? 0.1 : 0.5; m.metalness = isRTX ? 0.8 : 0.1;
                 nameEl.classList.remove('locked'); nameEl.innerHTML = 'Skin Personale';
+                localStorage.setItem('onlyball_skin', '-1');
             } else {
                 const safe = (index >= 0 && index < skinList.length) ? index : 0;
                 const s = skinList[safe], d = SKINS_DEF[s.key], t = skinTextures(s.key), locked = !isSkinUnlocked(safe);
@@ -623,22 +643,32 @@
                     ? `${icon('lock')} ${s.name}<small>Sblocca a ${s.unlock} m · tuo record ${getLifetimeBest()} m</small>`
                     : s.name;
                 index = safe;
+                if (index >= 0 && isSkinUnlocked(index)) localStorage.setItem('onlyball_skin', index);
             }
             m.color.setHex(0xffffff); m.needsUpdate = true;
             const dots = $('skin-dots');
             dots.innerHTML = skinList.map((s, i) => `<span class="${i === index ? 'on' : ''} ${isSkinUnlocked(i) ? '' : 'locked'}" title="${s.name}"></span>`).join('')
                 + (customTexture ? `<span class="${index === -1 ? 'on' : ''}"></span>` : '');
-            if (index >= 0 && isSkinUnlocked(index)) localStorage.setItem('onlyball_skin', index);
+
+            if (window.Multiplayer && Multiplayer.connected && typeof Multiplayer.notifySkinChanged === 'function') {
+                Multiplayer.notifySkinChanged(getCurrentSkinKey(), window.getCustomSkinData ? window.getCustomSkinData() : null);
+            }
         }
         applySkin(currentSkinIndex);
 
         function getCurrentSkinKey() {
+            if (currentSkinIndex === -1 && (customTexture || window.customSkinDataUrl)) {
+                return 'custom';
+            }
             if (typeof currentSkinIndex !== 'undefined' && currentSkinIndex >= 0 && skinList && skinList[currentSkinIndex]) {
                 return skinList[currentSkinIndex].key;
             }
             return 'brand';
         }
         window.getCurrentSkinKey = getCurrentSkinKey;
+        window.getCustomSkinData = function() {
+            return window.customSkinDataUrl || localStorage.getItem('onlyball_custom_skin') || null;
+        };
 
         function getBallMaterial(skinKey) {
             if (!skinKey || !SKINS_DEF[skinKey]) skinKey = 'brand';
@@ -660,7 +690,27 @@
         $('btn-custom-skin').addEventListener('click', () => { AudioEngine.playUI(); $('custom-skin-upload').click(); });
         $('custom-skin-upload').addEventListener('change', (e) => {
             const file = e.target.files[0]; if (!file) return; const reader = new FileReader();
-            reader.onload = (ev) => { const img = new Image(); img.onload = () => { const [c, ctx] = mkCanvas(img.width, img.height); ctx.drawImage(img, 0, 0); customTexture = mkTex(c); customTexture.wrapS = customTexture.wrapT = THREE.ClampToEdgeWrapping; currentSkinIndex = -1; applySkin(-1); }; img.src = ev.target.result; };
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    const maxDim = 256;
+                    let w = img.width, h = img.height;
+                    if (w > maxDim || h > maxDim) {
+                        if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                        else { w = Math.round((w * maxDim) / h); h = maxDim; }
+                    }
+                    const [c, ctx] = mkCanvas(w, h);
+                    ctx.drawImage(img, 0, 0, w, h);
+                    const dataUrl = c.toDataURL('image/png');
+                    window.customSkinDataUrl = dataUrl;
+                    try { localStorage.setItem('onlyball_custom_skin', dataUrl); } catch (err) {}
+                    customTexture = mkTex(c);
+                    customTexture.wrapS = customTexture.wrapT = THREE.ClampToEdgeWrapping;
+                    currentSkinIndex = -1;
+                    applySkin(-1);
+                };
+                img.src = ev.target.result;
+            };
             reader.readAsDataURL(file);
         });
         $('btn-skin-prev').addEventListener('click', () => { AudioEngine.playUI(); currentSkinIndex = currentSkinIndex === -1 ? skinList.length - 1 : (currentSkinIndex - 1 + skinList.length) % skinList.length; applySkin(currentSkinIndex); });

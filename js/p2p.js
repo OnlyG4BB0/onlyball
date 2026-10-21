@@ -186,12 +186,14 @@ const Multiplayer = {
             const guestPeerId = dataConn.peer;
             const guestName = data.name || 'Ospite';
             const guestSkin = data.skin || 'brand';
+            const guestCustomSkin = data.customSkin || null;
             const colorIndex = this.getAvailableColorIndex();
 
             this.connections.set(guestPeerId, {
                 conn: dataConn,
                 name: guestName,
                 skin: guestSkin,
+                customSkin: guestCustomSkin,
                 colorIndex,
                 alt: 0
             });
@@ -199,20 +201,22 @@ const Multiplayer = {
             console.log(`[P2P] Ospite ${guestName} registrato con colore ${colorIndex} (Slot ${this.connections.size + 1}/${this.maxPlayers})`);
 
             // Spawna la sfera dell'ospite sul client dell'Host
-            this.spawnOpponent(guestPeerId, guestName, guestSkin, colorIndex);
+            this.spawnOpponent(guestPeerId, guestName, guestSkin, colorIndex, guestCustomSkin);
 
             // Costruisci la lista di tutti i giocatori presenti per il nuovo arrivato
             const myName = (typeof window.getPlayerName === 'function') ? window.getPlayerName() : 'Host';
             const mySkin = (typeof window.getCurrentSkinKey === 'function') ? window.getCurrentSkinKey() : 'brand';
+            const myCustomSkin = (mySkin === 'custom' && typeof window.getCustomSkinData === 'function') ? window.getCustomSkinData() : null;
 
             const playerList = [
-                { peerId: 'host', name: myName, skin: mySkin, colorIndex: 0, isHost: true }
+                { peerId: 'host', name: myName, skin: mySkin, customSkin: myCustomSkin, colorIndex: 0, isHost: true }
             ];
             for (const [pid, g] of this.connections.entries()) {
                 playerList.push({
                     peerId: pid,
                     name: g.name,
                     skin: g.skin,
+                    customSkin: g.customSkin,
                     colorIndex: g.colorIndex,
                     isHost: false
                 });
@@ -223,6 +227,7 @@ const Multiplayer = {
                 dataConn.send({
                     type: 'handshake_welcome',
                     seed: this.sharedSeed,
+                    modeKey: (typeof modeKey !== 'undefined' ? modeKey : 'classic'),
                     yourPeerId: guestPeerId,
                     yourColorIndex: colorIndex,
                     players: playerList,
@@ -238,6 +243,7 @@ const Multiplayer = {
                 peerId: guestPeerId,
                 name: guestName,
                 skin: guestSkin,
+                customSkin: guestCustomSkin,
                 colorIndex
             }, guestPeerId);
 
@@ -290,6 +296,21 @@ const Multiplayer = {
             }, guestPeerId);
 
             this.updateLeaderboardHUD();
+
+        } else if (data.type === 'skin_change') {
+            const guestPeerId = dataConn.peer;
+            const guest = this.connections.get(guestPeerId);
+            if (guest) {
+                guest.skin = data.skin;
+                guest.customSkin = data.customSkin;
+            }
+            this.updateOpponentSkin(guestPeerId, data.skin, data.customSkin);
+            this.broadcastToGuests({
+                type: 'player_skin_changed',
+                peerId: guestPeerId,
+                skin: data.skin,
+                customSkin: data.customSkin
+            }, guestPeerId);
 
         } else if (data.type === 'event') {
             const guestPeerId = dataConn.peer;
@@ -413,12 +434,14 @@ const Multiplayer = {
                     // Invia richiesta di ingresso con nickname e skin
                     const myName = (typeof window.getPlayerName === 'function') ? window.getPlayerName() : 'Ospite';
                     const mySkin = (typeof window.getCurrentSkinKey === 'function') ? window.getCurrentSkinKey() : 'brand';
+                    const myCustomSkin = (mySkin === 'custom' && typeof window.getCustomSkinData === 'function') ? window.getCustomSkinData() : null;
 
                     try {
                         dataConn.send({
                             type: 'join_request',
                             name: myName,
-                            skin: mySkin
+                            skin: mySkin,
+                            customSkin: myCustomSkin
                         });
                     } catch (e) {
                         console.error('[P2P] Errore invio join_request:', e);
@@ -470,18 +493,28 @@ const Multiplayer = {
             this.sharedSeed = data.seed;
             this.myColorIndex = data.yourColorIndex || 1;
 
-            if (data.seed != null) {
-                rng = makeRng(data.seed);
+            if (data.seed != null && typeof seedRng === 'function') {
+                seedRng(data.seed);
+            }
+            if (data.modeKey && typeof selectMode === 'function') {
+                selectMode(data.modeKey);
             }
 
             // Spawna tutti gli altri giocatori già presenti nella stanza
             if (Array.isArray(data.players)) {
                 for (const p of data.players) {
                     if (p.peerId !== this.myPeerId) {
-                        this.spawnOpponent(p.peerId, p.name, p.skin, p.colorIndex);
+                        this.spawnOpponent(p.peerId, p.name, p.skin, p.colorIndex, p.customSkin);
                     }
                 }
             }
+
+            // Switch vista ospite alla lobby della stanza
+            if ($('mp-view-create')) $('mp-view-create').classList.remove('hidden');
+            if ($('mp-view-join')) $('mp-view-join').classList.add('hidden');
+            if ($('mp-tab-create')) $('mp-tab-create').classList.add('active');
+            if ($('mp-tab-join')) $('mp-tab-join').classList.remove('active');
+            if ($('mp-create-code')) $('mp-create-code').textContent = this.roomCode;
 
             this.updateLobbyUI(data.players);
             this.updateLeaderboardHUD();
@@ -489,17 +522,31 @@ const Multiplayer = {
             if (data.matchRunning) {
                 this.startMultiplayerMatch();
             } else {
-                const statusEl = $('mp-join-status');
+                const statusEl = $('mp-host-status');
                 if (statusEl) {
-                    statusEl.innerHTML = `<span class="status-dot" style="background:var(--mint)"></span> Connesso! In attesa che l'Host avvii la gara...`;
+                    statusEl.innerHTML = `<span class="status-dot" style="background:var(--mint)"></span> Connesso alla stanza! In attesa che l'Host avvii la gara...`;
                 }
             }
 
         } else if (data.type === 'player_joined') {
             console.log('[P2P] Nuovo giocatore entrato nella stanza:', data.name);
-            this.spawnOpponent(data.peerId, data.name, data.skin, data.colorIndex);
+            this.spawnOpponent(data.peerId, data.name, data.skin, data.colorIndex, data.customSkin);
             showEvent(`🎮 ${data.name} è entrato nella stanza!`, 'good', 2200);
             this.updateLeaderboardHUD();
+            this.updateLobbyUI();
+
+        } else if (data.type === 'player_skin_changed') {
+            console.log('[P2P] Giocatore ha aggiornato la skin:', data.peerId, data.skin);
+            this.updateOpponentSkin(data.peerId, data.skin, data.customSkin);
+
+        } else if (data.type === 'lobby_mode_change') {
+            console.log('[P2P] L\'Host ha cambiato modalità:', data.modeKey);
+            if (data.modeKey && typeof selectMode === 'function') {
+                selectMode(data.modeKey);
+                const m = (typeof MODES !== 'undefined') ? MODES[data.modeKey] : null;
+                showEvent(`🎮 Modalità impostata su: ${m ? m.name : data.modeKey}`, 'mint', 2500);
+            }
+            this.updateLobbyUI();
 
         } else if (data.type === 'player_left') {
             console.log('[P2P] Giocatore uscito:', data.name);
@@ -509,6 +556,15 @@ const Multiplayer = {
 
         } else if (data.type === 'start_match') {
             console.log('[P2P] L\'Host ha avviato la gara!');
+            if (data.modeKey && typeof selectMode === 'function') {
+                selectMode(data.modeKey);
+            }
+            if (data.seed != null) {
+                this.sharedSeed = data.seed;
+            }
+            if (this.sharedSeed != null && typeof seedRng === 'function') {
+                seedRng(this.sharedSeed);
+            }
             this.startMultiplayerMatch();
 
         } else if (data.type === 'state') {
@@ -540,13 +596,32 @@ const Multiplayer = {
     /* ==========================================================================
        AVVIO GARA E STATI DI GIOCO
        ========================================================================== */
+    setLobbyMode(newModeKey) {
+        if (!this.isHost) return;
+        if (typeof selectMode === 'function') {
+            selectMode(newModeKey);
+        }
+        this.broadcastToGuests({
+            type: 'lobby_mode_change',
+            modeKey: newModeKey
+        });
+        this.updateLobbyUI();
+    },
+
     startMatchAsHost() {
         if (!this.isHost) return;
         if (this.autoStartTimer) {
             clearInterval(this.autoStartTimer);
             this.autoStartTimer = null;
         }
-        this.broadcastToGuests({ type: 'start_match' });
+        if (this.sharedSeed != null && typeof seedRng === 'function') {
+            seedRng(this.sharedSeed);
+        }
+        this.broadcastToGuests({
+            type: 'start_match',
+            modeKey: (typeof modeKey !== 'undefined' ? modeKey : 'classic'),
+            seed: this.sharedSeed
+        });
         this.startMultiplayerMatch();
     },
 
@@ -554,6 +629,10 @@ const Multiplayer = {
         console.log('[P2P] Avvio partita multigiocatore!');
 
         if ($('multiplayer-modal')) $('multiplayer-modal').classList.add('hidden');
+
+        if (this.sharedSeed != null && typeof seedRng === 'function') {
+            seedRng(this.sharedSeed);
+        }
 
         if (gameState !== 'playing') {
             fullGameReset();
@@ -570,9 +649,39 @@ const Multiplayer = {
     },
 
     /* ==========================================================================
-       SPAWN / DESPAWN MODELLI 3D AVVERSARI
+       SPAWN / DESPAWN MODELLI 3D AVVERSARI & SKIN
        ========================================================================== */
-    spawnOpponent(id, name, skinKey, colorIndex = 1) {
+    createBallMaterial(skinKey, colorDef, customSkin = null) {
+        if (skinKey === 'custom' && customSkin) {
+            try {
+                const img = new Image();
+                const tex = new THREE.Texture(img);
+                tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+                if (THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
+                img.onload = () => { tex.needsUpdate = true; };
+                img.src = customSkin;
+                const mat = new THREE.MeshStandardMaterial({
+                    map: tex,
+                    roughness: 0.35,
+                    metalness: 0.1
+                });
+                mat.needsUpdate = true;
+                return mat;
+            } catch (e) {
+                console.warn('[P2P] Fallback texture custom:', e);
+            }
+        }
+        if (typeof window.getBallMaterial === 'function' && skinKey !== 'custom') {
+            return window.getBallMaterial(skinKey);
+        }
+        return new THREE.MeshStandardMaterial({
+            color: colorDef ? colorDef.hex : 0x37e0b0,
+            roughness: 0.4,
+            metalness: 0.1
+        });
+    },
+
+    spawnOpponent(id, name, skinKey, colorIndex = 1, customSkin = null) {
         this.despawnOpponent(id);
 
         const group = new THREE.Group();
@@ -581,9 +690,7 @@ const Multiplayer = {
         const ballRadius = (typeof radius !== 'undefined') ? radius : 0.8;
         const colorDef = PLAYER_COLORS[colorIndex % PLAYER_COLORS.length];
 
-        const mat = (typeof window.getBallMaterial === 'function')
-            ? window.getBallMaterial(skinKey)
-            : new THREE.MeshStandardMaterial({ color: colorDef.hex, roughness: 0.4, metalness: 0.1 });
+        const mat = this.createBallMaterial(skinKey, colorDef, customSkin);
 
         const mesh = new THREE.Mesh(new THREE.SphereGeometry(ballRadius, 36, 36), mat);
         mesh.castShadow = true;
@@ -605,6 +712,7 @@ const Multiplayer = {
             id,
             name,
             skinKey,
+            customSkin,
             colorDef,
             group,
             mesh,
@@ -612,10 +720,45 @@ const Multiplayer = {
             nametag,
             targetPos: new THREE.Vector3(0, 5, 0),
             targetQuat: new THREE.Quaternion(),
+            firstSync: true,
             alt: 0
         });
 
-        console.log(`[P2P] Sfera 3D creata per ${name} (${id}) con colore ${colorDef.name}`);
+        console.log(`[P2P] Sfera 3D creata per ${name} (${id}) con colore ${colorDef.name} (Skin: ${skinKey})`);
+    },
+
+    updateOpponentSkin(id, skinKey, customSkin = null) {
+        const opp = this.opponents.get(id);
+        if (!opp) return;
+        opp.skinKey = skinKey;
+        opp.customSkin = customSkin;
+        if (opp.mesh) {
+            opp.mesh.material = this.createBallMaterial(skinKey, opp.colorDef, customSkin);
+            opp.mesh.material.needsUpdate = true;
+        }
+        this.updateLobbyUI();
+    },
+
+    notifySkinChanged(skinKey, customSkin = null) {
+        if (!this.connected) return;
+        if (this.isHost) {
+            this.broadcastToGuests({
+                type: 'player_skin_changed',
+                peerId: 'host',
+                skin: skinKey,
+                customSkin: customSkin
+            });
+            this.updateLobbyUI();
+        } else if (this.hostConn && this.hostConn.open) {
+            try {
+                this.hostConn.send({
+                    type: 'skin_change',
+                    skin: skinKey,
+                    customSkin: customSkin
+                });
+            } catch (e) {}
+            this.updateLobbyUI();
+        }
     },
 
     despawnOpponent(id) {
@@ -745,12 +888,19 @@ const Multiplayer = {
     },
 
     update(dt) {
-        // Interpolazione morbida a 60 FPS per tutti gli avversari
+        // Interpolazione a 60 FPS con snap immediato su salti > 12 o primo posizionamento
         for (const opp of this.opponents.values()) {
             if (!opp.group) continue;
-            opp.group.position.lerp(opp.targetPos, 0.35);
-            if (opp.mesh) {
-                opp.mesh.quaternion.slerp(opp.targetQuat, 0.35);
+            const dist = opp.group.position.distanceTo(opp.targetPos);
+            if (dist > 12 || opp.firstSync) {
+                opp.group.position.copy(opp.targetPos);
+                if (opp.mesh && opp.targetQuat) opp.mesh.quaternion.copy(opp.targetQuat);
+                opp.firstSync = false;
+            } else {
+                opp.group.position.lerp(opp.targetPos, 0.4);
+                if (opp.mesh && opp.targetQuat) {
+                    opp.mesh.quaternion.slerp(opp.targetQuat, 0.4);
+                }
             }
             if (opp.nametag && typeof camera !== 'undefined' && camera) {
                 opp.nametag.quaternion.copy(camera.quaternion);
@@ -767,27 +917,72 @@ const Multiplayer = {
         const startBtn = $('btn-start-mp-game');
         const hostStatus = $('mp-host-status');
 
+        // Aggiorna selettore modalità di gioco in lobby
+        const curModeKey = (typeof modeKey !== 'undefined') ? modeKey : 'classic';
+        const curMode = (typeof MODES !== 'undefined' && MODES[curModeKey]) ? MODES[curModeKey] : { name: 'Classica', color: '#37e0b0', desc: 'Checkpoint ogni 70 m.' };
+        const modeChip = $('mp-lobby-mode-chip');
+        if (modeChip) {
+            modeChip.textContent = curMode.name;
+            modeChip.style.borderColor = curMode.color || 'var(--mint)';
+            modeChip.style.color = curMode.color || 'var(--mint)';
+        }
+        const modeDesc = $('mp-lobby-mode-desc');
+        if (modeDesc) {
+            modeDesc.textContent = curMode.desc + (!this.isHost ? ' (Impostata dal Capostanza)' : '');
+        }
+
+        const modeSelector = $('mp-lobby-modes');
+        if (modeSelector && typeof MODES !== 'undefined') {
+            modeSelector.innerHTML = '';
+            Object.entries(MODES).forEach(([key, m]) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'mp-mode-chip' + (key === curModeKey ? ' active' : '');
+                btn.style.setProperty('--mode-color', m.color);
+                btn.innerHTML = `${m.name}`;
+                if (!this.isHost) {
+                    btn.disabled = true;
+                    btn.title = 'Solo il Capostanza (Host) può cambiare modalità';
+                } else {
+                    btn.addEventListener('click', () => {
+                        AudioEngine.playUI();
+                        this.setLobbyMode(key);
+                    });
+                }
+                modeSelector.appendChild(btn);
+            });
+        }
+
         let players = [];
         const myName = (typeof window.getPlayerName === 'function') ? window.getPlayerName() : (this.isHost ? 'Host' : 'Ospite');
         const mySkin = (typeof window.getCurrentSkinKey === 'function') ? window.getCurrentSkinKey() : 'brand';
+        const myCustomSkin = (mySkin === 'custom' && typeof window.getCustomSkinData === 'function') ? window.getCustomSkinData() : null;
 
         if (this.isHost) {
-            players.push({ name: myName, skin: mySkin, isMe: true, isHost: true, colorIndex: 0 });
+            players.push({ name: myName, skin: mySkin, customSkin: myCustomSkin, isMe: true, isHost: true, colorIndex: 0 });
             for (const g of this.connections.values()) {
-                players.push({ name: g.name, skin: g.skin, isMe: false, isHost: false, colorIndex: g.colorIndex });
+                players.push({ name: g.name, skin: g.skin, customSkin: g.customSkin, isMe: false, isHost: false, colorIndex: g.colorIndex });
             }
         } else if (guestPlayerList) {
             players = guestPlayerList.map(p => ({
                 name: p.name,
                 skin: p.skin,
+                customSkin: p.customSkin,
                 isMe: (p.peerId === this.myPeerId),
                 isHost: p.isHost,
                 colorIndex: p.colorIndex
             }));
         } else {
-            players.push({ name: myName, skin: mySkin, isMe: true, isHost: false, colorIndex: this.myColorIndex });
+            players.push({ name: myName, skin: mySkin, customSkin: myCustomSkin, isMe: true, isHost: false, colorIndex: this.myColorIndex });
             for (const opp of this.opponents.values()) {
-                players.push({ name: opp.name, skin: opp.skinKey, isMe: false, isHost: false, colorIndex: opp.colorDef ? PLAYER_COLORS.findIndex(c => c.hex === opp.colorDef.hex) : 1 });
+                players.push({
+                    name: opp.name,
+                    skin: opp.skinKey,
+                    customSkin: opp.customSkin,
+                    isMe: false,
+                    isHost: false,
+                    colorIndex: opp.colorDef ? PLAYER_COLORS.findIndex(c => c.hex === opp.colorDef.hex) : 1
+                });
             }
         }
 
@@ -810,11 +1005,15 @@ const Multiplayer = {
             }
         }
 
-        if (hostStatus && this.isHost) {
-            if (players.length < 2) {
-                hostStatus.innerHTML = `<span class="status-dot pulse"></span> Stanza pronta! In attesa che gli amici inseriscano il codice...`;
+        if (hostStatus) {
+            if (this.isHost) {
+                if (players.length < 2) {
+                    hostStatus.innerHTML = `<span class="status-dot pulse"></span> Stanza pronta! In attesa che gli amici inseriscano il codice...`;
+                } else {
+                    hostStatus.innerHTML = `<span class="status-dot" style="background:var(--mint)"></span> ${players.length} giocatori pronti! Puoi avviare la gara.`;
+                }
             } else {
-                hostStatus.innerHTML = `<span class="status-dot" style="background:var(--mint)"></span> ${players.length} giocatori pronti! Puoi avviare la gara.`;
+                hostStatus.innerHTML = `<span class="status-dot" style="background:var(--mint)"></span> Connesso alla stanza! In attesa che l'Host avvii la gara...`;
             }
         }
 
@@ -828,13 +1027,19 @@ const Multiplayer = {
                 if (p) {
                     card.className = 'mp-slot-card occupied';
                     card.style.borderColor = col.str + '80';
+                    let skinName = 'Brand';
+                    if (p.skin === 'custom' || p.customSkin) {
+                        skinName = 'Skin Personale';
+                    } else if (typeof SKINS_DEF !== 'undefined' && SKINS_DEF[p.skin]) {
+                        skinName = SKINS_DEF[p.skin].name || p.skin;
+                    }
                     card.innerHTML = `
                         <div class="mp-slot-badge" style="background:${col.str}; color:#111;">
                             ${p.isHost ? '👑' : (i + 1)}
                         </div>
                         <div class="mp-slot-info">
                             <span class="mp-slot-name">${p.name} ${p.isMe ? '<small style="color:var(--mint);">(Tu)</small>' : ''}</span>
-                            <span class="mp-slot-status">${p.isHost ? 'Capostanza' : 'Pronto alla gara'}</span>
+                            <span class="mp-slot-status">${p.isHost ? 'Capostanza' : 'Pronto'} · <span style="color:var(--mint);">${skinName}</span></span>
                         </div>
                     `;
                 } else {
@@ -906,6 +1111,8 @@ const Multiplayer = {
 
     leaveRoom() {
         this.connected = false;
+        this.isHost = false;
+        this.sharedSeed = null;
         if (this.autoStartTimer) {
             clearInterval(this.autoStartTimer);
             this.autoStartTimer = null;

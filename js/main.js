@@ -27,7 +27,11 @@
             $('biome-toast').classList.add('hidden'); jumpBufferTimer = 0; coyoteTimer = 0; screenShakeIntensity = 0; biomeToastTimer = 0;
             runTime = 0; recordAnnounced = false; hintsTimer = 0; $('desktop-hints').classList.remove('faded');
             const m = MODE(); worldModeKey = modeKey;
-            seedRng(m.seeded ? hashString('onlyball-' + todayKey()) : (Math.random() * 4294967295) >>> 0);
+            if (window.Multiplayer && Multiplayer.connected && Multiplayer.sharedSeed != null) {
+                seedRng(Multiplayer.sharedSeed);
+            } else {
+                seedRng(m.seeded ? hashString('onlyball-' + todayKey()) : (Math.random() * 4294967295) >>> 0);
+            }
             modeTimeLeft = m.timer || 0; lavaY = -18; lavaSpeed = 0; lavaMesh.visible = !!m.lava; lavaLight.intensity = m.lava ? 2.2 : 0;
             createPlatform(0, 0, 0, 25, 2, 25, 0, { noProps: true }); generateMorePlatforms(40);
             sphereBody.type = CANNON.Body.DYNAMIC; sphereBody.position.set(0, 5, 0); sphereBody.velocity.set(0, 0, 0); sphereBody.angularVelocity.set(0, 0, 0); sphereBody.torque.set(0, 0, 0);
