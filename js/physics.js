@@ -129,11 +129,11 @@
 
                 // Switch Pro Controller & Generic mappings:
                 // Tasto Salto: B (btn 0) o A (btn 1) o R1 (btn 5)
-                const isJumpDown = isGpBtn(gp, 0) || isGpBtn(gp, 1) || isGpBtn(gp, 5);
+                const isJumpDown = isGpBtn(gp, 0) || isGpBtn(gp, 1) || isGpBtn(gp, 5) || isGpBtn(gp, 7);
                 // Tasto Respawn: Y (btn 3) o X (btn 2)
                 const isRespawnDown = isGpBtn(gp, 3) || isGpBtn(gp, 2);
                 // Tasto Pausa: Start/+ (btn 9) o Select/- (btn 8)
-                const isStartDown = isGpBtn(gp, 9) || isGpBtn(gp, 8);
+                const isStartDown = isGpBtn(gp, 9) || isGpBtn(gp, 8) || isGpBtn(gp, 6) || isGpBtn(gp, 4);
 
                 // D-Pad con fallback su Stick sinistro per navigazione menu
                 const stickNavX = getGpAxis(gp, 0, 0.45);
@@ -143,16 +143,7 @@
                 let dLeft = isGpBtn(gp, 14) || (stickNavX < -0.5);
                 let dRight = isGpBtn(gp, 15) || (stickNavX > 0.5);
 
-                // Gestione hat switch aggiuntivo se presente su assi 4/5 (comune su vecchi driver DirectInput Switch)
-                if (gp.axes && gp.axes.length >= 6) {
-                    const ax4 = gp.axes[4], ax5 = gp.axes[5];
-                    if (typeof ax4 === 'number' && !isNaN(ax4) && Math.abs(ax4) > 0.5) {
-                        if (ax4 > 0.5) dRight = true; else if (ax4 < -0.5) dLeft = true;
-                    }
-                    if (typeof ax5 === 'number' && !isNaN(ax5) && Math.abs(ax5) > 0.5) {
-                        if (ax5 > 0.5) dDown = true; else if (ax5 < -0.5) dUp = true;
-                    }
-                }
+
 
                 // Eventi single-press (edge detection sicura)
                 const startTriggered = wasJustPressed('start', isStartDown);
