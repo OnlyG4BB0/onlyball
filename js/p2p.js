@@ -1,7 +1,8 @@
 /* ==========================================================================
    MODULO MULTIGIOCATORE ONLINE PEER-TO-PEER (WebRTC + PeerJS)
    - Connessione diretta browser-to-browser senza server centrale
-   - Creazione stanze con codice alfanumerico breve (es. OB-842)
+   - Creazione stanze con codice alfanumerico breve normalizzato (es. OB-8K4F)
+   - Auto-retry in caso di latenza del signaling server WebRTC
    - Sincronizzazione seed percorso (stessa mappa), 30Hz posizione, rotazione, skin e quota
    - Sfera avversario 3D con nametag olografico fluttuante e HUD Gara con distacco live
    ========================================================================== */
@@ -10,39 +11,68 @@ const Multiplayer = {
     peer: null,
     conn: null,
     isHost: false,
+    cleanCode: null,
     roomCode: null,
     connected: false,
     opponent: null,
     lastSendTime: 0,
     sendInterval: 1000 / 30, // 30 FPS sync
-    
-    generateRoomCode() {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    activeJoinTimeout: null,
+
+    // Normalizza qualsiasi input utente: "8K4F", "ob-8k4f", "OB 8K4F" -> "8K4F"
+    normalizeRoomCode(raw) {
+        if (!raw) return '';
+        let clean = String(raw).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (clean.startsWith('OB')) clean = clean.slice(2);
+        return clean;
+    },
+
+    formatRoomCode(clean) {
+        return 'OB-' + clean;
+    },
+
+    getPeerId(clean) {
+        return 'onlyball-v2-' + clean.toLowerCase();
+    },
+
+    generateCleanCode() {
+        // Caratteri alfanumerici non ambigui (omessi 0/O e 1/I)
+        const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
         let code = '';
-        for (let i = 0; i < 3; i++) code += chars[Math.floor(Math.random() * chars.length)];
-        return 'OB-' + code;
+        for (let i = 0; i < 4; i++) {
+            code += chars[Math.floor(Math.random() * chars.length)];
+        }
+        return code;
     },
 
     initPeer(customId, onOpen, onError) {
-        if (this.peer && !this.peer.destroyed) this.peer.destroy();
-        
+        if (this.peer && !this.peer.destroyed) {
+            try { this.peer.destroy(); } catch (e) {}
+        }
+        this.peer = null;
+
         try {
-            this.peer = new Peer(customId, {
+            const peerOptions = {
                 debug: 1,
                 config: {
                     iceServers: [
                         { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' },
                         { urls: 'stun:global.stun.twilio.com:3478' }
                     ]
                 }
-            });
-            
+            };
+
+            this.peer = customId ? new Peer(customId, peerOptions) : new Peer(peerOptions);
+
             this.peer.on('open', (id) => {
+                console.log('[P2P] Peer open with ID:', id);
                 if (onOpen) onOpen(id);
             });
-            
+
             this.peer.on('error', (err) => {
-                console.warn('[P2P] Peer error:', err);
+                console.warn('[P2P] Peer error:', err && err.type ? err.type : err);
                 if (onError) onError(err);
             });
         } catch (e) {
@@ -51,56 +81,159 @@ const Multiplayer = {
         }
     },
 
-    createRoom(onCodeReady, onGuestJoin, onError) {
-        this.roomCode = this.generateRoomCode();
+    createRoom(onCodeReady, onHostReady, onGuestJoin, onError) {
+        this.cleanCode = this.generateCleanCode();
+        this.roomCode = this.formatRoomCode(this.cleanCode);
         this.isHost = true;
-        const peerId = 'onlyball-room-' + this.roomCode.toLowerCase();
-        
+        const peerId = this.getPeerId(this.cleanCode);
+
+        // Comunica subito il codice all'interfaccia senza attendere la rete
+        if (onCodeReady) onCodeReady(this.roomCode);
+
         this.initPeer(peerId, () => {
-            if (onCodeReady) onCodeReady(this.roomCode);
-            
+            console.log('[P2P] Stanza host creata con ID:', peerId);
+            if (onHostReady) onHostReady(this.roomCode);
+
             this.peer.on('connection', (dataConn) => {
+                console.log('[P2P] Connessione in arrivo da ospite:', dataConn.peer);
                 this.conn = dataConn;
-                this.setupConnection(onGuestJoin);
+                this.setupConnection(onGuestJoin, onError);
             });
         }, (err) => {
-            // Se ID occupato, rigenera
-            if (err.type === 'unavailable-id') {
-                this.createRoom(onCodeReady, onGuestJoin, onError);
+            // Se ID gia in uso sul server PeerJS, rigenera nuovo codice
+            if (err && err.type === 'unavailable-id') {
+                console.warn('[P2P] ID occupato, rigenerazione...');
+                this.createRoom(onCodeReady, onHostReady, onGuestJoin, onError);
             } else if (onError) {
                 onError(err);
             }
         });
     },
 
-    joinRoom(code, onJoined, onError) {
-        this.roomCode = code.toUpperCase().trim();
+    joinRoom(rawCode, onJoined, onProgress, onError) {
+        const clean = this.normalizeRoomCode(rawCode);
+        if (!clean || clean.length < 3) {
+            if (onError) onError(new Error('Inserisci un codice valido (es. OB-8K4F o 8K4F)'));
+            return;
+        }
+
+        this.cleanCode = clean;
+        this.roomCode = this.formatRoomCode(clean);
         this.isHost = false;
-        const targetPeerId = 'onlyball-room-' + this.roomCode.toLowerCase();
-        
+        const targetPeerId = this.getPeerId(clean);
+
+        if (this.activeJoinTimeout) {
+            clearTimeout(this.activeJoinTimeout);
+            this.activeJoinTimeout = null;
+        }
+
+        // Inizializza peer ospite anonimo
         this.initPeer(null, () => {
-            const dataConn = this.peer.connect(targetPeerId, { reliable: true });
-            this.conn = dataConn;
-            this.setupConnection(onJoined, onError);
+            let attempt = 0;
+            const maxAttempts = 4;
+            let joinFinished = false;
+
+            const tryConnect = () => {
+                if (joinFinished) return;
+                attempt++;
+                if (onProgress) {
+                    onProgress(`Connessione alla stanza ${this.roomCode}... (tentativo ${attempt}/${maxAttempts})`);
+                }
+                console.log(`[P2P] Connessione all'host ${targetPeerId} (tentativo ${attempt}/${maxAttempts})...`);
+
+                const dataConn = this.peer.connect(targetPeerId, { reliable: true });
+                this.conn = dataConn;
+
+                let attemptCompleted = false;
+
+                const attemptTimer = setTimeout(() => {
+                    if (attemptCompleted || joinFinished) return;
+                    attemptCompleted = true;
+                    console.warn(`[P2P] Tentativo ${attempt} scaduto per timeout`);
+                    nextOrExit('Timeout connessione');
+                }, 3500);
+
+                const peerErrorHandler = (err) => {
+                    if (attemptCompleted || joinFinished) return;
+                    if (err && err.type === 'peer-unavailable') {
+                        attemptCompleted = true;
+                        clearTimeout(attemptTimer);
+                        this.peer.off('error', peerErrorHandler);
+                        console.log(`[P2P] Host non ancora visibile sul signaling server...`);
+                        nextOrExit('Host non ancora registrato');
+                    }
+                };
+
+                this.peer.on('error', peerErrorHandler);
+
+                this.setupConnection(() => {
+                    if (attemptCompleted || joinFinished) return;
+                    attemptCompleted = true;
+                    joinFinished = true;
+                    clearTimeout(attemptTimer);
+                    this.peer.off('error', peerErrorHandler);
+                    console.log('[P2P] Connessione riuscita con successo!');
+                    if (onJoined) onJoined();
+                }, (err) => {
+                    if (attemptCompleted || joinFinished) return;
+                    attemptCompleted = true;
+                    clearTimeout(attemptTimer);
+                    this.peer.off('error', peerErrorHandler);
+                    nextOrExit(err);
+                });
+            };
+
+            const nextOrExit = (reason) => {
+                if (attempt < maxAttempts) {
+                    console.log(`[P2P] Nuovo tentativo tra 1200ms... (motivo: ${reason})`);
+                    this.activeJoinTimeout = setTimeout(tryConnect, 1200);
+                } else {
+                    joinFinished = true;
+                    if (onError) {
+                        onError(new Error(`Stanza ${this.roomCode} non trovata. Controlla il codice o assicurati che l'amico abbia la stanza aperta.`));
+                    }
+                }
+            };
+
+            tryConnect();
         }, onError);
     },
 
     setupConnection(onReady, onError) {
         if (!this.conn) return;
 
-        this.conn.on('open', () => {
+        let opened = false;
+        const onOpen = () => {
+            if (opened) return;
+            opened = true;
             this.connected = true;
+            console.log('[P2P] DataChannel aperto. isHost:', this.isHost);
+
             if (this.isHost) {
                 // Host invia il seed casuale condiviso e il proprio nickname/skin
                 const sharedSeed = Math.floor(Math.random() * 900000) + 100000;
-                this.conn.send({
-                    type: 'handshake',
-                    seed: sharedSeed,
-                    name: getPlayerName(),
-                    skin: currentSkin
-                });
+                const myName = (typeof window.getPlayerName === 'function') ? window.getPlayerName() : 'Host';
+                const mySkin = (typeof window.getCurrentSkinKey === 'function') ? window.getCurrentSkinKey() : 'brand';
+
+                console.log('[P2P] Host invia handshake al guest:', { seed: sharedSeed, name: myName, skin: mySkin });
+                try {
+                    this.conn.send({
+                        type: 'handshake',
+                        seed: sharedSeed,
+                        name: myName,
+                        skin: mySkin
+                    });
+                } catch (e) {
+                    console.error('[P2P] Errore invio handshake:', e);
+                }
             }
-        });
+        };
+
+        if (this.conn.open) {
+            onOpen();
+        } else {
+            this.conn.on('open', onOpen);
+        }
 
         this.conn.on('data', (data) => {
             this.handleMessage(data, onReady);
@@ -120,16 +253,24 @@ const Multiplayer = {
         if (!data || !data.type) return;
 
         if (data.type === 'handshake') {
-            // Guest riceve seed dall'host e risponde con ack
-            this.conn.send({
-                type: 'handshake_ack',
-                name: getPlayerName(),
-                skin: currentSkin
-            });
+            console.log('[P2P] Ricevuto handshake dall\'host:', data);
+            const myName = (typeof window.getPlayerName === 'function') ? window.getPlayerName() : 'Ospite';
+            const mySkin = (typeof window.getCurrentSkinKey === 'function') ? window.getCurrentSkinKey() : 'brand';
+
+            try {
+                this.conn.send({
+                    type: 'handshake_ack',
+                    name: myName,
+                    skin: mySkin
+                });
+            } catch (e) {
+                console.error('[P2P] Errore invio handshake_ack:', e);
+            }
+
             this.startMultiplayerMatch(data.seed, data.name, data.skin);
             if (onReady) onReady();
         } else if (data.type === 'handshake_ack') {
-            // Host riceve conferma dal guest e avvia il match
+            console.log('[P2P] Host ha ricevuto conferma dal guest:', data);
             this.startMultiplayerMatch(null, data.name, data.skin);
             if (onReady) onReady();
         } else if (data.type === 'state') {
@@ -140,46 +281,51 @@ const Multiplayer = {
     },
 
     startMultiplayerMatch(seed, oppName, oppSkin) {
+        console.log('[P2P] Avvio match multiplayer con:', oppName, oppSkin);
         this.spawnOpponent(oppName || 'Sfidante', oppSkin || 'brand');
-        
-        // Se guest, imposta seed condiviso
+
+        // Se guest, sincronizza il seed del mondo in modo che le piattaforme siano identiche
         if (seed != null) {
             rng = makeRng(seed);
         }
-        
-        // Chiudi modali e avvia la partita
+
+        // Chiudi modali e avvia la partita se in menu
         if ($('multiplayer-modal')) $('multiplayer-modal').classList.add('hidden');
         if (gameState !== 'playing') {
             fullGameReset();
             startGame();
         }
-        
+
         // Mostra HUD gara
         const raceBadge = $('hud-p2p-race');
         if (raceBadge) {
             raceBadge.classList.remove('hidden');
-            if ($('hud-p2p-name')) $('hud-p2p-name').textContent = this.opponent.name;
+            if ($('hud-p2p-name')) $('hud-p2p-name').textContent = this.opponent ? this.opponent.name : 'Avversario';
         }
-        
-        showEvent(`Sfida Online Avviata contro ${this.opponent.name}!`, 'good', 2400);
+
+        showEvent(`Sfida Online Avviata contro ${this.opponent ? this.opponent.name : 'Avversario'}!`, 'good', 2400);
         AudioEngine.playRecord();
     },
 
     spawnOpponent(name, skinKey) {
         this.despawnOpponent();
-        
+
         const group = new THREE.Group();
-        const mat = ballMaterial(skinKey);
-        const mesh = new THREE.Mesh(sphereGeometry, mat);
+        const mat = (typeof window.getBallMaterial === 'function')
+            ? window.getBallMaterial(skinKey)
+            : new THREE.MeshStandardMaterial({ color: 0x37e0b0, roughness: 0.4, metalness: 0.1 });
+
+        const ballRadius = (typeof radius !== 'undefined') ? radius : 0.8;
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(ballRadius, 36, 36), mat);
         mesh.castShadow = true;
         group.add(mesh);
-        
+
         // Nametag 3D olografico
         const nametag = this.createNametagSprite(name);
         group.add(nametag);
-        
+
         scene.add(group);
-        
+
         this.opponent = {
             name,
             skinKey,
@@ -207,8 +353,8 @@ const Multiplayer = {
         const canvas = document.createElement('canvas');
         canvas.width = 256; canvas.height = 64;
         const ctx = canvas.getContext('2d');
-        
-        ctx.fillStyle = 'rgba(12, 16, 36, 0.82)';
+
+        ctx.fillStyle = 'rgba(12, 16, 36, 0.85)';
         ctx.strokeStyle = '#37e0b0';
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -216,13 +362,13 @@ const Multiplayer = {
         else ctx.rect(8, 8, 240, 48);
         ctx.fill();
         ctx.stroke();
-        
+
         ctx.font = 'bold 24px Fredoka, sans-serif';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(name.slice(0, 14), 128, 33);
-        
+        ctx.fillText((name || 'Ospite').slice(0, 14), 128, 33);
+
         const tex = new THREE.CanvasTexture(canvas);
         tex.minFilter = THREE.LinearFilter;
         const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
@@ -237,7 +383,7 @@ const Multiplayer = {
         this.opponent.targetPos.set(data.x, data.y, data.z);
         this.opponent.targetQuat.set(data.qx, data.qy, data.qz, data.qw);
         this.opponent.alt = data.alt || 0;
-        
+
         // Aggiorna indicatore di quota e delta nell'HUD
         const altEl = $('hud-p2p-alt');
         const deltaEl = $('hud-p2p-delta');
@@ -257,7 +403,7 @@ const Multiplayer = {
     handleRemoteEvent(data) {
         const name = this.opponent ? this.opponent.name : 'Avversario';
         if (data.event === 'respawn') {
-            showEvent(`${name} e caduto all'ultimo checkpoint!`, 'bad', 1800);
+            showEvent(`${name} è caduto all'ultimo checkpoint!`, 'bad', 1800);
             AudioEngine.playLand(0.6);
         } else if (data.event === 'checkpoint') {
             showEvent(`${name} ha superato il Checkpoint a ${data.alt}m!`, 'good', 1800);
@@ -314,12 +460,16 @@ const Multiplayer = {
     handleDisconnect() {
         if (!this.connected) return;
         this.connected = false;
-        showEvent('Avversario disconnesso dalla stanza', 'bad', 2200);
+        showEvent('Avversario disconnesso dalla stanza', 'bad', 2400);
         this.despawnOpponent();
     },
 
     leaveRoom() {
         this.connected = false;
+        if (this.activeJoinTimeout) {
+            clearTimeout(this.activeJoinTimeout);
+            this.activeJoinTimeout = null;
+        }
         if (this.conn) {
             try { this.conn.close(); } catch (e) {}
             this.conn = null;

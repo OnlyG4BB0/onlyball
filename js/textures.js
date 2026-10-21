@@ -632,6 +632,28 @@
         }
         applySkin(currentSkinIndex);
 
+        function getCurrentSkinKey() {
+            if (typeof currentSkinIndex !== 'undefined' && currentSkinIndex >= 0 && skinList && skinList[currentSkinIndex]) {
+                return skinList[currentSkinIndex].key;
+            }
+            return 'brand';
+        }
+        window.getCurrentSkinKey = getCurrentSkinKey;
+
+        function getBallMaterial(skinKey) {
+            if (!skinKey || !SKINS_DEF[skinKey]) skinKey = 'brand';
+            const d = SKINS_DEF[skinKey];
+            const t = skinTextures(skinKey);
+            return new THREE.MeshStandardMaterial({
+                map: t.map,
+                bumpMap: t.bump,
+                bumpScale: d.bumpScale || 0.01,
+                roughness: isRTX ? Math.max(0.08, d.roughness - 0.2) : d.roughness,
+                metalness: isRTX ? Math.min(0.85, d.metalness + 0.3) : d.metalness
+            });
+        }
+        window.getBallMaterial = getBallMaterial;
+
         $('btn-custom-skin').addEventListener('click', () => { AudioEngine.playUI(); $('custom-skin-upload').click(); });
         $('custom-skin-upload').addEventListener('change', (e) => {
             const file = e.target.files[0]; if (!file) return; const reader = new FileReader();

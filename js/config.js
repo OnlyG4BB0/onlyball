@@ -19,6 +19,15 @@
         if (settings.quality === 'ultra' && lowEndDevice && isMobileUA) settings.quality = 'medium';
         const saveSettings = () => { try { localStorage.setItem('onlyball_settings', JSON.stringify(settings)); } catch (e) {} };
 
+        function getPlayerName() {
+            try {
+                return (localStorage.getItem('onlyball_player_name') || 'Giocatore 1').trim() || 'Giocatore 1';
+            } catch (e) {
+                return 'Giocatore 1';
+            }
+        }
+        window.getPlayerName = getPlayerName;
+
         let touchUI = settings.touch === 'on' ? true : settings.touch === 'off' ? false : (hasCoarsePointer && hasTouchPoints) || isMobileUA;
         function setTouchUI(on) {
             touchUI = on;

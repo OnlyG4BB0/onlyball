@@ -337,27 +337,33 @@
 
 
 /* ---------- Multigiocatore Online (P2P) UI & Gestione Stanze ---------- */
+function initHostRoom() {
+    const codeEl = $('mp-create-code');
+    const statusEl = $('mp-host-status');
+    if (codeEl) codeEl.textContent = '...';
+    if (statusEl) statusEl.innerHTML = '<span class="status-dot pulse"></span> Creazione stanza sui server P2P...';
+
+    Multiplayer.createRoom(
+        (code) => {
+            if (codeEl) codeEl.textContent = code;
+        },
+        (code) => {
+            if (statusEl) statusEl.innerHTML = '<span class="status-dot pulse"></span> Stanza pronta! In attesa dell\'avversario...';
+        },
+        () => {
+            if (statusEl) statusEl.innerHTML = '<span class="status-dot" style="background:var(--mint)"></span> Connesso! Avvio gara...';
+        },
+        (err) => {
+            if (statusEl) statusEl.innerHTML = '<span class="status-dot" style="background:var(--coral)"></span> Errore connessione P2P. Riprova.';
+        }
+    );
+}
+
 function openMultiplayerModal() {
     AudioEngine.playUI();
     const modal = $('multiplayer-modal');
     if (modal) modal.classList.remove('hidden');
     selectMpTab('create');
-    Multiplayer.createRoom(
-        (code) => {
-            const codeEl = $('mp-create-code');
-            if (codeEl) codeEl.textContent = code;
-            const statusEl = $('mp-host-status');
-            if (statusEl) statusEl.innerHTML = '<span class="status-dot pulse"></span> In attesa dell\'avversario...';
-        },
-        () => {
-            const statusEl = $('mp-host-status');
-            if (statusEl) statusEl.innerHTML = '<span class="status-dot" style="background:var(--mint)"></span> Connesso! Avvio gara...';
-        },
-        (err) => {
-            const statusEl = $('mp-host-status');
-            if (statusEl) statusEl.textContent = 'Errore connessione P2P. Riprova.';
-        }
-    );
 }
 
 function closeMultiplayerModal() {
@@ -374,11 +380,17 @@ function selectMpTab(tab) {
         if ($('mp-tab-join')) $('mp-tab-join').classList.remove('active');
         if ($('mp-view-create')) $('mp-view-create').classList.remove('hidden');
         if ($('mp-view-join')) $('mp-view-join').classList.add('hidden');
+        if (!Multiplayer.isHost || !Multiplayer.peer || Multiplayer.peer.destroyed) {
+            initHostRoom();
+        }
     } else {
         if ($('mp-tab-create')) $('mp-tab-create').classList.remove('active');
         if ($('mp-tab-join')) $('mp-tab-join').classList.add('active');
         if ($('mp-view-create')) $('mp-view-create').classList.add('hidden');
         if ($('mp-view-join')) $('mp-view-join').classList.remove('hidden');
+        if (Multiplayer.isHost) {
+            Multiplayer.leaveRoom();
+        }
         setTimeout(() => { if ($('mp-join-input')) $('mp-join-input').focus(); }, 100);
     }
 }
@@ -391,47 +403,74 @@ if ($('mp-tab-join')) $('mp-tab-join').addEventListener('click', () => selectMpT
 
 if ($('btn-copy-code')) $('btn-copy-code').addEventListener('click', () => {
     const code = $('mp-create-code') ? $('mp-create-code').textContent : '';
-    if (navigator.clipboard && code) navigator.clipboard.writeText(code);
-    showToast('Codice stanza copiato!', 'good');
+    if (code && code !== '...' && code !== '------') {
+        if (navigator.clipboard) navigator.clipboard.writeText(code);
+        showToast('Codice stanza copiato!', 'good');
+    }
     AudioEngine.playUI();
 });
 
 if ($('btn-copy-link')) $('btn-copy-link').addEventListener('click', () => {
     const code = $('mp-create-code') ? $('mp-create-code').textContent : '';
-    const url = window.location.origin + window.location.pathname + '?room=' + code;
-    if (navigator.clipboard) navigator.clipboard.writeText(url);
-    showToast('Link gara copiato negli appunti!', 'good');
+    if (code && code !== '...' && code !== '------') {
+        const url = window.location.origin + window.location.pathname + '?room=' + code;
+        if (navigator.clipboard) navigator.clipboard.writeText(url);
+        showToast('Link gara copiato negli appunti!', 'good');
+    }
     AudioEngine.playUI();
 });
 
+if ($('mp-join-input')) {
+    $('mp-join-input').addEventListener('input', (e) => {
+        e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9\-]/g, '');
+    });
+    $('mp-join-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            if ($('btn-join-room')) $('btn-join-room').click();
+        }
+    });
+}
+
 if ($('btn-join-room')) $('btn-join-room').addEventListener('click', () => {
     const input = $('mp-join-input');
-    const code = input ? input.value.trim().toUpperCase() : '';
-    if (!code || code.length < 3) {
-        showToast('Inserisci un codice stanza valido', 'bad');
+    const rawVal = input ? input.value.trim() : '';
+    const clean = Multiplayer.normalizeRoomCode(rawVal);
+    if (!clean || clean.length < 3) {
+        showToast('Inserisci un codice valido (es. OB-8K4F o 8K4F)', 'bad');
         return;
     }
+    const displayCode = Multiplayer.formatRoomCode(clean);
     AudioEngine.playUI();
     const statusEl = $('mp-join-status');
     if (statusEl) {
         statusEl.classList.remove('hidden');
-        statusEl.innerHTML = '<span class="status-dot pulse"></span> Connessione alla stanza ' + code + '...';
+        statusEl.innerHTML = `<span class="status-dot pulse"></span> Connessione alla stanza ${displayCode}...`;
     }
-    Multiplayer.joinRoom(code, () => {
+    Multiplayer.joinRoom(rawVal, () => {
         if (statusEl) statusEl.innerHTML = '<span class="status-dot" style="background:var(--mint)"></span> Connesso! Avvio gara...';
+    }, (progressMsg) => {
+        if (statusEl) statusEl.innerHTML = `<span class="status-dot pulse"></span> ${progressMsg}`;
     }, (err) => {
-        if (statusEl) statusEl.innerHTML = '<span class="status-dot" style="background:var(--coral)"></span> Stanza non trovata o non raggiungibile.';
+        if (statusEl) {
+            const msg = (err && err.message) ? err.message : 'Stanza non trovata o non raggiungibile.';
+            statusEl.innerHTML = `<span class="status-dot" style="background:var(--coral)"></span> ${msg}`;
+        }
     });
 });
 
 window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('room')) {
-        const rCode = params.get('room').toUpperCase().trim();
-        setTimeout(() => {
-            openMultiplayerModal();
-            selectMpTab('join');
-            if ($('mp-join-input')) $('mp-join-input').value = rCode;
-        }, 500);
+        const rawCode = params.get('room');
+        const clean = Multiplayer.normalizeRoomCode(rawCode);
+        if (clean) {
+            setTimeout(() => {
+                const modal = $('multiplayer-modal');
+                if (modal) modal.classList.remove('hidden');
+                selectMpTab('join');
+                if ($('mp-join-input')) $('mp-join-input').value = Multiplayer.formatRoomCode(clean);
+                if ($('btn-join-room')) $('btn-join-room').click();
+            }, 600);
+        }
     }
 });
